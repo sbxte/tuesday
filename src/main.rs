@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
-use graph::TaskState;
+use graph::{ErrorType, TaskState};
 
 mod graph;
 mod save;
@@ -106,17 +106,8 @@ enum Commands {
     Clean,
 }
 
-fn main() -> Result<()> {
-    let mut graph = save::load_global()?;
-    let cli = Cli::parse();
-
-    if cli.command.is_none() {
-        println!("Welcome to Tuesday");
-        save::save_global(&save::Config::new(&graph))?;
-        return Ok(());
-    }
-
-    let result: Result<()> = match cli.command.unwrap() {
+fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()> {
+    match commands {
         Commands::Add {
             root,
             parent,
@@ -175,11 +166,30 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Clean => {
-            graph = graph.clean()?;
+            *graph = graph.clean()?;
             Ok(())
         }
-    };
-    result?; // TODO: Handle errors in a nice way
+    }
+}
+
+fn main() -> Result<()> {
+    let mut graph = save::load_global()?;
+    let cli = Cli::parse();
+
+    if cli.command.is_none() {
+        println!("Welcome to Tuesday");
+        save::save_global(&save::Config::new(&graph))?;
+        return Ok(());
+    }
+
+    let result: Result<()> = handle_command(cli.command.unwrap(), &mut graph);
+    if let Err(e) = result {
+        match e.downcast::<ErrorType>()? {
+            ErrorType::InvalidIndex(index) => println!("Invalid index: {index}"),
+            ErrorType::InvalidAlias(alias) => println!("Invalid alias: {alias}"),
+            ErrorType::GraphLooped(index) => println!("Graph looped at index: {index}"),
+        }
+    }
 
     save::save_global(&save::Config::new(&graph))?;
 
