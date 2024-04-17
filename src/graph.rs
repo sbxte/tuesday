@@ -8,14 +8,14 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 pub enum ErrorType {
-    #[error("Invalid node: {0}")]
-    InvalidNode(usize),
+    #[error("Invalid index: {0}")]
+    InvalidIndex(usize),
+
+    #[error("Invalid alias: {0}")]
+    InvalidAlias(String),
 
     #[error("Graph looped: {0}")]
     GraphLooped(usize),
-
-    #[error("Invalid reference alias or index: {0}")]
-    InvalidRef(String),
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -212,10 +212,10 @@ impl TaskGraph {
 
     pub fn check_index(&self, index: usize) -> Result<(), ErrorType> {
         if index > self.data.len() {
-            return Err(ErrorType::InvalidNode(index));
+            return Err(ErrorType::InvalidIndex(index));
         }
         if self.data[index].is_none() {
-            return Err(ErrorType::InvalidNode(index));
+            return Err(ErrorType::InvalidIndex(index));
         }
         Ok(())
     }
@@ -427,7 +427,7 @@ impl TaskGraph {
     }
 
     pub fn parse_alias(&self, alias: &String) -> Result<usize, ErrorType> {
-        self.aliases.get(alias).copied().or(alias.parse::<usize>().ok()).ok_or(ErrorType::InvalidRef(alias.to_owned()))
+        self.aliases.get(alias).copied().or(alias.parse::<usize>().ok()).ok_or(ErrorType::InvalidAlias(alias.to_owned()))
     }
 
     pub fn set_alias(&mut self, target: String, alias: String) -> Result<()> {
