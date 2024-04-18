@@ -70,7 +70,12 @@ impl TaskGraph {
         self.roots.push(idx);
     }
 
-    pub fn insert_child_unchecked(&mut self, message: String, parent: usize, pseudo: bool) {
+    pub fn insert_child_unchecked(
+        &mut self,
+        message: String,
+        parent: usize,
+        pseudo: bool,
+    ) -> usize {
         let idx = self.data.len();
         let mut node = TaskNode::new(message, idx);
         if pseudo {
@@ -78,12 +83,14 @@ impl TaskGraph {
         }
         self.data.push(Some(RefCell::new(node)));
         self.link_unchecked(parent, idx);
+        idx
     }
 
     pub fn insert_child(&mut self, message: String, parent: String, pseudo: bool) -> Result<()> {
         let parent = self.parse_alias(&parent)?;
         self.check_index(parent)?;
-        self.insert_child_unchecked(message, parent, pseudo);
+        let idx = self.insert_child_unchecked(message, parent, pseudo);
+        Self::display_link(parent, idx, true);
         if !pseudo {
             self.update_state_recurse_parents(&[parent] as *const _, 1)?;
         }
@@ -211,7 +218,18 @@ impl TaskGraph {
         self.check_index(from)?;
         self.check_index(to)?;
         self.link_unchecked(from, to);
+        Self::display_link(from, to, true);
         Ok(())
+    }
+
+    pub fn display_link(from: usize, to: usize, connect: bool) {
+        let from = format!("({})", from).bright_blue();
+        let to = format!("({})", to).bright_blue();
+        if connect {
+            println!("{} -> {}", from, to);
+        } else {
+            println!("{} -x- {}", from, to);
+        }
     }
 
     pub fn unlink_unchecked(&mut self, from: usize, to: usize) {
@@ -239,6 +257,7 @@ impl TaskGraph {
         self.check_index(from)?;
         self.check_index(to)?;
         self.unlink_unchecked(from, to);
+        Self::display_link(from, to, true);
         Ok(())
     }
 
