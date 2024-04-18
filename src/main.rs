@@ -107,6 +107,15 @@ enum Commands {
     /// Lists aliases
     Aliases,
 
+    /// Renames a node
+    Rename {
+        #[arg(short, long)]
+        target: String,
+
+        #[arg(short, long)]
+        message: String,
+    },
+
     /// Lists children nodes
     List {
         #[arg(short, long)]
@@ -182,6 +191,10 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
         }
         Commands::Aliases => {
             graph.list_aliases()?;
+            Ok(())
+        }
+        Commands::Rename { target, message } => {
+            graph.rename_node(target, message)?;
             Ok(())
         }
         Commands::List { target, depth } => {

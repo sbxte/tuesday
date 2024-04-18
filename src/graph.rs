@@ -345,6 +345,13 @@ impl TaskGraph {
         Ok(())
     }
 
+    pub fn rename_node(&mut self, target: String, message: String) -> Result<()> {
+        let index = self.parse_alias(&target)?;
+        self.check_index(index)?;
+        self.data[index].as_ref().unwrap().borrow_mut().message = message;
+        Ok(())
+    }
+
     /// Remaps old indices to new indices
     /// Compress by ignoring unused indices
     ///
