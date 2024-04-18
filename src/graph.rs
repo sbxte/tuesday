@@ -175,6 +175,8 @@ impl TaskGraph {
             .borrow_mut()
             .parents
             .push(from);
+        // Remove node from list of roots if it has a parent
+        self.roots.retain(|i| *i != to); 
     }
 
     pub fn link(&mut self, from: String, to: String) -> Result<()> {
@@ -197,8 +199,12 @@ impl TaskGraph {
             .as_ref()
             .unwrap()
             .borrow_mut()
-            .children
+            .parents
             .retain(|i| *i != from);
+        // Add node to list of roots if it does not have a parent
+        if self.data[to].as_ref().unwrap().borrow().parents.is_empty() {
+            self.roots.push(to);
+        }
     }
 
     pub fn unlink(&mut self, from: String, to: String) -> Result<()> {
