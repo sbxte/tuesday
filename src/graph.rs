@@ -448,6 +448,13 @@ impl TaskGraph {
         Ok(())
     }
 
+    pub fn list_aliases(&self) -> Result<()> {
+        for i in self.aliases.values() {
+            println!("{}", self.data[*i].as_ref().unwrap().borrow());
+        }
+        Ok(())
+    }
+
     pub fn unset_alias(&mut self, target: String) -> Result<()> {
         if let Some(index) = self.aliases.remove(&target) {
             self.data[index].as_ref().unwrap().borrow_mut().alias = None;

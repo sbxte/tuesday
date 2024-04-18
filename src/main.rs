@@ -92,6 +92,9 @@ enum Commands {
         target: String,
     },
 
+    /// Lists aliases
+    Aliases,
+
     /// Lists children nodes
     List {
         #[arg(short, long)]
@@ -158,6 +161,10 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
         }
         Commands::Unalias { target } => {
             graph.unset_alias(target)?;
+            Ok(())
+        }
+        Commands::Aliases => {
+            graph.list_aliases()?;
             Ok(())
         }
         Commands::List { target, depth } => {
