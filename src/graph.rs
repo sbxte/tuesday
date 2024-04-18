@@ -4,6 +4,7 @@ use std::fmt;
 
 use anyhow::Result;
 use clap::ValueEnum;
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -469,7 +470,7 @@ impl TaskGraph {
             print!(" |   ");
         }
         if dots {
-            print!(" + ..");
+            print!(" +...");
         } else {
             print!(" +---");
         }
@@ -561,11 +562,13 @@ impl TaskNode {
 impl fmt::Display for TaskNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let index = if let Some(ref alias) = self.alias {
-            format!("{}:{}", self.index, alias)
+            format!("({}:{})", self.index, alias)
         } else {
-            format!("{}", self.index)
-        };
-        write!(f, "[{}] {} ({})", self.state, self.message, index)
+            format!("({})", self.index)
+        }
+        .bright_blue();
+        let state = format!("[{}]", self.state).bright_blue();
+        write!(f, "{} {} {}", state, self.message, index)
     }
 }
 
