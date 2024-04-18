@@ -470,9 +470,9 @@ impl TaskGraph {
             print!(" |   ");
         }
         if dots {
-            print!(" +...");
+            print!(" +..");
         } else {
-            print!(" +---");
+            print!(" +--");
         }
     }
 
@@ -567,7 +567,7 @@ impl fmt::Display for TaskNode {
             format!("({})", self.index)
         }
         .bright_blue();
-        let state = format!("[{}]", self.state).bright_blue();
+        let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
         write!(f, "{} {} {}", state, self.message, index)
     }
 }
