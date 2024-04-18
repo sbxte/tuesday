@@ -30,6 +30,9 @@ enum Commands {
         #[arg(short, long)]
         parent: Option<String>,
 
+        #[arg(long)]
+        pseudo: bool,
+
         /// What message should the node have
         #[arg(short, long)]
         message: String,
@@ -64,6 +67,15 @@ enum Commands {
 
         #[arg(short, long)]
         to: String,
+    },
+
+    /// Sets node status
+    SetNoprop {
+        #[arg(value_enum)]
+        state: graph::TaskState,
+
+        #[arg(short, long)]
+        target: String,
     },
 
     /// Marks a node as completed
@@ -120,12 +132,13 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
         Commands::Add {
             root,
             parent,
+            pseudo,
             message,
         } => {
             if root {
-                graph.insert_root(message);
+                graph.insert_root(message, pseudo);
             } else if let Some(target) = parent {
-                graph.insert_child(message, target)?;
+                graph.insert_child(message, target, pseudo)?;
             } else {
                 bail!("Did not specify whether to add as root or as a child node!");
             }
@@ -147,12 +160,16 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
             graph.unlink(from, to)?;
             Ok(())
         }
-        Commands::Check { target: index } => {
-            graph.set_state(index, TaskState::Complete)?;
+        Commands::SetNoprop { state, target } => {
+            graph.set_state(target, state, false)?;
             Ok(())
         }
-        Commands::Uncheck { target: index } => {
-            graph.set_state(index, TaskState::None)?;
+        Commands::Check { target } => {
+            graph.set_state(target, TaskState::Complete, true)?;
+            Ok(())
+        }
+        Commands::Uncheck { target } => {
+            graph.set_state(target, TaskState::None, true)?;
             Ok(())
         }
         Commands::Alias { target, alias } => {
