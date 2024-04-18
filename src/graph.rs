@@ -16,8 +16,8 @@ pub enum ErrorType {
     #[error("Invalid alias: {0}")]
     InvalidAlias(String),
 
-    #[error("Graph looped: {0}")]
-    GraphLooped(usize),
+    #[error("Graph looped back: {0}->...->{1}->{0}")]
+    GraphLooped(usize, usize),
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -463,7 +463,7 @@ impl TaskGraph {
         for i in indices {
             if let Some(start) = start {
                 if *i == start {
-                    return Err(ErrorType::GraphLooped(start));
+                    return Err(ErrorType::GraphLooped(start, *i));
                 }
             }
             Self::print_tree_indent(

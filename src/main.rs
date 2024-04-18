@@ -242,7 +242,9 @@ fn main() -> Result<()> {
         match e.downcast::<ErrorType>()? {
             ErrorType::InvalidIndex(index) => println!("Invalid index: {index}"),
             ErrorType::InvalidAlias(alias) => println!("Invalid alias: {alias}"),
-            ErrorType::GraphLooped(index) => println!("Graph looped at index: {index}"),
+            ErrorType::GraphLooped(start, index) => {
+                println!("Graph looped back: {start}->...->{index}->{start}")
+            }
         }
     }
 
