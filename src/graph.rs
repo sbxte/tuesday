@@ -80,15 +80,13 @@ impl TaskGraph {
         self.link_unchecked(parent, idx);
     }
 
-    pub fn insert_child(
-        &mut self,
-        message: String,
-        parent: String,
-        pseudo: bool,
-    ) -> Result<(), ErrorType> {
+    pub fn insert_child(&mut self, message: String, parent: String, pseudo: bool) -> Result<()> {
         let parent = self.parse_alias(&parent)?;
         self.check_index(parent)?;
         self.insert_child_unchecked(message, parent, pseudo);
+        if !pseudo {
+            self.update_state_recurse_parents(&[parent] as *const _, 1)?;
+        }
         Ok(())
     }
 
@@ -114,6 +112,8 @@ impl TaskGraph {
                 .children
                 .retain(|i| *i != index);
         }
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
+
         let children_ptr = self.data[index]
             .as_ref()
             .unwrap()
@@ -165,6 +165,7 @@ impl TaskGraph {
                 .children
                 .retain(|i| *i != index);
         }
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
         let children_ptr = self.data[index]
             .as_ref()
             .unwrap()
