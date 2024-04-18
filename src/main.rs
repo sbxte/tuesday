@@ -8,6 +8,12 @@ mod save;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
+    #[arg(long)]
+    local: bool,
+
+    #[arg(long)]
+    global: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -173,8 +179,20 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
 }
 
 fn main() -> Result<()> {
-    let mut graph = save::load_global()?;
     let cli = Cli::parse();
+
+    let (mut graph, local) = match (cli.local, cli.global) {
+        (true, true) => bail!("Config cannot be both local and global!"),
+        (true, false) => (save::load_local(std::env::current_dir()?)?, true),
+        (false, true) => (save::load_global()?, false),
+        (false, false) => {
+            // Try to load local config otherwise load global
+            match save::try_load_local(std::env::current_dir()?)? {
+                None => (save::load_global()?, false),
+                Some(g) => (g, true),
+            }
+        }
+    };
 
     if cli.command.is_none() {
         println!("Welcome to Tuesday");
@@ -191,7 +209,11 @@ fn main() -> Result<()> {
         }
     }
 
-    save::save_global(&save::Config::new(&graph))?;
+    if local {
+        save::save_local(std::env::current_dir()?, &save::Config::new(&graph))?;
+    } else {
+        save::save_global(&save::Config::new(&graph))?;
+    }
 
     Ok(())
 }

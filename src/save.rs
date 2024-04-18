@@ -1,5 +1,6 @@
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
+use std::path::PathBuf;
 
 use crate::graph::TaskGraph;
 
@@ -8,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 /// Update this whenever the structure of Config changes
 const VERSION: u32 = 1;
+
+const FILENAME: &str = ".tuesday";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
@@ -36,6 +39,20 @@ pub fn save(file: &mut File, config: &Config) -> Result<()> {
     Ok(())
 }
 
+pub fn save_local(mut path: PathBuf, config: &Config) -> Result<()> {
+    path.push(FILENAME);
+    save(
+        &mut OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .read(true)
+            .open(path)?,
+        config,
+    )?;
+    Ok(())
+}
+
 pub fn load(file: &mut File) -> Result<TaskGraph> {
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
@@ -43,6 +60,43 @@ pub fn load(file: &mut File) -> Result<TaskGraph> {
         TaskGraph::new()
     } else {
         bincode::deserialize::<Config>(bytes.as_slice())?.graph
+    };
+    Ok(graph)
+}
+
+pub fn try_load_local(mut path: PathBuf) -> Result<Option<TaskGraph>> {
+    path.push(FILENAME);
+    if path.exists() {
+        Ok(Some(load(
+            &mut OpenOptions::new()
+                .write(true)
+                .truncate(false)
+                .read(true)
+                .open(path)?,
+        )?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn load_local(mut path: PathBuf) -> Result<TaskGraph> {
+    path.push(FILENAME);
+    let graph = if !path.exists() {
+        load(
+            &mut OpenOptions::new()
+                .create(true)
+                .append(true)
+                .read(true)
+                .open(path)?,
+        )?
+    } else {
+        load(
+            &mut OpenOptions::new()
+                .write(true)
+                .truncate(false)
+                .read(true)
+                .open(path)?,
+        )?
     };
     Ok(graph)
 }
@@ -57,7 +111,7 @@ pub fn get_global_save() -> Result<File> {
     } else {
         panic!("Home directory unavailable!");
     };
-    path.push(".tuesday");
+    path.push(FILENAME);
     if !path.exists() {
         Ok(OpenOptions::new()
             .create(true)
