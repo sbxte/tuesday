@@ -134,6 +134,9 @@ enum Commands {
 
     /// Compresses and cleans up the graph
     Clean,
+
+    /// Exports JSON to stdout
+    Export,
 }
 
 fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()> {
@@ -210,6 +213,10 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
         }
         Commands::Clean => {
             *graph = graph.clean()?;
+            Ok(())
+        }
+        Commands::Export => {
+            println!("{}", save::export_json(graph)?);
             Ok(())
         }
     }

@@ -126,3 +126,7 @@ pub fn get_global_save() -> Result<File> {
             .open(path)?)
     }
 }
+
+pub fn export_json(graph: &TaskGraph) -> Result<String> {
+    Ok(serde_json::to_string(&Config::new(graph))?)
+}
