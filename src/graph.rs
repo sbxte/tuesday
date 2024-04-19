@@ -487,7 +487,7 @@ impl TaskGraph {
         }
 
         for _ in 0..(depth - 1) {
-            print!(" |   ");
+            print!(" |  ");
         }
         if dots {
             print!(" +..");
