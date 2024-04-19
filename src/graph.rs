@@ -394,20 +394,25 @@ impl TaskGraph {
         }
 
         let mut new_graph = TaskGraph::new();
+        // Map indices
         for node in self.data.iter() {
             match node {
                 None => continue,
                 Some(node) => {
                     let mut new_node = node.borrow().clone();
                     new_node.map_indices(&map);
-                    if let Some(ref alias) = new_node.alias {
-                        let old = self.aliases.get(alias).unwrap();
-                        *self.aliases.get_mut(alias).unwrap() = map[*old].1.unwrap();
-                    }
                     new_graph.insert_raw(new_node);
                 }
             }
         }
+
+        // Map aliases
+        for (alias, idx) in self.aliases.iter() {
+            new_graph
+                .aliases
+                .insert(alias.clone(), map[*idx].1.unwrap());
+        }
+
         // Add roots
         for r in self.roots.iter() {
             new_graph.roots.push(map[*r].1.unwrap());
