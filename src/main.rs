@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
-use graph::{ErrorType, TaskState};
+use graph::{ErrorType, NodeState};
 
 mod graph;
 mod save;
@@ -72,7 +72,7 @@ enum Commands {
     /// Sets node status
     SetNoprop {
         #[arg(value_enum)]
-        state: graph::TaskState,
+        state: graph::NodeState,
 
         #[arg(short, long)]
         target: String,
@@ -142,7 +142,7 @@ enum Commands {
     Import,
 }
 
-fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()> {
+fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
     match commands {
         Commands::Add {
             root,
@@ -180,11 +180,11 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
             Ok(())
         }
         Commands::Check { target } => {
-            graph.set_state(target, TaskState::Complete, true)?;
+            graph.set_state(target, NodeState::Complete, true)?;
             Ok(())
         }
         Commands::Uncheck { target } => {
-            graph.set_state(target, TaskState::None, true)?;
+            graph.set_state(target, NodeState::None, true)?;
             Ok(())
         }
         Commands::Alias { target, alias } => {

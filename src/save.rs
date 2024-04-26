@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 
-use crate::graph::TaskGraph;
+use crate::graph::Graph;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -15,11 +15,11 @@ const FILENAME: &str = ".tuesday";
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
-    pub graph: TaskGraph,
+    pub graph: Graph,
 }
 
 impl Config {
-    pub fn new(graph: &TaskGraph) -> Self {
+    pub fn new(graph: &Graph) -> Self {
         Self {
             version: VERSION,
             graph: graph.clone(),
@@ -53,18 +53,18 @@ pub fn save_local(mut path: PathBuf, config: &Config) -> Result<()> {
     Ok(())
 }
 
-pub fn load(file: &mut File) -> Result<TaskGraph> {
+pub fn load(file: &mut File) -> Result<Graph> {
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
-    let graph: TaskGraph = if bytes.is_empty() {
-        TaskGraph::new()
+    let graph: Graph = if bytes.is_empty() {
+        Graph::new()
     } else {
         bincode::deserialize::<Config>(bytes.as_slice())?.graph
     };
     Ok(graph)
 }
 
-pub fn try_load_local(mut path: PathBuf) -> Result<Option<TaskGraph>> {
+pub fn try_load_local(mut path: PathBuf) -> Result<Option<Graph>> {
     path.push(FILENAME);
     if path.exists() {
         Ok(Some(load(
@@ -79,7 +79,7 @@ pub fn try_load_local(mut path: PathBuf) -> Result<Option<TaskGraph>> {
     }
 }
 
-pub fn load_local(mut path: PathBuf) -> Result<TaskGraph> {
+pub fn load_local(mut path: PathBuf) -> Result<Graph> {
     path.push(FILENAME);
     let graph = if !path.exists() {
         load(
@@ -101,7 +101,7 @@ pub fn load_local(mut path: PathBuf) -> Result<TaskGraph> {
     Ok(graph)
 }
 
-pub fn load_global() -> Result<TaskGraph> {
+pub fn load_global() -> Result<Graph> {
     load(&mut get_global_save()?)
 }
 
@@ -127,12 +127,12 @@ pub fn get_global_save() -> Result<File> {
     }
 }
 
-pub fn export_json(graph: &TaskGraph) -> Result<String> {
+pub fn export_json(graph: &Graph) -> Result<String> {
     Ok(serde_json::to_string(&Config::new(graph))?)
 }
 
 /// Imports from stdin
-pub fn import_json_stdin() -> Result<TaskGraph> {
+pub fn import_json_stdin() -> Result<Graph> {
     let mut stdin = io::stdin();
     let mut bytes = vec![];
     stdin.read_to_end(&mut bytes)?;

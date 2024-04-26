@@ -21,16 +21,16 @@ pub enum ErrorType {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct TaskGraph {
-    data: Vec<Option<RefCell<TaskNode>>>,
+pub struct Graph {
+    nodes: Vec<Option<RefCell<Node>>>,
     roots: Vec<usize>,
     aliases: HashMap<String, usize>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct TaskNode {
+pub struct Node {
     message: String,
-    state: TaskState,
+    state: NodeState,
     index: usize,
     alias: Option<String>,
     parents: Vec<usize>,
@@ -38,7 +38,7 @@ pub struct TaskNode {
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
-pub enum TaskState {
+pub enum NodeState {
     #[default]
     None,
     Partial,
@@ -47,17 +47,17 @@ pub enum TaskState {
     Pseudo,
 }
 
-impl TaskGraph {
+impl Graph {
     pub fn new() -> Self {
         Self {
-            data: vec![],
+            nodes: vec![],
             roots: vec![],
             aliases: HashMap::new(),
         }
     }
 
     pub fn node_count(&self) -> usize {
-        self.data.len()
+        self.nodes.len()
     }
 
     pub fn root_count(&self) -> usize {
@@ -68,17 +68,17 @@ impl TaskGraph {
         self.aliases.len()
     }
 
-    pub fn insert_raw(&mut self, node: TaskNode) {
-        self.data.push(Some(RefCell::new(node)));
+    pub fn insert_raw(&mut self, node: Node) {
+        self.nodes.push(Some(RefCell::new(node)));
     }
 
     pub fn insert_root(&mut self, message: String, pseudo: bool) {
-        let idx = self.data.len();
-        let mut node = TaskNode::new(message, idx);
+        let idx = self.nodes.len();
+        let mut node = Node::new(message, idx);
         if pseudo {
-            node.state = TaskState::Pseudo;
+            node.state = NodeState::Pseudo;
         }
-        self.data.push(Some(RefCell::new(node)));
+        self.nodes.push(Some(RefCell::new(node)));
         self.roots.push(idx);
     }
 
@@ -88,12 +88,12 @@ impl TaskGraph {
         parent: usize,
         pseudo: bool,
     ) -> usize {
-        let idx = self.data.len();
-        let mut node = TaskNode::new(message, idx);
+        let idx = self.nodes.len();
+        let mut node = Node::new(message, idx);
         if pseudo {
-            node.state = TaskState::Pseudo
+            node.state = NodeState::Pseudo
         }
-        self.data.push(Some(RefCell::new(node)));
+        self.nodes.push(Some(RefCell::new(node)));
         self.link_unchecked(parent, idx);
         idx
     }
@@ -120,11 +120,16 @@ impl TaskGraph {
         self.unset_alias(target)?;
 
         // Unlink node from parents and children
-        let parents_ptr = self.data[index].as_ref().unwrap().borrow().parents.as_ptr();
-        let parents_len = self.data[index].as_ref().unwrap().borrow().parents.len();
+        let parents_ptr = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
         for i in 0..parents_len {
             let parent = unsafe { *parents_ptr.add(i) };
-            self.data[parent]
+            self.nodes[parent]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
@@ -133,22 +138,22 @@ impl TaskGraph {
         }
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
-        let children_ptr = self.data[index]
+        let children_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
             .borrow()
             .children
             .as_ptr();
-        let children_len = self.data[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
         for i in 0..children_len {
             let child = unsafe { *children_ptr.add(i) };
-            self.data[child]
+            self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
                 .parents
                 .retain(|i| *i != index);
-            if self.data[child]
+            if self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow()
@@ -159,7 +164,7 @@ impl TaskGraph {
             }
         }
 
-        self.data[index] = None;
+        self.nodes[index] = None;
 
         Ok(())
     }
@@ -173,11 +178,16 @@ impl TaskGraph {
     }
 
     fn _remove_children_recursive(&mut self, index: usize) -> Result<()> {
-        let parents_ptr = self.data[index].as_ref().unwrap().borrow().parents.as_ptr();
-        let parents_len = self.data[index].as_ref().unwrap().borrow().parents.len();
+        let parents_ptr = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
         for i in 0..parents_len {
             let parent = unsafe { *parents_ptr.add(i) };
-            self.data[parent]
+            self.nodes[parent]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
@@ -185,16 +195,16 @@ impl TaskGraph {
                 .retain(|i| *i != index);
         }
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
-        let children_ptr = self.data[index]
+        let children_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
             .borrow()
             .children
             .as_ptr();
-        let children_len = self.data[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
         for i in 0..children_len {
             let child = unsafe { *children_ptr.add(i) };
-            self.data[child]
+            self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
@@ -203,18 +213,18 @@ impl TaskGraph {
             self._remove_children_recursive(child)?;
         }
         self.unset_alias_raw(index)?;
-        self.data[index] = None;
+        self.nodes[index] = None;
         Ok(())
     }
 
     pub fn link_unchecked(&mut self, from: usize, to: usize) {
-        self.data[from]
+        self.nodes[from]
             .as_ref()
             .unwrap()
             .borrow_mut()
             .children
             .push(to);
-        self.data[to]
+        self.nodes[to]
             .as_ref()
             .unwrap()
             .borrow_mut()
@@ -245,20 +255,20 @@ impl TaskGraph {
     }
 
     pub fn unlink_unchecked(&mut self, from: usize, to: usize) {
-        self.data[from]
+        self.nodes[from]
             .as_ref()
             .unwrap()
             .borrow_mut()
             .children
             .retain(|i| *i != to);
-        self.data[to]
+        self.nodes[to]
             .as_ref()
             .unwrap()
             .borrow_mut()
             .parents
             .retain(|i| *i != from);
         // Add node to list of roots if it does not have a parent
-        if self.data[to].as_ref().unwrap().borrow().parents.is_empty() {
+        if self.nodes[to].as_ref().unwrap().borrow().parents.is_empty() {
             self.roots.push(to);
         }
     }
@@ -274,33 +284,38 @@ impl TaskGraph {
     }
 
     pub fn check_index(&self, index: usize) -> Result<(), ErrorType> {
-        if index > self.data.len() {
+        if index > self.nodes.len() {
             return Err(ErrorType::InvalidIndex(index));
         }
-        if self.data[index].is_none() {
+        if self.nodes[index].is_none() {
             return Err(ErrorType::InvalidIndex(index));
         }
         Ok(())
     }
 
     /// Sets node state and propogates changes to children and parents
-    pub fn set_state(&mut self, target: String, state: TaskState, propogate: bool) -> Result<()> {
+    pub fn set_state(&mut self, target: String, state: NodeState, propogate: bool) -> Result<()> {
         let index = self.parse_alias(&target)?;
         self.check_index(index)?;
-        self.data[index].as_ref().unwrap().borrow_mut().state = state;
+        self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
             return Ok(());
         }
-        let children_ptr = self.data[index]
+        let children_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
             .borrow()
             .children
             .as_ptr();
-        let children_len = self.data[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
         self.set_state_recurse_children(children_ptr, children_len, state)?;
-        let parents_ptr = self.data[index].as_ref().unwrap().borrow().parents.as_ptr();
-        let parents_len = self.data[index].as_ref().unwrap().borrow().parents.len();
+        let parents_ptr = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
         Ok(())
     }
@@ -310,22 +325,22 @@ impl TaskGraph {
         &mut self,
         indices: *const usize,
         len: usize,
-        state: TaskState,
+        state: NodeState,
     ) -> Result<()> {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
 
-            if self.data[i].as_ref().unwrap().borrow().state == TaskState::Pseudo {
+            if self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo {
                 continue;
             }
-            self.data[i].as_ref().unwrap().borrow_mut().state = state;
+            self.nodes[i].as_ref().unwrap().borrow_mut().state = state;
 
-            let children_ptr = self.data[i].as_ref().unwrap().borrow().children.as_ptr();
-            let children_len = self.data[i].as_ref().unwrap().borrow().children.len();
+            let children_ptr = self.nodes[i].as_ref().unwrap().borrow().children.as_ptr();
+            let children_len = self.nodes[i].as_ref().unwrap().borrow().children.len();
             self.set_state_recurse_children(children_ptr, children_len, state)?;
 
-            let parents_ptr = self.data[i].as_ref().unwrap().borrow().parents.as_ptr();
-            let parents_len = self.data[i].as_ref().unwrap().borrow().parents.len();
+            let parents_ptr = self.nodes[i].as_ref().unwrap().borrow().parents.as_ptr();
+            let parents_len = self.nodes[i].as_ref().unwrap().borrow().parents.len();
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
         Ok(())
@@ -338,41 +353,41 @@ impl TaskGraph {
             let mut count = 0;
             let mut pseudo = 0;
             let mut partial = false;
-            for child in self.data[i].as_ref().unwrap().borrow().children.iter() {
-                match self.data[*child].as_ref().unwrap().borrow().state {
-                    TaskState::None => continue,
-                    TaskState::Partial => {
+            for child in self.nodes[i].as_ref().unwrap().borrow().children.iter() {
+                match self.nodes[*child].as_ref().unwrap().borrow().state {
+                    NodeState::None => continue,
+                    NodeState::Partial => {
                         partial = true;
                     }
-                    TaskState::Complete => {
+                    NodeState::Complete => {
                         partial = true;
                         count += 1;
                     }
-                    TaskState::Pseudo => {
+                    NodeState::Pseudo => {
                         pseudo += 1;
                     }
                 }
             }
-            let is_pseudo = self.data[i].as_ref().unwrap().borrow().state == TaskState::Pseudo;
-            self.data[i].as_ref().unwrap().borrow_mut().state = if is_pseudo {
-                TaskState::Pseudo
+            let is_pseudo = self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo;
+            self.nodes[i].as_ref().unwrap().borrow_mut().state = if is_pseudo {
+                NodeState::Pseudo
             // Every child task is completed
             } else if count != 0
-                && count == (self.data[i].as_ref().unwrap().borrow().children.len() - pseudo)
+                && count == (self.nodes[i].as_ref().unwrap().borrow().children.len() - pseudo)
             {
-                TaskState::Complete
+                NodeState::Complete
             // At least one child task is completed or partially completed
             } else if partial {
-                TaskState::Partial
+                NodeState::Partial
             } else {
-                TaskState::None
+                NodeState::None
             };
             if is_pseudo {
                 // No need to recurse for pseudo nodes as they do not affect parent status
                 continue;
             }
-            let parents_ptr = self.data[i].as_ref().unwrap().borrow().parents.as_ptr();
-            let parents_len = self.data[i].as_ref().unwrap().borrow().parents.len();
+            let parents_ptr = self.nodes[i].as_ref().unwrap().borrow().parents.as_ptr();
+            let parents_len = self.nodes[i].as_ref().unwrap().borrow().parents.len();
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
         Ok(())
@@ -381,7 +396,7 @@ impl TaskGraph {
     pub fn rename_node(&mut self, target: String, message: String) -> Result<()> {
         let index = self.parse_alias(&target)?;
         self.check_index(index)?;
-        self.data[index].as_ref().unwrap().borrow_mut().message = message;
+        self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
         Ok(())
     }
 
@@ -393,9 +408,9 @@ impl TaskGraph {
     /// Map indices [0->0, 2->1, 3->2, 4->3]
     /// New [Some(a), Some(b), Some(c), Some(d)]
     pub fn clean(&mut self) -> Result<Self> {
-        let mut map = Vec::with_capacity(self.data.len()); // Map old indices to new indices
+        let mut map = Vec::with_capacity(self.nodes.len()); // Map old indices to new indices
         let mut last_used_index: usize = 0;
-        for (i, node) in self.data.iter().enumerate() {
+        for (i, node) in self.nodes.iter().enumerate() {
             match node {
                 None => map.push((i, None)), // Ignored sentinel value
                 Some(_) => {
@@ -405,9 +420,9 @@ impl TaskGraph {
             }
         }
 
-        let mut new_graph = TaskGraph::new();
+        let mut new_graph = Graph::new();
         // Map indices
-        for node in self.data.iter() {
+        for node in self.nodes.iter() {
             match node {
                 None => continue,
                 Some(node) => {
@@ -432,9 +447,9 @@ impl TaskGraph {
 
         println!(
             "Cleaned {} indices. Old count: {}, New count: {}",
-            map.len() - new_graph.data.len(),
+            map.len() - new_graph.nodes.len(),
             map.len(),
-            new_graph.data.len()
+            new_graph.nodes.len()
         );
 
         Ok(new_graph)
@@ -444,9 +459,9 @@ impl TaskGraph {
         let index = self.parse_alias(&target)?;
         self.check_index(index)?;
         // Display self as well
-        println!("{}", self.data[index].as_ref().unwrap().borrow());
+        println!("{}", self.nodes[index].as_ref().unwrap().borrow());
         self.list_recurse(
-            self.data[index]
+            self.nodes[index]
                 .as_ref()
                 .unwrap()
                 .borrow()
@@ -485,11 +500,16 @@ impl TaskGraph {
             }
             Self::print_tree_indent(
                 depth,
-                self.data[*i].as_ref().unwrap().borrow().parents.len() > 1,
+                self.nodes[*i].as_ref().unwrap().borrow().parents.len() > 1,
             );
-            println!("{}", self.data[*i].as_ref().unwrap().borrow());
+            println!("{}", self.nodes[*i].as_ref().unwrap().borrow());
             self.list_recurse(
-                self.data[*i].as_ref().unwrap().borrow().children.as_slice(),
+                self.nodes[*i]
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .children
+                    .as_slice(),
                 max_depth,
                 depth + 1,
                 start,
@@ -516,16 +536,16 @@ impl TaskGraph {
     pub fn display_stats(&self, target: String) -> Result<()> {
         let index = self.parse_alias(&target)?;
         self.check_index(index)?;
-        let node = self.data[index].as_ref().unwrap().borrow();
+        let node = self.nodes[index].as_ref().unwrap().borrow();
         println!("Message : {}", &node.message);
         println!("Parents :");
         for i in &node.parents {
-            let parent = self.data[*i].as_ref().unwrap().borrow();
+            let parent = self.nodes[*i].as_ref().unwrap().borrow();
             println!("({}) [{}]", parent.index, parent.state);
         }
         println!("Children:");
         for i in &node.children {
-            let child = self.data[*i].as_ref().unwrap().borrow();
+            let child = self.nodes[*i].as_ref().unwrap().borrow();
             println!("({}) [{}]", child.index, child.state);
         }
         println!("Status  : [{}]", node.state);
@@ -544,13 +564,13 @@ impl TaskGraph {
         let index = self.parse_alias(&target)?;
         self.check_index(index)?;
         self.aliases.insert(alias.to_owned(), index);
-        self.data[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
+        self.nodes[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
         Ok(())
     }
 
     pub fn unset_alias_raw(&mut self, index: usize) -> Result<()> {
         self.check_index(index)?;
-        let alias = match self.data[index].as_ref().unwrap().borrow().alias {
+        let alias = match self.nodes[index].as_ref().unwrap().borrow().alias {
             None => return Ok(()),
             Some(ref alias) => alias.clone(),
         };
@@ -560,24 +580,24 @@ impl TaskGraph {
 
     pub fn list_aliases(&self) -> Result<()> {
         for i in self.aliases.values() {
-            println!("{}", self.data[*i].as_ref().unwrap().borrow());
+            println!("{}", self.nodes[*i].as_ref().unwrap().borrow());
         }
         Ok(())
     }
 
     pub fn unset_alias(&mut self, target: String) -> Result<()> {
         if let Some(index) = self.aliases.remove(&target) {
-            self.data[index].as_ref().unwrap().borrow_mut().alias = None;
+            self.nodes[index].as_ref().unwrap().borrow_mut().alias = None;
         }
         Ok(())
     }
 }
 
-impl TaskNode {
+impl Node {
     fn new(message: String, index: usize) -> Self {
         Self {
             message,
-            state: TaskState::None,
+            state: NodeState::None,
             index,
             alias: None,
             parents: vec![],
@@ -596,7 +616,7 @@ impl TaskNode {
     }
 }
 
-impl fmt::Display for TaskNode {
+impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let index = if let Some(ref alias) = self.alias {
             format!("({}:{})", self.index, alias)
@@ -609,13 +629,13 @@ impl fmt::Display for TaskNode {
     }
 }
 
-impl fmt::Display for TaskState {
+impl fmt::Display for NodeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TaskState::None => write!(f, " "),
-            TaskState::Partial => write!(f, "~"),
-            TaskState::Complete => write!(f, "x"),
-            TaskState::Pseudo => write!(f, "+"),
+            NodeState::None => write!(f, " "),
+            NodeState::Partial => write!(f, "~"),
+            NodeState::Complete => write!(f, "x"),
+            NodeState::Pseudo => write!(f, "+"),
         }
     }
 }
