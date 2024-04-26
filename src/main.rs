@@ -137,6 +137,9 @@ enum Commands {
 
     /// Exports JSON to stdout
     Export,
+
+    /// Imports JSON from stdin
+    Import,
 }
 
 fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()> {
@@ -217,6 +220,16 @@ fn handle_command(commands: Commands, graph: &mut graph::TaskGraph) -> Result<()
         }
         Commands::Export => {
             println!("{}", save::export_json(graph)?);
+            Ok(())
+        }
+        Commands::Import => {
+            *graph = save::import_json_stdin()?;
+            println!(
+                "Successfully imported json! {} nodes; {} root nodes; {} aliases",
+                graph.node_count(),
+                graph.root_count(),
+                graph.alias_count()
+            );
             Ok(())
         }
     }

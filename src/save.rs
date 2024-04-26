@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::path::PathBuf;
 
 use crate::graph::TaskGraph;
@@ -129,4 +129,14 @@ pub fn get_global_save() -> Result<File> {
 
 pub fn export_json(graph: &TaskGraph) -> Result<String> {
     Ok(serde_json::to_string(&Config::new(graph))?)
+}
+
+/// Imports from stdin
+pub fn import_json_stdin() -> Result<TaskGraph> {
+    let mut stdin = io::stdin();
+    let mut bytes = vec![];
+    stdin.read_to_end(&mut bytes)?;
+    Ok(serde_json::from_str(bincode::deserialize(
+        bytes.as_slice(),
+    )?)?)
 }

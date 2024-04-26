@@ -56,6 +56,18 @@ impl TaskGraph {
         }
     }
 
+    pub fn node_count(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn root_count(&self) -> usize {
+        self.roots.len()
+    }
+
+    pub fn alias_count(&self) -> usize {
+        self.aliases.len()
+    }
+
     pub fn insert_raw(&mut self, node: TaskNode) {
         self.data.push(Some(RefCell::new(node)));
     }
