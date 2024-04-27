@@ -7,8 +7,8 @@ use crate::graph::Graph;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-/// Update this whenever the structure of Config changes
-const VERSION: u32 = 1;
+/// Update this whenever the structure of Config or Graph changes
+const VERSION: u32 = 2;
 
 const FILENAME: &str = ".tuesday";
 
@@ -105,6 +105,11 @@ pub fn load_global() -> Result<Graph> {
     load(&mut get_global_save()?)
 }
 
+pub fn local_exists(mut path: PathBuf) -> bool {
+    path.push(FILENAME);
+    path.exists()
+}
+
 pub fn get_global_save() -> Result<File> {
     let mut path = if let Some(x) = home::home_dir() {
         x
@@ -132,11 +137,10 @@ pub fn export_json(graph: &Graph) -> Result<String> {
 }
 
 /// Imports from stdin
-pub fn import_json_stdin() -> Result<Graph> {
+pub fn import_json_stdin() -> Result<Config> {
     let mut stdin = io::stdin();
     let mut bytes = vec![];
     stdin.read_to_end(&mut bytes)?;
-    Ok(serde_json::from_str(bincode::deserialize(
-        bytes.as_slice(),
-    )?)?)
+    let config: Config = serde_json::from_slice(bytes.as_slice())?;
+    Ok(config)
 }

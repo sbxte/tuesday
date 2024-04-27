@@ -223,7 +223,7 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
             Ok(())
         }
         Commands::Import => {
-            *graph = save::import_json_stdin()?;
+            // Import would have finished by this stage so just log received data
             println!(
                 "Successfully imported json! {} nodes; {} root nodes; {} aliases",
                 graph.node_count(),
@@ -238,24 +238,32 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let (mut graph, local) = match (cli.local, cli.global) {
-        (true, true) => bail!("Config cannot be both local and global!"),
-        (true, false) => (save::load_local(std::env::current_dir()?)?, true),
-        (false, true) => (save::load_global()?, false),
-        (false, false) => {
-            // Try to load local config otherwise load global
-            match save::try_load_local(std::env::current_dir()?)? {
-                None => (save::load_global()?, false),
-                Some(g) => (g, true),
+    if cli.command.is_none() {
+        println!("Welcome to Tuesday");
+        return Ok(());
+    }
+
+    let (mut graph, local) = if let Some(&Commands::Import) = cli.command.as_ref() {
+        let local = match (cli.local, cli.global) {
+            (true, true) => bail!("Config cannot be both local and global!"),
+            (false, false) => save::local_exists(std::env::current_dir()?),
+            (l, _) => l,
+        };
+        (save::import_json_stdin()?.graph, local)
+    } else {
+        match (cli.local, cli.global) {
+            (true, true) => bail!("Config cannot be both local and global!"),
+            (true, false) => (save::load_local(std::env::current_dir()?)?, true),
+            (false, true) => (save::load_global()?, false),
+            (false, false) => {
+                // Try to load local config otherwise load global
+                match save::try_load_local(std::env::current_dir()?)? {
+                    None => (save::load_global()?, false),
+                    Some(g) => (g, true),
+                }
             }
         }
     };
-
-    if cli.command.is_none() {
-        println!("Welcome to Tuesday");
-        save::save_global(&save::Config::new(&graph))?;
-        return Ok(());
-    }
 
     let result: Result<()> = handle_command(cli.command.unwrap(), &mut graph);
     if let Err(e) = result {

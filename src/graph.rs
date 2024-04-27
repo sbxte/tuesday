@@ -24,6 +24,7 @@ pub enum ErrorType {
 pub struct Graph {
     nodes: Vec<Option<RefCell<Node>>>,
     roots: Vec<usize>,
+    dates: Vec<usize>,
     aliases: HashMap<String, usize>,
 }
 
@@ -52,6 +53,7 @@ impl Graph {
         Self {
             nodes: vec![],
             roots: vec![],
+            dates: vec![],
             aliases: HashMap::new(),
         }
     }
