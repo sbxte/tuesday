@@ -22,9 +22,13 @@ struct Cli {
 enum Commands {
     /// Adds a node to the graph
     Add {
-        /// Adds a root node
+        /// Adds a root node (mutually exclusive to date)
         #[arg(short, long)]
         root: bool,
+
+        /// Adds a date node (mutually exclusive to root)
+        #[arg(short, long)]
+        date: bool,
 
         /// Parent of node
         #[arg(short, long)]
@@ -116,8 +120,8 @@ enum Commands {
         message: String,
     },
 
-    /// Lists children nodes
-    List {
+    /// Lists root nodes or children nodes
+    Ls {
         #[arg(short, long)]
         target: Option<String>,
 
@@ -125,6 +129,9 @@ enum Commands {
         #[arg(short, long)]
         depth: Option<u32>,
     },
+
+    /// Lists date nodes
+    Lsd,
 
     /// Displays statistics of a node
     Stats {
@@ -146,11 +153,21 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
     match commands {
         Commands::Add {
             root,
+            date,
             parent,
             pseudo,
             message,
         } => {
-            if root {
+            if date && root {
+                bail!("Node cannot be both date node and root node!");
+            }
+            if date {
+                if !graph::Graph::is_date(message.as_str()) {
+                    return Err(ErrorType::MalformedDate(message))?;
+                    // how does ? do that lol
+                }
+                graph.insert_date(message);
+            } else if root {
                 graph.insert_root(message, pseudo);
             } else if let Some(target) = parent {
                 graph.insert_child(message, target, pseudo)?;
@@ -203,11 +220,15 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
             graph.rename_node(target, message)?;
             Ok(())
         }
-        Commands::List { target, depth } => {
+        Commands::Ls { target, depth } => {
             match target {
                 None => graph.list_roots()?,
                 Some(t) => graph.list_children(t, depth.unwrap_or(0))?,
             }
+            Ok(())
+        }
+        Commands::Lsd => {
+            graph.list_dates()?;
             Ok(())
         }
         Commands::Stats { target } => {
@@ -267,13 +288,7 @@ fn main() -> Result<()> {
 
     let result: Result<()> = handle_command(cli.command.unwrap(), &mut graph);
     if let Err(e) = result {
-        match e.downcast::<ErrorType>()? {
-            ErrorType::InvalidIndex(index) => println!("Invalid index: {index}"),
-            ErrorType::InvalidAlias(alias) => println!("Invalid alias: {alias}"),
-            ErrorType::GraphLooped(start, index) => {
-                println!("Graph looped back: {start}->...->{index}->{start}")
-            }
-        }
+        println!("{}\n{}", e, e.backtrace());
     }
 
     if local {

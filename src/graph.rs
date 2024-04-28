@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use anyhow::Result;
+use chrono::{Days, Local, NaiveDate};
 use clap::ValueEnum;
 use colored::Colorize;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -16,6 +18,12 @@ pub enum ErrorType {
     #[error("Invalid alias: {0}")]
     InvalidAlias(String),
 
+    #[error("Invalid date: {0}")]
+    InvalidDate(String),
+
+    #[error("Malformed date string: {0}")]
+    MalformedDate(String),
+
     #[error("Graph looped back: {0}->...->{1}->{0}")]
     GraphLooped(usize, usize),
 }
@@ -24,7 +32,7 @@ pub enum ErrorType {
 pub struct Graph {
     nodes: Vec<Option<RefCell<Node>>>,
     roots: Vec<usize>,
-    dates: Vec<usize>,
+    dates: HashMap<String, usize>,
     aliases: HashMap<String, usize>,
 }
 
@@ -53,7 +61,7 @@ impl Graph {
         Self {
             nodes: vec![],
             roots: vec![],
-            dates: vec![],
+            dates: HashMap::new(),
             aliases: HashMap::new(),
         }
     }
@@ -84,6 +92,14 @@ impl Graph {
         self.roots.push(idx);
     }
 
+    pub fn insert_date(&mut self, date: String) -> usize {
+        let idx = self.nodes.len();
+        let node = Node::new(date.clone(), idx);
+        self.nodes.push(Some(RefCell::new(node)));
+        self.dates.insert(date, idx);
+        idx
+    }
+
     pub fn insert_child_unchecked(
         &mut self,
         message: String,
@@ -101,7 +117,7 @@ impl Graph {
     }
 
     pub fn insert_child(&mut self, message: String, parent: String, pseudo: bool) -> Result<()> {
-        let parent = self.parse_alias(&parent)?;
+        let parent = self.get_index(&parent)?;
         self.check_index(parent)?;
         let idx = self.insert_child_unchecked(message, parent, pseudo);
         Self::display_link(parent, idx, true);
@@ -112,7 +128,7 @@ impl Graph {
     }
 
     pub fn remove(&mut self, target: String) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
 
         // Remove node if it was root
@@ -172,7 +188,7 @@ impl Graph {
     }
 
     pub fn remove_children_recursive(&mut self, target: String) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
         self.roots.retain(|i| *i != index);
         self._remove_children_recursive(index)?;
@@ -237,8 +253,8 @@ impl Graph {
     }
 
     pub fn link(&mut self, from: String, to: String) -> Result<()> {
-        let from = self.parse_alias(&from)?;
-        let to = self.parse_alias(&to)?;
+        let from = self.get_index(&from)?;
+        let to = self.get_index(&to)?;
         self.check_index(from)?;
         self.check_index(to)?;
         self.link_unchecked(from, to);
@@ -276,8 +292,8 @@ impl Graph {
     }
 
     pub fn unlink(&mut self, from: String, to: String) -> Result<()> {
-        let from = self.parse_alias(&from)?;
-        let to = self.parse_alias(&to)?;
+        let from = self.get_index(&from)?;
+        let to = self.get_index(&to)?;
         self.check_index(from)?;
         self.check_index(to)?;
         self.unlink_unchecked(from, to);
@@ -297,7 +313,7 @@ impl Graph {
 
     /// Sets node state and propogates changes to children and parents
     pub fn set_state(&mut self, target: String, state: NodeState, propogate: bool) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
         self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
@@ -396,7 +412,7 @@ impl Graph {
     }
 
     pub fn rename_node(&mut self, target: String, message: String) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
         self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
         Ok(())
@@ -458,7 +474,7 @@ impl Graph {
     }
 
     pub fn list_children(&self, target: String, max_depth: u32) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
         // Display self as well
         println!("{}", self.nodes[index].as_ref().unwrap().borrow());
@@ -479,6 +495,12 @@ impl Graph {
     pub fn list_roots(&self) -> Result<()> {
         let roots = &self.roots;
         self.list_recurse(roots, 1, 1, None)?;
+        Ok(())
+    }
+
+    pub fn list_dates(&self) -> Result<()> {
+        let x: Vec<_> = self.dates.values().copied().collect();
+        self.list_recurse(x.as_slice(), 1, 1, None)?;
         Ok(())
     }
 
@@ -536,7 +558,7 @@ impl Graph {
     }
 
     pub fn display_stats(&self, target: String) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
         let node = self.nodes[index].as_ref().unwrap().borrow();
         println!("Message : {}", &node.message);
@@ -554,18 +576,107 @@ impl Graph {
         Ok(())
     }
 
-    pub fn parse_alias(&self, alias: &String) -> Result<usize, ErrorType> {
-        self.aliases
-            .get(alias)
+    /// Returns the node index based on a target string.
+    /// The target string may be an a date, an alias, or an index
+    pub fn get_index(&self, target: &str) -> Result<usize> {
+        if Self::is_date(target) {
+            return match self.dates.get(target) {
+                Some(x) => Ok(*x),
+                None => Err(ErrorType::InvalidDate(target.to_owned()))?,
+            };
+        }
+        if Self::is_relative_date(target) {
+            let date = Self::parse_relative_date(target)?;
+            if self.dates.contains_key(&date) {
+                return Ok(*self.dates.get(&date).unwrap());
+            }
+        }
+        Ok(self
+            .aliases
+            .get(target)
             .copied()
-            .or(alias.parse::<usize>().ok())
-            .ok_or(ErrorType::InvalidAlias(alias.to_owned()))
+            .or(target.parse::<usize>().ok())
+            .ok_or(ErrorType::InvalidAlias(target.to_owned()))?)
+    }
+
+    // TODO: Is this needed? Should link use this instead?
+    #[allow(dead_code)]
+    pub fn get_or_insert_index(&mut self, target: &str) -> Result<usize> {
+        if Self::is_date(target) {
+            return match self.dates.get(target) {
+                Some(x) => Ok(*x),
+                None => Err(ErrorType::InvalidDate(target.to_owned()))?,
+            };
+        }
+        if Self::is_relative_date(target) {
+            let date = Self::parse_relative_date(target)?;
+            return if self.dates.contains_key(&date) {
+                Ok(*self.dates.get(&date).unwrap())
+            } else {
+                Ok(self.insert_date(date))
+            };
+        }
+        self.aliases
+            .get(target)
+            .copied()
+            .or(target.parse::<usize>().ok())
+            .ok_or(Err(ErrorType::InvalidAlias(target.to_owned()))?)
+    }
+
+    /// Format
+    /// YYYY-MM-DD
+    pub fn is_date(s: &str) -> bool {
+        return match Self::_parse_date(s) {
+            // TODO: Should negative years be allowed??? Who would want to schedule something as
+            // far back as the BCEs ????
+            Ok((_, (y, m, d))) => NaiveDate::from_ymd_opt(y as i32, m, d).is_some(),
+            Err(_) => false,
+        };
+    }
+
+    fn _parse_date(s: &str) -> IResult<&str, (u32, u32, u32)> {
+        use nom::bytes::complete::tag;
+        use nom::character::complete::digit1;
+        use nom::combinator::map_res;
+        let (s, year): (&str, u32) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        let (s, _) = tag("-")(s)?;
+        let (s, month) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        let (s, _) = tag("-")(s)?;
+        let (_, day) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        Ok(("", (year, month, day)))
+    }
+
+    pub fn is_relative_date(s: &str) -> bool {
+        s == "today" || s == "tomorrow" || s == "yesterday"
+    }
+
+    pub fn parse_relative_date(s: &str) -> Result<String> {
+        match s {
+            "today" => Ok(Self::format_naivedate(Local::now().date_naive())),
+            "tomorrow" => Ok(Self::format_naivedate(
+                Local::now()
+                    .checked_add_days(Days::new(1))
+                    .unwrap()
+                    .date_naive(),
+            )),
+            "yesterday" => Ok(Self::format_naivedate(
+                Local::now()
+                    .checked_sub_days(Days::new(1))
+                    .unwrap()
+                    .date_naive(),
+            )),
+            _ => panic!("Invalid branch on parse_relative_date!"),
+        }
+    }
+
+    pub fn format_naivedate(date: NaiveDate) -> String {
+        date.format("%Y-%m-%d").to_string()
     }
 
     pub fn set_alias(&mut self, target: String, alias: String) -> Result<()> {
-        let index = self.parse_alias(&target)?;
+        let index = self.get_index(&target)?;
         self.check_index(index)?;
-        self.aliases.insert(alias.to_owned(), index);
+        self.aliases.insert(alias.clone(), index);
         self.nodes[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
         Ok(())
     }
