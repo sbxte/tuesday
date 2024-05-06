@@ -426,7 +426,28 @@ impl Graph {
     /// Map indices [0->0, 2->1, 3->2, 4->3]
     /// New [Some(a), Some(b), Some(c), Some(d)]
     pub fn clean(&mut self) -> Result<Self> {
-        let mut map = Vec::with_capacity(self.nodes.len()); // Map old indices to new indices
+        // Add unreferenced nodes into roots
+        // Nodes without parents, are not root, and not date
+        // Or in other words, unreachable nodes
+        let date_values: Vec<_> = self.dates.values().collect();
+        for (i, node) in self.nodes.iter().enumerate() {
+            match node {
+                None => continue,
+                Some(n) => {
+                    let parents = n.borrow().parents.len();
+                    if parents > 0 {
+                        continue;
+                    }
+                    let index = n.borrow().index;
+                    if !self.roots.contains(&index) && !date_values.contains(&&index) {
+                        self.roots.push(i);
+                    }
+                }
+            }
+        }
+
+        // Remove empty nodes and map old indices to new indices
+        let mut map = Vec::with_capacity(self.nodes.len());
         let mut last_used_index: usize = 0;
         for (i, node) in self.nodes.iter().enumerate() {
             match node {
@@ -461,6 +482,11 @@ impl Graph {
         // Add roots
         for r in self.roots.iter() {
             new_graph.roots.push(map[*r].1.unwrap());
+        }
+
+        // Add dates
+        for (d, i) in self.dates.iter() {
+            new_graph.dates.insert(d.clone(), map[*i].1.unwrap());
         }
 
         println!(
