@@ -8,7 +8,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Update this whenever the structure of Config or Graph changes
-const VERSION: u32 = 2;
+const VERSION: u32 = 3;
 
 const FILENAME: &str = ".tuesday";
 
@@ -32,9 +32,9 @@ pub fn save_global(config: &Config) -> Result<()> {
     Ok(())
 }
 
-pub fn save(file: &mut File, config: &Config) -> Result<()> {
+pub fn save(mut file: &mut File, config: &Config) -> Result<()> {
     file.set_len(0)?;
-    file.write_all(bincode::serialize(config)?.as_slice())?;
+    serde_yaml_ng::to_writer(&mut file, config)?;
     file.flush()?;
     Ok(())
 }
@@ -59,7 +59,7 @@ pub fn load(file: &mut File) -> Result<Graph> {
     let graph: Graph = if bytes.is_empty() {
         Graph::new()
     } else {
-        bincode::deserialize::<Config>(bytes.as_slice())?.graph
+        serde_yaml_ng::from_slice::<Config>(bytes.as_slice())?.graph
     };
     Ok(graph)
 }
