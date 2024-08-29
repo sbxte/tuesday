@@ -1,0 +1,49 @@
+version: 3
+graph:
+  nodes:
+  - message: Due dates
+    state: None
+    index: 0
+    alias: null
+    parents: []
+    children: []
+  - message: Notification system
+    state: None
+    index: 1
+    alias: null
+    parents: []
+    children: []
+  - message: Recurring tasks
+    state: None
+    index: 2
+    alias: null
+    parents: []
+    children: []
+  - message: ZSH integration
+    state: None
+    index: 3
+    alias: null
+    parents: []
+    children: []
+  - message: TUI
+    state: None
+    index: 4
+    alias: null
+    parents: []
+    children:
+    - 5
+  - message: Ratatui perhaps?
+    state: None
+    index: 5
+    alias: null
+    parents:
+    - 4
+    children: []
+  roots:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  dates: {}
+  aliases: {}
