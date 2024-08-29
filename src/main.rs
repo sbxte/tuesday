@@ -222,7 +222,7 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
         }
         Commands::Ls { target, depth } => {
             match target {
-                None => graph.list_roots()?,
+                None => graph.list_roots(depth.unwrap_or(1))?,
                 Some(t) => graph.list_children(t, depth.unwrap_or(0))?,
             }
             Ok(())

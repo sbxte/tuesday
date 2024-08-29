@@ -518,9 +518,9 @@ impl Graph {
         Ok(())
     }
 
-    pub fn list_roots(&self) -> Result<()> {
+    pub fn list_roots(&self, max_depth: u32) -> Result<()> {
         let roots = &self.roots;
-        self.list_recurse(roots, 1, 1, None)?;
+        self.list_recurse(roots, max_depth, 1, None)?;
         Ok(())
     }
 
