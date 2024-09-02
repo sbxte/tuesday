@@ -149,7 +149,7 @@ fn cli() -> Command {
                 .required(false))
             .arg(arg!(-u --pseudo "Makes this a pseudo node (does not count towards parent completion)")
                 .required(false))
-            .arg(arg!(-p <ID> "Assigns this node to a parent")
+            .arg(arg!(-p --parent <ID> "Assigns this node to a parent")
                 .required_unless_present("root")
             )
             .arg(arg!(<message> "This node's message"))

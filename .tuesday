@@ -24,7 +24,8 @@ graph:
     index: 3
     alias: null
     parents: []
-    children: []
+    children:
+    - 6
   - message: TUI
     state: None
     index: 4
@@ -38,6 +39,13 @@ graph:
     alias: null
     parents:
     - 4
+    children: []
+  - message: Physics exam (5 sept)
+    state: None
+    index: 6
+    alias: null
+    parents:
+    - 3
     children: []
   roots:
   - 0
