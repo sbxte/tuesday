@@ -1,249 +1,122 @@
+#![allow(unreachable_code)]
+
 use anyhow::{bail, Result};
-use clap::{Parser, Subcommand};
+use clap::{arg, value_parser, ArgMatches, Command};
 use graph::{ErrorType, NodeState};
 
 mod graph;
 mod save;
 
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[arg(long)]
-    local: bool,
-
-    #[arg(long)]
-    global: bool,
-
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Adds a node to the graph
-    Add {
-        /// Adds a root node (mutually exclusive to date)
-        #[arg(short, long)]
-        root: bool,
-
-        /// Adds a date node (mutually exclusive to root)
-        #[arg(short, long)]
-        date: bool,
-
-        /// Parent of node
-        #[arg(short, long)]
-        parent: Option<String>,
-
-        #[arg(long)]
-        pseudo: bool,
-
-        /// What message should the node have
-        #[arg(short, long)]
-        message: String,
-    },
-
-    /// Removes a node from the graph
-    Rm {
-        /// Node index to remove
-        #[arg(short, long)]
-        target: String,
-
-        /// Whether to remove child nodes recursively
-        #[arg(short, long)]
-        recursive: bool,
-    },
-
-    /// Links a node to a target node
-    Link {
-        /// Node to link from
-        #[arg(short, long)]
-        from: String,
-
-        /// Node to link to
-        #[arg(short, long)]
-        to: String,
-    },
-
-    /// Unlinks a node
-    Unlink {
-        #[arg(short, long)]
-        from: String,
-
-        #[arg(short, long)]
-        to: String,
-    },
-
-    /// Sets node status
-    SetNoprop {
-        #[arg(value_enum)]
-        state: graph::NodeState,
-
-        #[arg(short, long)]
-        target: String,
-    },
-
-    /// Marks a node as completed
-    Check {
-        #[arg(short, long)]
-        target: String,
-    },
-
-    /// Marks a node as incomplete
-    Uncheck {
-        #[arg(short, long)]
-        target: String,
-    },
-
-    /// Adds an alias for a node
-    Alias {
-        #[arg(short, long)]
-        target: String,
-
-        #[arg(short, long)]
-        alias: String,
-    },
-
-    Unalias {
-        #[arg(short, long)]
-        target: String,
-    },
-
-    /// Lists aliases
-    Aliases,
-
-    /// Renames a node
-    Rename {
-        #[arg(short, long)]
-        target: String,
-
-        #[arg(short, long)]
-        message: String,
-    },
-
-    /// Lists root nodes or children nodes
-    Ls {
-        #[arg(short, long)]
-        target: Option<String>,
-
-        /// No value or 0 = infinite depth
-        #[arg(short, long)]
-        depth: Option<u32>,
-    },
-
-    /// Lists date nodes
-    Lsd,
-
-    /// Displays statistics of a node
-    Stats {
-        #[arg(short, long)]
-        target: String,
-    },
-
-    /// Compresses and cleans up the graph
-    Clean,
-
-    /// Exports JSON to stdout
-    Export,
-
-    /// Imports JSON from stdin
-    Import,
-}
-
-fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
-    match commands {
-        Commands::Add {
-            root,
-            date,
-            parent,
-            pseudo,
-            message,
-        } => {
+fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
+    match matches.subcommand() {
+        Some(("add", sub_matches)) => {
+            let message = sub_matches.get_one::<String>("message").expect("required");
+            let root = sub_matches.get_flag("root");
+            let date = sub_matches.get_flag("date");
+            let pseudo = sub_matches.get_flag("pseudo");
             if date && root {
                 bail!("Node cannot be both date node and root node!");
             }
             if date {
-                if !graph::Graph::is_date(message.as_str()) {
-                    return Err(ErrorType::MalformedDate(message))?;
-                    // how does ? do that lol
+                if !graph::Graph::is_date(message) {
+                    return Err(ErrorType::MalformedDate(message.to_string()))?;
                 }
-                graph.insert_date(message);
+                graph.insert_date(message.to_string());
             } else if root {
-                graph.insert_root(message, pseudo);
-            } else if let Some(target) = parent {
-                graph.insert_child(message, target, pseudo)?;
+                graph.insert_root(message.to_string(), pseudo);
             } else {
-                bail!("Did not specify whether to add as root or as a child node!");
+                let parent = sub_matches.get_one::<String>("parent").expect("required");
+                graph.insert_child(message.to_string(), parent.to_string(), pseudo)?;
             }
             Ok(())
         }
-        Commands::Rm { target, recursive } => {
+        Some(("rm", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let recursive = sub_matches.get_flag("recursive");
             if recursive {
-                graph.remove_children_recursive(target)?;
+                graph.remove_children_recursive(id.to_string())?;
             } else {
-                graph.remove(target)?;
+                graph.remove(id.to_string())?;
             }
             Ok(())
         }
-        Commands::Link { from, to } => {
-            graph.link(from, to)?;
+        Some(("link", sub_matches)) => {
+            let parent = sub_matches.get_one::<String>("parent").expect("required");
+            let child = sub_matches.get_one::<String>("child").expect("required");
+            graph.link(parent.to_string(), child.to_string())?;
             Ok(())
         }
-        Commands::Unlink { from, to } => {
-            graph.unlink(from, to)?;
+        Some(("unlink", sub_matches)) => {
+            let parent = sub_matches.get_one::<String>("parent").expect("required");
+            let child = sub_matches.get_one::<String>("child").expect("required");
+            graph.unlink(parent.to_string(), child.to_string())?;
             Ok(())
         }
-        Commands::SetNoprop { state, target } => {
-            graph.set_state(target, state, false)?;
+        Some(("setnoprop", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let state = sub_matches.get_one::<NodeState>("state").expect("required");
+            graph.set_state(id.to_string(), *state, false)?;
             Ok(())
         }
-        Commands::Check { target } => {
-            graph.set_state(target, NodeState::Complete, true)?;
+        Some(("check", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.set_state(id.to_string(), NodeState::Complete, true)?;
             Ok(())
         }
-        Commands::Uncheck { target } => {
-            graph.set_state(target, NodeState::None, true)?;
+        Some(("uncheck", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.set_state(id.to_string(), NodeState::None, true)?;
             Ok(())
         }
-        Commands::Alias { target, alias } => {
-            graph.set_alias(target, alias)?;
+        Some(("alias", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let alias = sub_matches.get_one::<String>("alias").expect("required");
+            graph.set_alias(id.to_string(), alias.to_string())?;
             Ok(())
         }
-        Commands::Unalias { target } => {
-            graph.unset_alias(target)?;
+        Some(("unalias", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.unset_alias(id.to_string())?;
             Ok(())
         }
-        Commands::Aliases => {
+        Some(("aliases", _)) => {
             graph.list_aliases()?;
             Ok(())
         }
-        Commands::Rename { target, message } => {
-            graph.rename_node(target, message)?;
+        Some(("rename", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let message = sub_matches.get_one::<String>("message").expect("required");
+            graph.rename_node(id.to_string(), message.to_string())?;
             Ok(())
         }
-        Commands::Ls { target, depth } => {
-            match target {
-                None => graph.list_roots(depth.unwrap_or(1))?,
-                Some(t) => graph.list_children(t, depth.unwrap_or(0))?,
+        Some(("ls", sub_matches)) => {
+            let depth = *sub_matches
+                .get_one::<u32>("depth")
+                .expect("depth should exist");
+            match sub_matches.get_one::<String>("ID") {
+                None => graph.list_roots(depth)?,
+                Some(id) => graph.list_children(id.to_string(), depth)?,
             }
             Ok(())
         }
-        Commands::Lsd => {
+        Some(("lsd", _)) => {
             graph.list_dates()?;
             Ok(())
         }
-        Commands::Stats { target } => {
-            graph.display_stats(target)?;
+        Some(("stats", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.display_stats(id.to_string())?;
             Ok(())
         }
-        Commands::Clean => {
+        Some(("clean", _)) => {
             *graph = graph.clean()?;
             Ok(())
         }
-        Commands::Export => {
+        Some(("export", _)) => {
             println!("{}", save::export_json(graph)?);
             Ok(())
         }
-        Commands::Import => {
+        Some(("import", _)) => {
             // Import would have finished by this stage so just log received data
             println!(
                 "Successfully imported json! {} nodes; {} root nodes; {} aliases",
@@ -253,26 +126,117 @@ fn handle_command(commands: Commands, graph: &mut graph::Graph) -> Result<()> {
             );
             Ok(())
         }
+        _ => {
+            println!("Welcome to Tuesday");
+            Ok(())
+        }
     }
 }
 
+fn cli() -> Command {
+    Command::new("tue")
+        .about("CLI Todo graph")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .allow_external_subcommands(true)
+        .arg(arg!(--local).required(false))
+        .arg(arg!(--global).required(false))
+        .subcommand(Command::new("add")
+            .about("Adds a node to the graph")
+            .arg(arg!(-r --root "Makes this a root node")
+                .required(false))
+            .arg(arg!(-d --date "Makes this a date node")
+                .required(false))
+            .arg(arg!(-u --pseudo "Makes this a pseudo node (does not count towards parent completion)")
+                .required(false))
+            .arg(arg!(-p <ID> "Assigns this node to a parent")
+                .required_unless_present("root")
+            )
+            .arg(arg!(<message> "This node's message"))
+        )
+        .subcommand(Command::new("rm")
+            .about("Removes a node from the graph")
+            .arg(arg!(<ID> "Which node to remove"))
+            .arg(arg!(-r --recursive "Whether to remove child nodes recursively").required(false))
+        )
+        .subcommand(Command::new("link")
+            .about("Creates a parent-child edge connection between 2 nodes")
+            .arg(arg!(parent: <ID> "Which node should be the parent in this connection"))
+            .arg(arg!(child: <ID> "Which node should be the child in this connection"))
+        )
+        .subcommand(Command::new("unlink")
+            .about("Removes a parent-child edge connection between 2 nodes")
+            .arg(arg!(parent: <ID> "Which node should be the parent in this connection"))
+            .arg(arg!(child: <ID> "Which node should be the child in this connection"))
+        )
+        .subcommand(Command::new("setnoprop")
+            .about("Sets a node's state without propogating state updates")
+            .arg(arg!(<ID>).value_parser(value_parser!(NodeState)))
+        )
+        .subcommand(Command::new("check")
+            .about("Marks a node as completed")
+            .arg(arg!(<ID> "Which node to mark as completed"))
+        )
+        .subcommand(Command::new("uncheck")
+            .about("Marks a node as incomplete")
+            .arg(arg!(<ID> "Which node to mark as incomplete"))
+        )
+        .subcommand(Command::new("alias")
+            .about("Adds an alias for a node")
+            .arg(arg!(<ID> "Which node to alias"))
+            .arg(arg!(<alias> "What alias to give this node"))
+        )
+        .subcommand(Command::new("unalias")
+            .about("Removes an alias")
+            .long_about("Removes all aliases of a node")
+            .arg(arg!(<ID> ""))
+        )
+        .subcommand(Command::new("aliases")
+            .about("Lists all aliases")
+        )
+        .subcommand(Command::new("rename")
+            .about("Edit a node's message")
+            .arg(arg!(<ID> "Which node to edit"))
+            .arg(arg!(<message> "What new message to give it"))
+        )
+        .subcommand(Command::new("ls")
+            .about("Lists root nodes or children nodes")
+            .arg(arg!([ID] "Which node's children to display"))
+            .arg(arg!([depth] "What depth to recursively display children")
+                .default_value("1")
+                .value_parser(value_parser!(u32))
+            )
+        )
+        .subcommand(Command::new("lsd")
+            .about("Lists all date nodes")
+        )
+        .subcommand(Command::new("stats")
+            .about("Displays statistics of a node")
+            .arg(arg!(<ID> "Which node to display stats"))
+        )
+        .subcommand(Command::new("clean")
+            .about("Compresses and cleans up the graph")
+        )
+        .subcommand(Command::new("export")
+            .about("Exports JSON to stdout")
+        )
+        .subcommand(Command::new("import")
+            .about("Imports JSON from stdin")
+        )
+}
+
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let matches = cli().get_matches();
 
-    if cli.command.is_none() {
-        println!("Welcome to Tuesday");
-        return Ok(());
-    }
-
-    let (mut graph, local) = if let Some(&Commands::Import) = cli.command.as_ref() {
-        let local = match (cli.local, cli.global) {
+    let (mut graph, local) = if let Some(("import", _)) = matches.subcommand() {
+        let local = match (matches.get_flag("local"), matches.get_flag("global")) {
             (true, true) => bail!("Config cannot be both local and global!"),
             (false, false) => save::local_exists(std::env::current_dir()?),
             (l, _) => l,
         };
         (save::import_json_stdin()?.graph, local)
     } else {
-        match (cli.local, cli.global) {
+        match (matches.get_flag("local"), matches.get_flag("global")) {
             (true, true) => bail!("Config cannot be both local and global!"),
             (true, false) => (save::load_local(std::env::current_dir()?)?, true),
             (false, true) => (save::load_global()?, false),
@@ -286,7 +250,7 @@ fn main() -> Result<()> {
         }
     };
 
-    let result: Result<()> = handle_command(cli.command.unwrap(), &mut graph);
+    let result: Result<()> = handle_command(matches, &mut graph);
     if let Err(e) = result {
         println!("{}\n{}", e, e.backtrace());
     }
