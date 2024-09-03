@@ -151,6 +151,7 @@ fn cli() -> Command {
                 .required(false))
             .arg(arg!(-p --parent <ID> "Assigns this node to a parent")
                 .required_unless_present("root")
+                .required_unless_present("date")
             )
             .arg(arg!(<message> "This node's message"))
         )
