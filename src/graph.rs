@@ -15,6 +15,9 @@ pub enum ErrorType {
     #[error("Invalid index: {0}")]
     InvalidIndex(usize),
 
+    #[error("Malfored index: {0}")]
+    MalformedIndex(String),
+
     #[error("Invalid alias: {0}")]
     InvalidAlias(String),
 
@@ -118,7 +121,6 @@ impl Graph {
 
     pub fn insert_child(&mut self, message: String, parent: String, pseudo: bool) -> Result<()> {
         let parent = self.get_index(&parent)?;
-        self.check_index(parent)?;
         let idx = self.insert_child_unchecked(message, parent, pseudo);
         Self::display_link(parent, idx, true);
         if !pseudo {
@@ -129,7 +131,6 @@ impl Graph {
 
     pub fn remove(&mut self, target: String) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
 
         // Remove node if it was root
         self.roots.retain(|i| *i != index);
@@ -189,7 +190,6 @@ impl Graph {
 
     pub fn remove_children_recursive(&mut self, target: String) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         self.roots.retain(|i| *i != index);
         self._remove_children_recursive(index)?;
         Ok(())
@@ -255,8 +255,6 @@ impl Graph {
     pub fn link(&mut self, from: String, to: String) -> Result<()> {
         let from = self.get_index(&from)?;
         let to = self.get_index(&to)?;
-        self.check_index(from)?;
-        self.check_index(to)?;
         self.link_unchecked(from, to);
         Self::display_link(from, to, true);
         Ok(())
@@ -294,27 +292,14 @@ impl Graph {
     pub fn unlink(&mut self, from: String, to: String) -> Result<()> {
         let from = self.get_index(&from)?;
         let to = self.get_index(&to)?;
-        self.check_index(from)?;
-        self.check_index(to)?;
         self.unlink_unchecked(from, to);
         Self::display_link(from, to, true);
-        Ok(())
-    }
-
-    pub fn check_index(&self, index: usize) -> Result<(), ErrorType> {
-        if index > self.nodes.len() {
-            return Err(ErrorType::InvalidIndex(index));
-        }
-        if self.nodes[index].is_none() {
-            return Err(ErrorType::InvalidIndex(index));
-        }
         Ok(())
     }
 
     /// Sets node state and propogates changes to children and parents
     pub fn set_state(&mut self, target: String, state: NodeState, propogate: bool) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
             return Ok(());
@@ -413,7 +398,6 @@ impl Graph {
 
     pub fn rename_node(&mut self, target: String, message: String) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
         Ok(())
     }
@@ -501,7 +485,6 @@ impl Graph {
 
     pub fn list_children(&self, target: String, max_depth: u32) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         // Display self as well
         println!("{}", self.nodes[index].as_ref().unwrap().borrow());
         self.list_recurse(
@@ -585,7 +568,6 @@ impl Graph {
 
     pub fn display_stats(&self, target: String) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         let node = self.nodes[index].as_ref().unwrap().borrow();
         println!("Message : {}", &node.message);
         println!("Parents :");
@@ -602,27 +584,35 @@ impl Graph {
         Ok(())
     }
 
-    /// Returns the node index based on a target string.
-    /// The target string may be an a date, an alias, or an index
-    pub fn get_index(&self, target: &str) -> Result<usize> {
-        if Self::is_date(target) {
-            return match self.dates.get(target) {
+    /// Returns the node index based on a identifier string.
+    /// The identifier string may be an a date, an alias, or an index
+    pub fn get_index(&self, id: &str) -> Result<usize> {
+        // Check if it is a date
+        if Self::is_date(id) {
+            return match self.dates.get(id) {
                 Some(x) => Ok(*x),
-                None => Err(ErrorType::InvalidDate(target.to_owned()))?,
+                None => Err(ErrorType::InvalidDate(id.to_owned()))?,
             };
         }
-        if Self::is_relative_date(target) {
-            let date = Self::parse_relative_date(target)?;
+        if Self::is_relative_date(id) {
+            let date = Self::parse_relative_date(id)?;
             if self.dates.contains_key(&date) {
                 return Ok(*self.dates.get(&date).unwrap());
             }
         }
-        Ok(self
-            .aliases
-            .get(target)
-            .copied()
-            .or(target.parse::<usize>().ok())
-            .ok_or(ErrorType::InvalidAlias(target.to_owned()))?)
+        // Check if it is an alias and if so return its corresponding index
+        if let Some(x) = self.aliases.get(id) {
+            return Ok(*x);
+        }
+
+        // Assume it is an index already, check for validity
+        let index = id
+            .parse::<usize>()
+            .or(Err(ErrorType::MalformedIndex(id.to_string())))?;
+        if index > self.nodes.len() || self.nodes[index].is_none() {
+            Err(ErrorType::InvalidIndex(index))?;
+        }
+        Ok(index)
     }
 
     // TODO: Is this needed? Should link use this instead?
@@ -701,14 +691,12 @@ impl Graph {
 
     pub fn set_alias(&mut self, target: String, alias: String) -> Result<()> {
         let index = self.get_index(&target)?;
-        self.check_index(index)?;
         self.aliases.insert(alias.clone(), index);
         self.nodes[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
         Ok(())
     }
 
     pub fn unset_alias_raw(&mut self, index: usize) -> Result<()> {
-        self.check_index(index)?;
         let alias = match self.nodes[index].as_ref().unwrap().borrow().alias {
             None => return Ok(()),
             Some(ref alias) => alias.clone(),
