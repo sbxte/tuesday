@@ -42,11 +42,19 @@ pub struct Graph {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
     message: String,
+    r#type: NodeType,
     state: NodeState,
     index: usize,
     alias: Option<String>,
     parents: Vec<usize>,
     children: Vec<usize>,
+}
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
+pub enum NodeType {
+    #[default]
+    Normal,
+    Date,
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
@@ -87,7 +95,7 @@ impl Graph {
 
     pub fn insert_root(&mut self, message: String, pseudo: bool) {
         let idx = self.nodes.len();
-        let mut node = Node::new(message, idx);
+        let mut node = Node::new(message, idx, NodeType::Normal);
         if pseudo {
             node.state = NodeState::Pseudo;
         }
@@ -97,7 +105,7 @@ impl Graph {
 
     pub fn insert_date(&mut self, date: String) -> usize {
         let idx = self.nodes.len();
-        let node = Node::new(date.clone(), idx);
+        let node = Node::new(date.clone(), idx, NodeType::Date);
         self.nodes.push(Some(RefCell::new(node)));
         self.dates.insert(date, idx);
         idx
@@ -110,7 +118,7 @@ impl Graph {
         pseudo: bool,
     ) -> usize {
         let idx = self.nodes.len();
-        let mut node = Node::new(message, idx);
+        let mut node = Node::new(message, idx, NodeType::Normal);
         if pseudo {
             node.state = NodeState::Pseudo
         }
@@ -137,6 +145,13 @@ impl Graph {
 
         // Unset alias
         self.unset_alias(target)?;
+
+        // Delete from date hashmap first if node is a date root node
+        let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
+        if node_type == NodeType::Date {
+            let node_date = &self.nodes[index].as_ref().unwrap().borrow().message;
+            self.dates.remove(node_date);
+        }
 
         // Unlink node from parents and children
         let parents_ptr = self.nodes[index]
@@ -721,9 +736,10 @@ impl Graph {
 }
 
 impl Node {
-    fn new(message: String, index: usize) -> Self {
+    fn new(message: String, index: usize, r#type: NodeType) -> Self {
         Self {
             message,
+            r#type,
             state: NodeState::None,
             index,
             alias: None,
