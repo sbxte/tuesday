@@ -202,7 +202,7 @@ fn cli() -> Command {
         .subcommand(Command::new("ls")
             .about("Lists root nodes or children nodes")
             .arg(arg!([ID] "Which node's children to display"))
-            .arg(arg!([depth] "What depth to recursively display children")
+            .arg(arg!(-d --depth <depth> "What depth to recursively display children")
                 .default_value("1")
                 .value_parser(value_parser!(u32))
             )
