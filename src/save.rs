@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
@@ -5,7 +7,9 @@ use std::path::PathBuf;
 use crate::graph::Graph;
 
 use anyhow::Result;
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
+use yaml_rust2::YamlLoader;
 
 /// Update this whenever the structure of Config or Graph changes
 const VERSION: u32 = 3;
@@ -59,7 +63,9 @@ pub fn load(file: &mut File) -> Result<Graph> {
     let graph: Graph = if bytes.is_empty() {
         Graph::new()
     } else {
-        serde_yaml_ng::from_slice::<Config>(bytes.as_slice())?.graph
+        serde_yaml_ng::from_slice::<Config>(bytes.as_slice())
+            .or(parse_yaml(String::from_utf8(bytes)?.as_str()))?
+            .graph
     };
     Ok(graph)
 }
@@ -142,5 +148,97 @@ pub fn import_json_stdin() -> Result<Config> {
     let mut bytes = vec![];
     stdin.read_to_end(&mut bytes)?;
     let config: Config = serde_json::from_slice(bytes.as_slice())?;
+    Ok(config)
+}
+
+/// Manually parse yaml config instead of using serde_derive
+/// This allows format mismatch handling where otherwise serde_derive would panic
+pub fn parse_yaml(input: &str) -> Result<Config> {
+    let docs = YamlLoader::load_from_str(input)?;
+    let doc = &docs[0];
+
+    let graph_doc = &doc["graph"];
+
+    // Parse nodes
+    // Provide default values if any are missing
+    // ~ Maps are funky, functional programming go brrrr
+    let mut nodes = vec![];
+    for node_doc in graph_doc["nodes"].as_vec().unwrap_or(&vec![]) {
+        let mut parents = vec![];
+        for parent_doc in node_doc["parents"].as_vec().unwrap_or(&vec![]) {
+            parents.push(
+                parent_doc
+                    .as_i64()
+                    .expect("Parent index must be an integer") as usize,
+            );
+        }
+        let mut children = vec![];
+        for child_doc in node_doc["children"].as_vec().unwrap_or(&vec![]) {
+            children.push(child_doc.as_i64().expect("Parent index must be an integer") as usize);
+        }
+
+        nodes.push(Some(RefCell::new(crate::graph::Node {
+            message: node_doc["message"].as_str().unwrap_or("").to_string(),
+            r#type: node_doc["type"]
+                .as_str()
+                .map_or(crate::graph::NodeType::default(), |n| {
+                    crate::graph::NodeType::from_str(n, true)
+                        .unwrap_or(crate::graph::NodeType::default())
+                }),
+            state: node_doc["state"]
+                .as_str()
+                .map_or(crate::graph::NodeState::default(), |n| {
+                    crate::graph::NodeState::from_str(n, true)
+                        .unwrap_or(crate::graph::NodeState::default())
+                }),
+            index: node_doc["index"]
+                .as_i64()
+                .expect("Node index must be an integer") as usize,
+            alias: node_doc["alias"].as_str().map(|s| s.to_string()),
+            parents,
+            children,
+        })));
+    }
+
+    // Roots, dates, and aliases
+    let roots = graph_doc["roots"]
+        .as_vec()
+        .unwrap_or(&vec![])
+        .iter()
+        .map(|i| i.as_i64().expect("Root index must be an integer") as usize)
+        .collect::<Vec<_>>();
+    let dates = graph_doc["dates"]
+        .as_hash()
+        .unwrap_or(&yaml_rust2::yaml::Hash::new())
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.as_str().expect("Date key must be a string").to_string(),
+                v.as_i64().expect("Date node index must be an integer") as usize,
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let aliases = graph_doc["aliases"]
+        .as_hash()
+        .unwrap_or(&yaml_rust2::yaml::Hash::new())
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.as_str().expect("Alias key must be a string").to_string(),
+                v.as_i64().expect("Alias node index must be an integer") as usize,
+            )
+        })
+        .collect::<HashMap<_, _>>();
+
+    // Unify everything
+    let config = Config {
+        version: doc["version"].as_i64().expect("Version should be integer") as u32,
+        graph: Graph {
+            nodes,
+            roots,
+            dates,
+            aliases,
+        },
+    };
     Ok(config)
 }

@@ -33,21 +33,21 @@ pub enum ErrorType {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Graph {
-    nodes: Vec<Option<RefCell<Node>>>,
-    roots: Vec<usize>,
-    dates: HashMap<String, usize>,
-    aliases: HashMap<String, usize>,
+    pub(crate) nodes: Vec<Option<RefCell<Node>>>,
+    pub(crate) roots: Vec<usize>,
+    pub(crate) dates: HashMap<String, usize>,
+    pub(crate) aliases: HashMap<String, usize>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
-    message: String,
-    r#type: NodeType,
-    state: NodeState,
-    index: usize,
-    alias: Option<String>,
-    parents: Vec<usize>,
-    children: Vec<usize>,
+    pub(crate) message: String,
+    pub(crate) r#type: NodeType,
+    pub(crate) state: NodeState,
+    pub(crate) index: usize,
+    pub(crate) alias: Option<String>,
+    pub(crate) parents: Vec<usize>,
+    pub(crate) children: Vec<usize>,
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
