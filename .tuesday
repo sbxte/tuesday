@@ -2,30 +2,35 @@ version: 3
 graph:
   nodes:
   - message: Due dates
+    type: Normal
     state: None
     index: 0
     alias: null
     parents: []
     children: []
   - message: Notification system
+    type: Normal
     state: None
     index: 1
     alias: null
     parents: []
     children: []
   - message: Recurring tasks
+    type: Normal
     state: None
     index: 2
     alias: null
     parents: []
     children: []
   - message: ZSH integration
+    type: Normal
     state: None
     index: 3
     alias: null
     parents: []
     children: []
   - message: TUI
+    type: Normal
     state: None
     index: 4
     alias: null
@@ -33,6 +38,7 @@ graph:
     children:
     - 5
   - message: Ratatui perhaps?
+    type: Normal
     state: None
     index: 5
     alias: null
