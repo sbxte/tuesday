@@ -164,6 +164,11 @@ pub fn parse_yaml(input: &str) -> Result<Config> {
     // ~ Maps are funky, functional programming go brrrr
     let mut nodes = vec![];
     for node_doc in graph_doc["nodes"].as_vec().unwrap_or(&vec![]) {
+        if node_doc.is_null() {
+            nodes.push(None);
+            continue;
+        }
+
         let mut parents = vec![];
         for parent_doc in node_doc["parents"].as_vec().unwrap_or(&vec![]) {
             parents.push(
