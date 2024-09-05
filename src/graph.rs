@@ -312,6 +312,22 @@ impl Graph {
         Ok(())
     }
 
+    /// Clear parents of target node and other nodes that hold the target as their child
+    pub fn clean_parents(&mut self, target: String) -> Result<()> {
+        let target_index = self.get_index(&target)?;
+        let parents = &mut self.nodes[target_index].as_ref().unwrap().borrow_mut().parents;
+        parents.iter().for_each(| index | {
+            self.nodes[*index].as_ref().unwrap().borrow_mut().children.retain(|x| {
+                *x != target_index
+            });
+
+        });
+
+        parents.clear();
+
+        Ok(())
+    }
+
     /// Sets node state and propogates changes to children and parents
     pub fn set_state(&mut self, target: String, state: NodeState, propogate: bool) -> Result<()> {
         let index = self.get_index(&target)?;

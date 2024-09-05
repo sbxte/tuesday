@@ -52,6 +52,15 @@ fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
             graph.unlink(parent.to_string(), child.to_string())?;
             Ok(())
         }
+        Some(("mv", sub_matches)) => {
+            let node = sub_matches.get_one::<String>("node").expect("required");
+            let parent = sub_matches.get_one::<String>("parent").expect("required");
+
+            graph.clean_parents(node.to_string())?;
+            graph.link(parent.to_string(), node.to_string())?;
+
+            Ok(())
+        }
         Some(("setnoprop", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").expect("required");
             let state = sub_matches.get_one::<NodeState>("state").expect("required");
@@ -169,6 +178,11 @@ fn cli() -> Command {
             .about("Removes a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID> "Which node should be the parent in this connection"))
             .arg(arg!(child: <ID> "Which node should be the child in this connection"))
+        )
+        .subcommand(Command::new("mv")
+            .about("Unlink node from all current parents, then link to a new parent")
+            .arg(arg!(node: <ID> "Which node to unlink "))
+            .arg(arg!(parent: <ID> "New parent for node"))
         )
         .subcommand(Command::new("setnoprop")
             .about("Sets a node's state without propogating state updates")
