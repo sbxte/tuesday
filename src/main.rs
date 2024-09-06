@@ -69,7 +69,7 @@ fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
         }
         Some(("check", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").expect("required");
-            graph.set_state(id.to_string(), NodeState::Complete, true)?;
+            graph.set_state(id.to_string(), NodeState::Done, true)?;
             Ok(())
         }
         Some(("uncheck", sub_matches)) => {

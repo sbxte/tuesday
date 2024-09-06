@@ -62,7 +62,7 @@ pub enum NodeState {
     #[default]
     None,
     Partial,
-    Complete,
+    Done,
     /// Does not count to completion
     Pseudo,
 }
@@ -315,12 +315,18 @@ impl Graph {
     /// Clear parents of target node and other nodes that hold the target as their child
     pub fn clean_parents(&mut self, target: String) -> Result<()> {
         let target_index = self.get_index(&target)?;
-        let parents = &mut self.nodes[target_index].as_ref().unwrap().borrow_mut().parents;
-        parents.iter().for_each(| index | {
-            self.nodes[*index].as_ref().unwrap().borrow_mut().children.retain(|x| {
-                *x != target_index
-            });
-
+        let parents = &mut self.nodes[target_index]
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .parents;
+        parents.iter().for_each(|index| {
+            self.nodes[*index]
+                .as_ref()
+                .unwrap()
+                .borrow_mut()
+                .children
+                .retain(|x| *x != target_index);
         });
 
         parents.clear();
@@ -393,7 +399,7 @@ impl Graph {
                     NodeState::Partial => {
                         partial = true;
                     }
-                    NodeState::Complete => {
+                    NodeState::Done => {
                         partial = true;
                         count += 1;
                     }
@@ -409,7 +415,7 @@ impl Graph {
             } else if count != 0
                 && count == (self.nodes[i].as_ref().unwrap().borrow().children.len() - pseudo)
             {
-                NodeState::Complete
+                NodeState::Done
             // At least one child task is completed or partially completed
             } else if partial {
                 NodeState::Partial
@@ -793,7 +799,7 @@ impl fmt::Display for NodeState {
         match self {
             NodeState::None => write!(f, " "),
             NodeState::Partial => write!(f, "~"),
-            NodeState::Complete => write!(f, "x"),
+            NodeState::Done => write!(f, "x"),
             NodeState::Pseudo => write!(f, "+"),
         }
     }
