@@ -61,10 +61,10 @@ fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
 
             Ok(())
         }
-        Some(("setnoprop", sub_matches)) => {
+        Some(("set", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").expect("required");
             let state = sub_matches.get_one::<NodeState>("state").expect("required");
-            graph.set_state(id.to_string(), *state, false)?;
+            graph.set_state(id.to_string(), *state, true)?;
             Ok(())
         }
         Some(("check", sub_matches)) => {
@@ -184,9 +184,10 @@ fn cli() -> Command {
             .arg(arg!(node: <ID> "Which node to unlink "))
             .arg(arg!(parent: <ID> "New parent for node"))
         )
-        .subcommand(Command::new("setnoprop")
-            .about("Sets a node's state without propogating state updates")
-            .arg(arg!(<ID>).value_parser(value_parser!(NodeState)))
+        .subcommand(Command::new("set")
+            .about("Sets a node's state")
+            .arg(arg!(<ID> "Which node to modify"))
+            .arg(arg!(<state> "What state to set the node").value_parser(value_parser!(NodeState)))
         )
         .subcommand(Command::new("check")
             .about("Marks a node as completed")
