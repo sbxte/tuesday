@@ -271,6 +271,17 @@ impl Graph {
         let from = self.get_index(&from)?;
         let to = self.get_index(&to)?;
         self.link_unchecked(from, to);
+
+        // Update parent completion
+        let parents_ptr = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
+
         Self::display_link(from, to, true);
         Ok(())
     }
@@ -285,7 +296,7 @@ impl Graph {
         }
     }
 
-    pub fn unlink_unchecked(&mut self, from: usize, to: usize) {
+    fn unlink_unchecked(&mut self, from: usize, to: usize) {
         self.nodes[from]
             .as_ref()
             .unwrap()
@@ -307,7 +318,20 @@ impl Graph {
     pub fn unlink(&mut self, from: String, to: String) -> Result<()> {
         let from = self.get_index(&from)?;
         let to = self.get_index(&to)?;
+
+        let parents_ptr = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
+
+        // Update parent completion
         self.unlink_unchecked(from, to);
+
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
+
         Self::display_link(from, to, true);
         Ok(())
     }
@@ -315,21 +339,32 @@ impl Graph {
     /// Clear parents of target node and other nodes that hold the target as their child
     pub fn clean_parents(&mut self, target: String) -> Result<()> {
         let target_index = self.get_index(&target)?;
-        let parents = &mut self.nodes[target_index]
+
+        let parents_ptr = self.nodes[target_index]
             .as_ref()
             .unwrap()
-            .borrow_mut()
-            .parents;
-        parents.iter().for_each(|index| {
-            self.nodes[*index]
-                .as_ref()
-                .unwrap()
-                .borrow_mut()
-                .children
-                .retain(|x| *x != target_index);
-        });
+            .borrow()
+            .parents
+            .as_ptr();
 
-        parents.clear();
+        let parents_len = self.nodes[target_index].as_ref().unwrap().borrow().parents.len();
+
+        self.nodes[target_index].as_ref()
+            .unwrap()
+            .borrow_mut()
+            .parents.iter()
+            .for_each(|index| {
+                self.nodes[*index]
+                    .as_ref()
+                    .unwrap()
+                    .borrow_mut()
+                    .children
+                    .retain(|x| *x != target_index);
+            });
+
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
+
+        self.nodes[target_index].as_ref().unwrap().borrow_mut().parents.clear();
 
         Ok(())
     }
