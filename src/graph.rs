@@ -704,12 +704,12 @@ impl Graph {
         println!("Parents :");
         for i in &node.parents {
             let parent = self.nodes[*i].as_ref().unwrap().borrow();
-            println!("({}) [{}]", parent.index, parent.state);
+            println!("({}) {} [{}]", parent.index, parent.message, parent.state);
         }
         println!("Children:");
         for i in &node.children {
             let child = self.nodes[*i].as_ref().unwrap().borrow();
-            println!("({}) [{}]", child.index, child.state);
+            println!("({}) {} [{}]", child.index, child.message, child.state);
         }
         println!("Archived: {}", node.archived);
         println!("Status  : [{}]", node.state);
