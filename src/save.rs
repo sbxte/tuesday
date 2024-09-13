@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use yaml_rust2::YamlLoader;
 
 /// Update this whenever the structure of Config or Graph changes
-const VERSION: u32 = 3;
+const VERSION: u32 = 4;
 
 const FILENAME: &str = ".tuesday";
 
