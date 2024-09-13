@@ -130,8 +130,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("stats", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
-            graph.display_stats(id.to_string())?;
+            let id = sub_matches.get_one::<String>("ID");
+            graph.display_stats(id.map(|i| i.to_string()))?;
             Ok(())
         }
         Some(("clean", _)) => {
@@ -260,7 +260,7 @@ fn cli() -> Result<Command> {
         )
         .subcommand(Command::new("stats")
             .about("Displays statistics of a node")
-            .arg(arg!(<ID> "Which node to display stats"))
+            .arg(arg!([ID] "Which node to display stats"))
         )
         .subcommand(Command::new("clean")
             .about("Compresses and cleans up the graph")
