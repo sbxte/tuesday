@@ -273,12 +273,7 @@ impl Graph {
         self.link_unchecked(from, to);
 
         // Update parent completion
-        let parents_ptr = self.nodes[to]
-            .as_ref()
-            .unwrap()
-            .borrow()
-            .parents
-            .as_ptr();
+        let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
         let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
@@ -319,12 +314,7 @@ impl Graph {
         let from = self.get_index(&from)?;
         let to = self.get_index(&to)?;
 
-        let parents_ptr = self.nodes[to]
-            .as_ref()
-            .unwrap()
-            .borrow()
-            .parents
-            .as_ptr();
+        let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
         let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
 
         // Update parent completion
@@ -347,12 +337,19 @@ impl Graph {
             .parents
             .as_ptr();
 
-        let parents_len = self.nodes[target_index].as_ref().unwrap().borrow().parents.len();
+        let parents_len = self.nodes[target_index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .parents
+            .len();
 
-        self.nodes[target_index].as_ref()
+        self.nodes[target_index]
+            .as_ref()
             .unwrap()
             .borrow_mut()
-            .parents.iter()
+            .parents
+            .iter()
             .for_each(|index| {
                 self.nodes[*index]
                     .as_ref()
@@ -364,7 +361,12 @@ impl Graph {
 
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
-        self.nodes[target_index].as_ref().unwrap().borrow_mut().parents.clear();
+        self.nodes[target_index]
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .parents
+            .clear();
 
         Ok(())
     }
@@ -511,6 +513,27 @@ impl Graph {
                 Some(_) => {
                     map.push((i, Some(last_used_index)));
                     last_used_index += 1;
+                }
+            }
+        }
+
+        // Remove invalid aliases
+        self.aliases.retain(|_, v| self.nodes[*v].is_some());
+        for node in self.nodes.iter() {
+            match node {
+                // Ignore if node is not present
+                None => continue,
+                Some(node) => {
+                    // Ignore if node has no alias
+                    if node.borrow().alias.is_none() {
+                        continue;
+                    }
+
+                    // Remove node alias if alias list does not contain it
+                    let alias = &mut node.borrow_mut().alias;
+                    if self.aliases.contains_key(alias.clone().unwrap().as_str()) {
+                        *alias = None;
+                    }
                 }
             }
         }
