@@ -625,6 +625,11 @@ impl Graph {
         Ok(())
     }
 
+    pub fn list_archived(&self) -> Result<()> {
+        self.list_recurse(&self.archived, true, 1, 1, None)?;
+        Ok(())
+    }
+
     pub fn list_dates(&self) -> Result<()> {
         let x: Vec<_> = self.dates.values().copied().collect();
         self.list_recurse(x.as_slice(), false, 1, 1, None)?;

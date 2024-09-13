@@ -125,6 +125,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             graph.list_dates()?;
             Ok(())
         }
+        Some(("lsa", _)) => {
+            graph.list_archived()?;
+            Ok(())
+        }
         Some(("stats", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").expect("required");
             graph.display_stats(id.to_string())?;
@@ -250,6 +254,9 @@ fn cli() -> Result<Command> {
         )
         .subcommand(Command::new("lsd")
             .about("Lists all date nodes")
+        )
+        .subcommand(Command::new("lsa")
+            .about("Lists all archived nodes")
         )
         .subcommand(Command::new("stats")
             .about("Displays statistics of a node")
