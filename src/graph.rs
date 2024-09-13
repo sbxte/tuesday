@@ -644,7 +644,7 @@ impl Graph {
         depth: u32,
         start: Option<usize>,
     ) -> Result<(), ErrorType> {
-        // A sentinel value of -1 means infinite depth
+        // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
             return Ok(());
         }
