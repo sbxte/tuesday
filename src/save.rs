@@ -86,6 +86,18 @@ pub fn try_load_local(mut path: PathBuf) -> Result<Option<Graph>> {
 }
 
 pub fn load_local(mut path: PathBuf) -> Result<Graph> {
+    // For when user specifies custom path
+    if path.exists() && path.is_file() {
+        return load(
+            &mut OpenOptions::new()
+                .create(true)
+                .append(true)
+                .read(true)
+                .open(path)?,
+        );
+    }
+
+    // Otherwise try using FILENAME
     path.push(FILENAME);
     let graph = if !path.exists() {
         load(

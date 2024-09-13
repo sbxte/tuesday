@@ -1,5 +1,7 @@
 #![allow(unreachable_code)]
 
+use std::path::PathBuf;
+
 use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 use graph::{ErrorType, NodeState};
@@ -7,7 +9,7 @@ use graph::{ErrorType, NodeState};
 mod graph;
 mod save;
 
-fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
+fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
             let message = sub_matches.get_one::<String>("message").expect("required");
@@ -142,13 +144,16 @@ fn handle_command(matches: ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     }
 }
 
-fn cli() -> Command {
-    Command::new("tue")
+fn cli() -> Result<Command> {
+    Ok(Command::new("tue")
         .about("CLI Todo graph")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
-        .arg(arg!(--local).required(false))
+        .arg(arg!(--local <path>)
+            .value_parser(value_parser!(String))
+            .default_value(".")
+            .required(false))
         .arg(arg!(--global).required(false))
         .subcommand(Command::new("add")
             .about("Adds a node to the graph")
@@ -239,22 +244,40 @@ fn cli() -> Command {
         .subcommand(Command::new("import")
             .about("Imports JSON from stdin")
         )
+    )
 }
 
 fn main() -> Result<()> {
-    let matches = cli().get_matches();
+    let matches = cli()?.get_matches();
 
     let (mut graph, local) = if let Some(("import", _)) = matches.subcommand() {
-        let local = match (matches.get_flag("local"), matches.get_flag("global")) {
+        let local = match (
+            matches.get_one::<String>("local").is_some(),
+            matches.get_flag("global"),
+        ) {
             (true, true) => bail!("Config cannot be both local and global!"),
-            (false, false) => save::local_exists(std::env::current_dir()?),
+            (false, false) => save::local_exists(PathBuf::from(
+                matches
+                    .get_one::<String>("local")
+                    .expect("--local should provide a path"),
+            )),
             (l, _) => l,
         };
         (save::import_json_stdin()?.graph, local)
     } else {
-        match (matches.get_flag("local"), matches.get_flag("global")) {
+        match (
+            matches.get_one::<String>("local").is_some(),
+            matches.get_flag("global"),
+        ) {
             (true, true) => bail!("Config cannot be both local and global!"),
-            (true, false) => (save::load_local(std::env::current_dir()?)?, true),
+            (true, false) => (
+                save::load_local(PathBuf::from(
+                    matches
+                        .get_one::<String>("local")
+                        .expect("--local should provide a path"),
+                ))?,
+                true,
+            ),
             (false, true) => (save::load_global()?, false),
             (false, false) => {
                 // Try to load local config otherwise load global
@@ -266,13 +289,16 @@ fn main() -> Result<()> {
         }
     };
 
-    let result: Result<()> = handle_command(matches, &mut graph);
+    let result: Result<()> = handle_command(&matches, &mut graph);
     if let Err(e) = result {
         println!("{}\n{}", e, e.backtrace());
     }
 
     if local {
-        save::save_local(std::env::current_dir()?, &save::Config::new(&graph))?;
+        save::save_local(
+            PathBuf::from(matches.get_one::<String>("local").unwrap()),
+            &save::Config::new(&graph),
+        )?;
     } else {
         save::save_global(&save::Config::new(&graph))?;
     }
