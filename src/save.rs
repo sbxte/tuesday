@@ -208,6 +208,7 @@ pub fn parse_yaml(input: &str) -> Result<Config> {
                     crate::graph::NodeState::from_str(n, true)
                         .unwrap_or(crate::graph::NodeState::default())
                 }),
+            archived: node_doc["archived"].as_bool().unwrap_or(false),
             index: node_doc["index"]
                 .as_i64()
                 .expect("Node index must be an integer") as usize,
@@ -217,12 +218,18 @@ pub fn parse_yaml(input: &str) -> Result<Config> {
         })));
     }
 
-    // Roots, dates, and aliases
+    // Roots, archived, dates, and aliases
     let roots = graph_doc["roots"]
         .as_vec()
         .unwrap_or(&vec![])
         .iter()
         .map(|i| i.as_i64().expect("Root index must be an integer") as usize)
+        .collect::<Vec<_>>();
+    let archived = graph_doc["archived"]
+        .as_vec()
+        .unwrap_or(&vec![])
+        .iter()
+        .map(|i| i.as_i64().expect("Archived index must be an integer") as usize)
         .collect::<Vec<_>>();
     let dates = graph_doc["dates"]
         .as_hash()
@@ -253,6 +260,7 @@ pub fn parse_yaml(input: &str) -> Result<Config> {
         graph: Graph {
             nodes,
             roots,
+            archived,
             dates,
             aliases,
         },

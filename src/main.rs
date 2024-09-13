@@ -79,6 +79,16 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             graph.set_state(id.to_string(), NodeState::None, true)?;
             Ok(())
         }
+        Some(("arc", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.set_archived(id.to_string(), true)?;
+            Ok(())
+        }
+        Some(("unarc", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("required");
+            graph.set_archived(id.to_string(), false)?;
+            Ok(())
+        }
         Some(("alias", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").expect("required");
             let alias = sub_matches.get_one::<String>("alias").expect("required");
@@ -201,6 +211,14 @@ fn cli() -> Result<Command> {
         .subcommand(Command::new("uncheck")
             .about("Marks a node as incomplete")
             .arg(arg!(<ID> "Which node to mark as incomplete"))
+        )
+        .subcommand(Command::new("arc")
+            .about("Archives (hides) a node from view")
+            .arg(arg!(<ID> "Which node to archive"))
+        )
+        .subcommand(Command::new("unarc")
+            .about("Unarchives (unhides) a node from view")
+            .arg(arg!(<ID> "Which node to archive"))
         )
         .subcommand(Command::new("alias")
             .about("Adds an alias for a node")

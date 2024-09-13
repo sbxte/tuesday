@@ -35,6 +35,7 @@ pub enum ErrorType {
 pub struct Graph {
     pub(crate) nodes: Vec<Option<RefCell<Node>>>,
     pub(crate) roots: Vec<usize>,
+    pub(crate) archived: Vec<usize>,
     pub(crate) dates: HashMap<String, usize>,
     pub(crate) aliases: HashMap<String, usize>,
 }
@@ -44,6 +45,7 @@ pub struct Node {
     pub(crate) message: String,
     pub(crate) r#type: NodeType,
     pub(crate) state: NodeState,
+    pub(crate) archived: bool,
     pub(crate) index: usize,
     pub(crate) alias: Option<String>,
     pub(crate) parents: Vec<usize>,
@@ -72,6 +74,7 @@ impl Graph {
         Self {
             nodes: vec![],
             roots: vec![],
+            archived: vec![],
             dates: HashMap::new(),
             aliases: HashMap::new(),
         }
@@ -470,6 +473,25 @@ impl Graph {
         Ok(())
     }
 
+    pub fn set_archived(&mut self, target: String, archived: bool) -> Result<()> {
+        let index = self.get_index(&target)?;
+        let status = &mut self.nodes[index].as_ref().unwrap().borrow_mut().archived;
+
+        // Add to list of archived nodes if necessary
+        if *status != archived {
+            if archived {
+                self.archived.push(index);
+            } else {
+                self.archived.retain(|i| *i != index);
+            }
+        }
+
+        // Update node archive status
+        *status = archived;
+
+        Ok(())
+    }
+
     pub fn rename_node(&mut self, target: String, message: String) -> Result<()> {
         let index = self.get_index(&target)?;
         self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
@@ -626,6 +648,12 @@ impl Graph {
                     return Err(ErrorType::GraphLooped(start, *i));
                 }
             }
+
+            // Ignore archived nodes and its subsequent children
+            if self.nodes[*i].as_ref().unwrap().borrow().archived {
+                continue;
+            }
+
             Self::print_tree_indent(
                 depth,
                 self.nodes[*i].as_ref().unwrap().borrow().parents.len() > 1,
@@ -675,6 +703,7 @@ impl Graph {
             let child = self.nodes[*i].as_ref().unwrap().borrow();
             println!("({}) [{}]", child.index, child.state);
         }
+        println!("Archived: {}", node.archived);
         println!("Status  : [{}]", node.state);
         Ok(())
     }
@@ -821,6 +850,7 @@ impl Node {
             message,
             r#type,
             state: NodeState::None,
+            archived: false,
             index,
             alias: None,
             parents: vec![],
