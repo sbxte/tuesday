@@ -255,7 +255,8 @@ fn main() -> Result<()> {
             matches.get_one::<String>("local").is_some(),
             matches.get_flag("global"),
         ) {
-            (true, true) => bail!("Config cannot be both local and global!"),
+            // -- global --overrdes --local argument
+            (_, true) => false,
             (false, false) => save::local_exists(PathBuf::from(
                 matches
                     .get_one::<String>("local")
@@ -269,8 +270,9 @@ fn main() -> Result<()> {
             matches.get_one::<String>("local").is_some(),
             matches.get_flag("global"),
         ) {
-            (true, true) => bail!("Config cannot be both local and global!"),
-            (true, false) => (
+            // --global overrides --local argument
+            (_, true) => (save::load_global()?, false),
+            (true, _) => (
                 save::load_local(PathBuf::from(
                     matches
                         .get_one::<String>("local")
@@ -278,7 +280,6 @@ fn main() -> Result<()> {
                 ))?,
                 true,
             ),
-            (false, true) => (save::load_global()?, false),
             (false, false) => {
                 // Try to load local config otherwise load global
                 match save::try_load_local(std::env::current_dir()?)? {
