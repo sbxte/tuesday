@@ -600,7 +600,7 @@ impl Graph {
         Ok(new_graph)
     }
 
-    pub fn list_children(&self, target: String, max_depth: u32) -> Result<()> {
+    pub fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()> {
         let index = self.get_index(&target)?;
         // Display self as well
         println!("{}", self.nodes[index].as_ref().unwrap().borrow());
@@ -611,6 +611,7 @@ impl Graph {
                 .borrow()
                 .children
                 .as_slice(),
+            show_archived,
             max_depth,
             1,
             Some(index),
@@ -618,21 +619,22 @@ impl Graph {
         Ok(())
     }
 
-    pub fn list_roots(&self, max_depth: u32) -> Result<()> {
+    pub fn list_roots(&self, max_depth: u32, show_archived: bool) -> Result<()> {
         let roots = &self.roots;
-        self.list_recurse(roots, max_depth, 1, None)?;
+        self.list_recurse(roots, show_archived, max_depth, 1, None)?;
         Ok(())
     }
 
     pub fn list_dates(&self) -> Result<()> {
         let x: Vec<_> = self.dates.values().copied().collect();
-        self.list_recurse(x.as_slice(), 1, 1, None)?;
+        self.list_recurse(x.as_slice(), false, 1, 1, None)?;
         Ok(())
     }
 
     fn list_recurse(
         &self,
         indices: &[usize],
+        show_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
@@ -649,8 +651,8 @@ impl Graph {
                 }
             }
 
-            // Ignore archived nodes and its subsequent children
-            if self.nodes[*i].as_ref().unwrap().borrow().archived {
+            // If theres no need to show archived nodes then ignore it and its children
+            if !show_archived && self.nodes[*i].as_ref().unwrap().borrow().archived {
                 continue;
             }
 
@@ -666,6 +668,7 @@ impl Graph {
                     .borrow()
                     .children
                     .as_slice(),
+                false,
                 max_depth,
                 depth + 1,
                 start,
