@@ -158,10 +158,11 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
 
 fn cli() -> Result<Command> {
     Ok(Command::new("tue")
-        .about("CLI Todo graph")
-        .subcommand_required(true)
+        .about("Tuesday CLI, todo graph")
+        .subcommand_required(false)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
+        .arg(arg!(-V --version "Displays build and version information"))
         .arg(arg!(--local <path>)
             .value_parser(value_parser!(String))
             .default_value(".")
@@ -273,6 +274,12 @@ fn cli() -> Result<Command> {
 
 fn main() -> Result<()> {
     let matches = cli()?.get_matches();
+
+    if matches.get_flag("version") {
+        println!("Tuesday CLI");
+        println!("Version {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
 
     let (mut graph, local) = if let Some(("import", _)) = matches.subcommand() {
         let local = match (
