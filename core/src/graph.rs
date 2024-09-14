@@ -42,14 +42,14 @@ pub struct Graph {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
-    pub(crate) message: String,
-    pub(crate) r#type: NodeType,
-    pub(crate) state: NodeState,
-    pub(crate) archived: bool,
-    pub(crate) index: usize,
-    pub(crate) alias: Option<String>,
-    pub(crate) parents: Vec<usize>,
-    pub(crate) children: Vec<usize>,
+    pub message: String,
+    pub r#type: NodeType,
+    pub state: NodeState,
+    pub archived: bool,
+    pub index: usize,
+    pub alias: Option<String>,
+    pub parents: Vec<usize>,
+    pub children: Vec<usize>,
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]

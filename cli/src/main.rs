@@ -1,13 +1,10 @@
-#![allow(unreachable_code)]
-
 use std::path::PathBuf;
 
 use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
-use graph::{ErrorType, NodeState};
 
-mod graph;
-mod save;
+use tuecore::graph::{self, ErrorType, NodeState};
+use tuecore::save;
 
 fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     match matches.subcommand() {
