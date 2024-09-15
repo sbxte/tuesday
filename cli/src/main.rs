@@ -329,10 +329,10 @@ fn main() -> Result<()> {
     if local {
         doc::save_local(
             PathBuf::from(matches.get_one::<String>("local").unwrap()),
-            &doc::Config::new(&graph),
+            &doc::Doc::new(&graph),
         )?;
     } else {
-        doc::save_global(&doc::Config::new(&graph))?;
+        doc::save_global(&doc::Doc::new(&graph))?;
     }
 
     Ok(())
