@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
+use tuecore::doc;
 use tuecore::graph::{self, ErrorType, NodeState};
-use tuecore::save;
 
 fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     match matches.subcommand() {
@@ -136,7 +136,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("export", _)) => {
-            println!("{}", save::export_json(graph)?);
+            println!("{}", doc::export_json(graph)?);
             Ok(())
         }
         Some(("import", _)) => {
@@ -288,23 +288,23 @@ fn main() -> Result<()> {
         ) {
             // -- global --overrdes --local argument
             (_, true) => false,
-            (false, false) => save::local_exists(PathBuf::from(
+            (false, false) => doc::local_exists(PathBuf::from(
                 matches
                     .get_one::<String>("local")
                     .expect("--local should provide a path"),
             )),
             (l, _) => l,
         };
-        (save::import_json_stdin()?.graph, local)
+        (doc::import_json_stdin()?.graph, local)
     } else {
         match (
             matches.get_one::<String>("local").is_some(),
             matches.get_flag("global"),
         ) {
             // --global overrides --local argument
-            (_, true) => (save::load_global()?, false),
+            (_, true) => (doc::load_global()?, false),
             (true, _) => (
-                save::load_local(PathBuf::from(
+                doc::load_local(PathBuf::from(
                     matches
                         .get_one::<String>("local")
                         .expect("--local should provide a path"),
@@ -313,8 +313,8 @@ fn main() -> Result<()> {
             ),
             (false, false) => {
                 // Try to load local config otherwise load global
-                match save::try_load_local(std::env::current_dir()?)? {
-                    None => (save::load_global()?, false),
+                match doc::try_load_local(std::env::current_dir()?)? {
+                    None => (doc::load_global()?, false),
                     Some(g) => (g, true),
                 }
             }
@@ -327,12 +327,12 @@ fn main() -> Result<()> {
     }
 
     if local {
-        save::save_local(
+        doc::save_local(
             PathBuf::from(matches.get_one::<String>("local").unwrap()),
-            &save::Config::new(&graph),
+            &doc::Config::new(&graph),
         )?;
     } else {
-        save::save_global(&save::Config::new(&graph))?;
+        doc::save_global(&doc::Config::new(&graph))?;
     }
 
     Ok(())

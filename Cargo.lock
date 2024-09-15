@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "tuesday_cli"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -497,7 +497,7 @@ dependencies = [
 
 [[package]]
 name = "tuesday_core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bincode",
