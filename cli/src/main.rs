@@ -108,9 +108,15 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("ls", sub_matches)) => {
-            let depth = *sub_matches
-                .get_one::<u32>("depth")
-                .expect("depth should exist");
+            let depth = if sub_matches.get_flag("recurse") {
+                // Override with infinite depth
+                0
+            } else {
+                *sub_matches
+                    .get_one::<u32>("depth")
+                    .expect("depth should exist")
+            };
+
             let show_archived = *sub_matches.get_one::<bool>("archived").unwrap();
             match sub_matches.get_one::<String>("ID") {
                 None => graph.list_roots(depth, show_archived)?,
@@ -246,6 +252,7 @@ fn cli() -> Result<Command> {
                 .default_value("1")
                 .value_parser(value_parser!(u32))
             )
+            .arg(arg!(-r --recurse "Whether to recursively display at infinite depth"))
         )
         .subcommand(Command::new("lsd")
             .about("Lists all date nodes")
