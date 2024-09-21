@@ -133,7 +133,7 @@ impl Graph {
     pub fn insert_child(&mut self, message: String, parent: String, pseudo: bool) -> Result<()> {
         let parent = self.get_index(&parent)?;
         let idx = self.insert_child_unchecked(message, parent, pseudo);
-        Self::display_link(parent, idx, true);
+        Self::print_link_raw(parent, idx, true);
         if !pseudo {
             self.update_state_recurse_parents(&[parent] as *const _, 1)?;
         }
@@ -270,9 +270,9 @@ impl Graph {
         self.roots.retain(|i| *i != to);
     }
 
-    pub fn link(&mut self, from: String, to: String) -> Result<()> {
-        let from = self.get_index(&from)?;
-        let to = self.get_index(&to)?;
+    pub fn link(&mut self, from: &str, to: &str) -> Result<()> {
+        let from = self.get_index(from)?;
+        let to = self.get_index(to)?;
         self.link_unchecked(from, to);
 
         // Update parent completion
@@ -280,11 +280,17 @@ impl Graph {
         let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
-        Self::display_link(from, to, true);
         Ok(())
     }
 
-    pub fn display_link(from: usize, to: usize, connect: bool) {
+    pub fn print_link(&self, from: &str, to: &str, connect: bool) -> Result<()> {
+        let from = self.get_index(from)?;
+        let to = self.get_index(to)?;
+        Self::print_link_raw(from, to, connect);
+        Ok(())
+    }
+
+    pub fn print_link_raw(from: usize, to: usize, connect: bool) {
         let from = format!("({})", from).bright_blue();
         let to = format!("({})", to).bright_blue();
         if connect {
@@ -325,7 +331,7 @@ impl Graph {
 
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
-        Self::display_link(from, to, true);
+        Self::print_link_raw(from, to, true);
         Ok(())
     }
 

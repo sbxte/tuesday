@@ -42,7 +42,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
         Some(("link", sub_matches)) => {
             let parent = sub_matches.get_one::<String>("parent").expect("required");
             let child = sub_matches.get_one::<String>("child").expect("required");
-            graph.link(parent.to_string(), child.to_string())?;
+            graph.link(parent, child)?;
+            graph.print_link(parent, child, true)?;
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
@@ -56,7 +57,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             let parent = sub_matches.get_one::<String>("parent").expect("required");
 
             graph.clean_parents(node.to_string())?;
-            graph.link(parent.to_string(), node.to_string())?;
+            graph.link(parent, node)?;
 
             Ok(())
         }
