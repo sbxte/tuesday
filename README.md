@@ -31,10 +31,10 @@ tuesday add -r "Hello world"
 Adding a child node to a parent nodes goes like so 
 
 ```
-tuesday add -p <parent identifier> <message>
+tuesday add <message> [parent]
 ```
 ```
-tuesday add -p 0 "This is a child node!"
+tuesday add "This is a child node!" 0
 ```
 
 ## Displaying the tree graph 
