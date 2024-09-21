@@ -1,0 +1,13 @@
+[package]
+name = "tuesday_tui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tuesday_core = { path = "../core" }
+
+ratatui = "0.28.1"
+
+[[bin]]
+name = "tuetui"
+path = "src/main.rs"
