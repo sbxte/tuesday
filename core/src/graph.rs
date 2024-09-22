@@ -703,7 +703,7 @@ impl Graph {
         }
     }
 
-    pub fn display_stats(&self, target: Option<String>) -> Result<()> {
+    pub fn print_stats(&self, target: Option<String>) -> Result<()> {
         // If a specific node is specified
         if let Some(target) = target {
             let index = self.get_index(&target)?;
@@ -718,6 +718,9 @@ impl Graph {
             for i in &node.children {
                 let child = self.nodes[*i].as_ref().unwrap().borrow();
                 println!("({}) {} [{}]", child.index, child.message, child.state);
+            }
+            if let Some(ref alias) = node.alias {
+                println!("Alias   : {}", alias);
             }
             println!("Archived: {}", node.archived);
             println!("Status  : [{}]", node.state);

@@ -135,7 +135,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
         }
         Some(("stats", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID");
-            graph.display_stats(id.map(|i| i.to_string()))?;
+            graph.print_stats(id.map(|i| i.to_string()))?;
             Ok(())
         }
         Some(("clean", _)) => {
