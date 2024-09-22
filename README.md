@@ -2,25 +2,17 @@
 
 A To-Do CLI tool. Inspired by [grit](https://github.com/climech/grit)
 
-# Building
+# Installation and Usage
 
-Run cargo build to get a useable executable.
-
+Run `cargo install` on the `cli` directory to install `tuecli`.
 ```
-cargo build --release
+cargo install --path cli 
+cd ~
 ```
-
-# Tasks
-
-- [ ] Use `rustyline`
-- [ ] Version format updater
-
-# Usage
-
-To begin, add your first root node 
-
 
 ## Adding a root node
+
+To begin, add your first root node 
 ```
 tuecli add -r "Hello world"
 ```
