@@ -547,23 +547,19 @@ impl Graph {
 
         // Remove invalid aliases
         self.aliases.retain(|_, v| self.nodes[*v].is_some());
+        // Add local node alias to root aliases
         for node in self.nodes.iter() {
-            match node {
-                // Ignore if node is not present
-                None => continue,
-                Some(node) => {
-                    // Ignore if node has no alias
-                    if node.borrow().alias.is_none() {
-                        continue;
-                    }
-
-                    // Remove node alias if alias list does not contain it
-                    let alias = &mut node.borrow_mut().alias;
-                    if self.aliases.contains_key(alias.clone().unwrap().as_str()) {
-                        *alias = None;
-                    }
-                }
+            if let Some(node) = node
+                && node.borrow().alias.is_some()
+            {
+                let alias = &node.borrow().alias;
+                self.aliases
+                    .insert(alias.as_ref().unwrap().clone(), node.borrow().index);
             }
+        }
+        // Add root aliases to nodes
+        for (k, v) in self.aliases.iter() {
+            self.nodes[*v].as_ref().unwrap().borrow_mut().alias = Some(k.clone());
         }
 
         let mut new_graph = Graph::new();
