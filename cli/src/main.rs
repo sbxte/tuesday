@@ -172,7 +172,6 @@ fn cli() -> Result<Command> {
         .arg(arg!(-V --version "Displays build and version information"))
         .arg(arg!(-l --local <path>)
             .value_parser(value_parser!(String))
-            .default_value(".")
             .required(false))
         .arg(arg!(-g --global).required(false))
         .subcommand(Command::new("add")
