@@ -332,7 +332,12 @@ fn main() -> Result<()> {
 
     if local {
         doc::save_local(
-            PathBuf::from(matches.get_one::<String>("local").unwrap()),
+            // Default to current directory if --local is not specified
+            PathBuf::from(
+                matches
+                    .get_one::<String>("local")
+                    .unwrap_or(&".".to_string()),
+            ),
             &doc::Doc::new(&graph),
         )?;
     } else {
