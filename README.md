@@ -22,7 +22,7 @@ To begin, add your first root node
 
 ## Adding a root node
 ```
-tuesday add -r "Hello world"
+tuecli add -r "Hello world"
 ```
 
 
@@ -31,10 +31,10 @@ tuesday add -r "Hello world"
 Adding a child node to a parent nodes goes like so 
 
 ```
-tuesday add <message> [parent]
+tuecli add <message> [parent]
 ```
 ```
-tuesday add "This is a child node!" 0
+tuecli add "This is a child node!" 0
 ```
 
 ## Displaying the tree graph 
@@ -42,23 +42,23 @@ tuesday add "This is a child node!" 0
 You can list out the root nodes you've made with 
 
 ```
-tuesday ls
+tuecli ls
 ```
 
 or you can list out nodes recursively from the root nodes 
 
 ```
-tuesday ls -d 0
+tuecli ls -d 0
 ```
 
 Or from a specific node 
 
 ```
-tuesday ls <identifier>
+tuecli ls <identifier>
 ```
 
 ```
-tuesday ls 0
+tuecli ls 0
 ```
 
 
@@ -70,13 +70,13 @@ By default, listing from the root node uses a depth of 1, including `-d 0` (0 de
 Tired of remembering node index numbers? You can alias them with 
 
 ```
-tuesday alias <identifier> <alias> 
+tuecli alias <identifier> <alias> 
 ```
 
 You can then access the node using its alias instead of index where ever
 
 ```
-tuesday alias 0 alias 
-tuesday ls alias
+tuecli alias 0 alias 
+tuecli ls alias
 ```
 
