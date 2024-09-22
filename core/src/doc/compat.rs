@@ -44,54 +44,7 @@ pub fn parse_yaml(docs: &Yaml) -> Result<Doc> {
 
     let graph_doc = &doc["graph"];
 
-    // Parse nodes
-    // Provide default values if any are missing
-    // ~ Maps are funky, functional programming go brrrr
-    let mut nodes = vec![];
-    for node_doc in graph_doc["nodes"].as_vec().unwrap_or(&vec![]) {
-        if node_doc.is_null() {
-            nodes.push(None);
-            continue;
-        }
-
-        let mut parents = vec![];
-        for parent_doc in node_doc["parents"].as_vec().unwrap_or(&vec![]) {
-            parents.push(
-                parent_doc
-                    .as_i64()
-                    .expect("Parent index must be an integer") as usize,
-            );
-        }
-        let mut children = vec![];
-        for child_doc in node_doc["children"].as_vec().unwrap_or(&vec![]) {
-            children.push(child_doc.as_i64().expect("Parent index must be an integer") as usize);
-        }
-
-        nodes.push(Some(RefCell::new(crate::graph::Node {
-            message: node_doc["message"].as_str().unwrap_or("").to_string(),
-            r#type: node_doc["type"]
-                .as_str()
-                .map_or(crate::graph::NodeType::default(), |n| {
-                    crate::graph::NodeType::from_str(n, true)
-                        .unwrap_or(crate::graph::NodeType::default())
-                }),
-            state: node_doc["state"]
-                .as_str()
-                .map_or(crate::graph::NodeState::default(), |n| {
-                    crate::graph::NodeState::from_str(n, true)
-                        .unwrap_or(crate::graph::NodeState::default())
-                }),
-            archived: node_doc["archived"].as_bool().unwrap_or(false),
-            index: node_doc["index"]
-                .as_i64()
-                .expect("Node index must be an integer") as usize,
-            alias: node_doc["alias"].as_str().map(|s| s.to_string()),
-            parents,
-            children,
-        })));
-    }
-
-    // Roots, archived, dates, and aliases
+    // Roots, archived, and dates
     let roots = graph_doc["roots"]
         .as_vec()
         .unwrap_or(&vec![])
@@ -115,7 +68,7 @@ pub fn parse_yaml(docs: &Yaml) -> Result<Doc> {
             )
         })
         .collect::<HashMap<_, _>>();
-    let aliases = graph_doc["aliases"]
+    let mut aliases = graph_doc["aliases"]
         .as_hash()
         .unwrap_or(&yaml_rust2::yaml::Hash::new())
         .iter()
@@ -126,6 +79,71 @@ pub fn parse_yaml(docs: &Yaml) -> Result<Doc> {
             )
         })
         .collect::<HashMap<_, _>>();
+
+    // Parse nodes
+    // Provide default values if any are missing
+    // ~ Maps are funky, functional programming go brrrr
+    let mut nodes = vec![];
+    for node_doc in graph_doc["nodes"].as_vec().unwrap_or(&vec![]) {
+        if node_doc.is_null() {
+            nodes.push(None);
+            continue;
+        }
+
+        // Index
+        let index = node_doc["index"]
+            .as_i64()
+            .expect("Node index must be an integer") as usize;
+
+        // Update parent and children
+        let mut parents = vec![];
+        for parent_doc in node_doc["parents"].as_vec().unwrap_or(&vec![]) {
+            parents.push(
+                parent_doc
+                    .as_i64()
+                    .expect("Parent index must be an integer") as usize,
+            );
+        }
+        let mut children = vec![];
+        for child_doc in node_doc["children"].as_vec().unwrap_or(&vec![]) {
+            children.push(child_doc.as_i64().expect("Parent index must be an integer") as usize);
+        }
+
+        // Add local node alias to root doc aliases if not already added
+        let alias = node_doc["alias"].as_str();
+        if let Some(ref alias) = alias {
+            aliases.insert(alias.to_string(), index);
+        }
+
+        nodes.push(Some(RefCell::new(crate::graph::Node {
+            message: node_doc["message"].as_str().unwrap_or("").to_string(),
+            r#type: node_doc["type"]
+                .as_str()
+                .map_or(crate::graph::NodeType::default(), |n| {
+                    crate::graph::NodeType::from_str(n, true)
+                        .unwrap_or(crate::graph::NodeType::default())
+                }),
+            state: node_doc["state"]
+                .as_str()
+                .map_or(crate::graph::NodeState::default(), |n| {
+                    crate::graph::NodeState::from_str(n, true)
+                        .unwrap_or(crate::graph::NodeState::default())
+                }),
+            archived: node_doc["archived"].as_bool().unwrap_or(false),
+            index,
+            alias: alias.map(|s| s.to_string()),
+            parents,
+            children,
+        })));
+    }
+
+    // Remove aliases pointing to invalid nodes
+    aliases.retain(|_, v| nodes[*v].is_some());
+
+    // Fix any node aliases that may be desynchronized with the root doc's aliases
+    for (k, v) in aliases.iter() {
+        nodes[*v].as_ref().unwrap().borrow_mut().alias = Some(k.clone());
+    }
 
     // Unify everything
     let config = Doc {
