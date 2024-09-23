@@ -34,10 +34,10 @@ pub fn parse_yaml(doc: &Yaml) -> Result<Doc> {
     let doc_ver = doc["version"].as_i64();
     if doc_ver.is_none() {
         bail!("Yaml parse error: Version field does not exist");
-    } else if let Some(version) = doc_ver
-        && version != VERSION as i64
-    {
-        bail!("Yaml parse error: Version mismatch");
+    } else if let Some(version) = doc_ver {
+        if version != VERSION as i64 {
+            bail!("Yaml parse error: Version mismatch");
+        }
     }
 
     let graph_doc = &doc["graph"];
