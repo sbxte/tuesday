@@ -29,9 +29,7 @@ pub fn compat_parse(input: &[u8]) -> Result<Doc> {
 }
 
 /// Manually parse yaml instead of using serde_derive
-pub fn parse_yaml(docs: &Yaml) -> Result<Doc> {
-    let doc = &docs[0];
-
+pub fn parse_yaml(doc: &Yaml) -> Result<Doc> {
     // Version mismatch
     let doc_ver = doc["version"].as_i64();
     if doc_ver.is_none() {
