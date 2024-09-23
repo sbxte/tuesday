@@ -504,35 +504,68 @@ impl Graph {
         Ok(())
     }
 
-    /// Remaps old indices to new indices
-    /// Compress by ignoring unused indices
-    ///
-    /// Example:
-    /// Old [Some(a), None, Some(b), Some(c), None, Some(d)]
-    /// Map indices [0->0, 2->1, 3->2, 4->3]
-    /// New [Some(a), Some(b), Some(c), Some(d)]
-    pub fn clean(&mut self) -> Result<Self> {
-        // Add unreferenced nodes into roots
+    /// Fixes desynchronized or invalid links, and remaps nodes
+    /// ~ The fixer-upper method
+    pub fn clean(&mut self) {
+        // Clears root tracked properties and resynchronizes them based on local node states
+        self.dates.clear();
+        self.aliases.clear();
+        self.archived.clear();
+
+        for node in self.nodes.iter() {
+            if node.is_none() {
+                continue;
+            }
+            let node = node.as_ref().unwrap();
+            let rnode = node.borrow();
+
+            // Add aliases, dates, and archival status
+            if rnode.alias.is_some() {
+                self.aliases
+                    .insert(rnode.alias.as_ref().unwrap().clone(), rnode.index);
+            }
+            if Self::is_date(&rnode.message) {
+                self.dates.insert(rnode.message.clone(), rnode.index);
+            }
+            if rnode.archived {
+                self.archived.push(rnode.index);
+            }
+
+            // Remove invalid edges
+            drop(rnode);
+            let mut mnode = node.borrow_mut();
+            mnode.parents.retain(|i| self.nodes[*i].is_some());
+            mnode.children.retain(|i| self.nodes[*i].is_some());
+        }
+
+        // Add unreachable nodes into roots
         // Nodes without parents, are not root, and not date
-        // Or in other words, unreachable nodes
+        self.roots.clear();
         let date_values: Vec<_> = self.dates.values().collect();
         for (i, node) in self.nodes.iter().enumerate() {
-            match node {
-                None => continue,
-                Some(n) => {
-                    let parents = n.borrow().parents.len();
-                    if parents > 0 {
-                        continue;
-                    }
-                    let index = n.borrow().index;
-                    if !self.roots.contains(&index) && !date_values.contains(&&index) {
-                        self.roots.push(i);
-                    }
-                }
+            if node.is_none() {
+                continue;
+            }
+            let node = node.as_ref().unwrap();
+            let rnode = node.borrow();
+
+            let parents = rnode.parents.len();
+            if parents > 0 {
+                continue;
+            }
+            let index = rnode.index;
+            if !self.roots.contains(&index) && !date_values.contains(&&index) {
+                self.roots.push(i);
             }
         }
 
-        // Remove empty nodes and map old indices to new indices
+        // Remaps old indices to new indices
+        // Compress by ignoring unused indices
+        //
+        // Example:
+        // Old [Some(a), None, Some(b), Some(c), None, Some(d)]
+        // Map indices [0->0, 2->1, 3->2, 4->3]
+        // New [Some(a), Some(b), Some(c), Some(d)]
         let mut map = Vec::with_capacity(self.nodes.len());
         let mut last_used_index: usize = 0;
         for (i, node) in self.nodes.iter().enumerate() {
@@ -545,25 +578,8 @@ impl Graph {
             }
         }
 
-        // Remove invalid aliases
-        self.aliases.retain(|_, v| self.nodes[*v].is_some());
-        // Add local node alias to root aliases
-        for node in self.nodes.iter() {
-            if let Some(node) = node
-                && node.borrow().alias.is_some()
-            {
-                let alias = &node.borrow().alias;
-                self.aliases
-                    .insert(alias.as_ref().unwrap().clone(), node.borrow().index);
-            }
-        }
-        // Add root aliases to nodes
-        for (k, v) in self.aliases.iter() {
-            self.nodes[*v].as_ref().unwrap().borrow_mut().alias = Some(k.clone());
-        }
-
+        // Add nodes, aliases, roots, dates, and archival status
         let mut new_graph = Graph::new();
-        // Map indices
         for node in self.nodes.iter() {
             match node {
                 None => continue,
@@ -574,32 +590,23 @@ impl Graph {
                 }
             }
         }
-
-        // Map aliases
         for (alias, idx) in self.aliases.iter() {
             new_graph
                 .aliases
                 .insert(alias.clone(), map[*idx].1.unwrap());
         }
-
-        // Add roots
         for r in self.roots.iter() {
             new_graph.roots.push(map[*r].1.unwrap());
         }
-
-        // Add dates
         for (d, i) in self.dates.iter() {
             new_graph.dates.insert(d.clone(), map[*i].1.unwrap());
         }
+        for a in self.archived.iter() {
+            new_graph.archived.push(map[*a].1.unwrap());
+        }
 
-        println!(
-            "Cleaned {} indices. Old count: {}, New count: {}",
-            map.len() - new_graph.nodes.len(),
-            map.len(),
-            new_graph.nodes.len()
-        );
-
-        Ok(new_graph)
+        // Replace self with new cleaned and fixed graph
+        *self = new_graph;
     }
 
     pub fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()> {

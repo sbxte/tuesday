@@ -139,7 +139,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("clean", _)) => {
-            *graph = graph.clean()?;
+            graph.clean();
             Ok(())
         }
         Some(("export", _)) => {
