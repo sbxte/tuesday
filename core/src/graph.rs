@@ -609,49 +609,20 @@ impl Graph {
         *self = new_graph;
     }
 
-    pub fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()> {
-        let index = self.get_index(&target)?;
-        // Display self as well
-        println!("{}", self.nodes[index].as_ref().unwrap().borrow());
-        self.list_recurse(
-            self.nodes[index]
-                .as_ref()
-                .unwrap()
-                .borrow()
-                .children
-                .as_slice(),
-            show_archived,
-            max_depth,
-            1,
-            Some(index),
-        )?;
-        Ok(())
+    /// Call a closure that takes a node, with given index.
+    pub fn with_node(&self, index: usize, f: impl Fn(&Node) -> ()) {
+        let node = self.nodes[index].as_ref().unwrap().borrow();
+        f(&node);
     }
-
-    pub fn list_roots(&self, max_depth: u32, show_archived: bool) -> Result<()> {
-        let roots = &self.roots;
-        self.list_recurse(roots, show_archived, max_depth, 1, None)?;
-        Ok(())
-    }
-
-    pub fn list_archived(&self) -> Result<()> {
-        self.list_recurse(&self.archived, true, 1, 1, None)?;
-        Ok(())
-    }
-
-    pub fn list_dates(&self) -> Result<()> {
-        let x: Vec<_> = self.dates.values().copied().collect();
-        self.list_recurse(x.as_slice(), false, 1, 1, None)?;
-        Ok(())
-    }
-
-    fn list_recurse(
+    /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.
+    pub fn traverse_recurse(
         &self,
         indices: &[usize],
-        show_archived: bool,
+        skip_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
+        f: &impl Fn(&Node, u32) -> (),
     ) -> Result<(), ErrorType> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -666,16 +637,14 @@ impl Graph {
             }
 
             // If theres no need to show archived nodes then ignore it and its children
-            if !show_archived && self.nodes[*i].as_ref().unwrap().borrow().archived {
+            if !skip_archived && self.nodes[*i].as_ref().unwrap().borrow().archived {
                 continue;
             }
+            if let Some(node) = &self.nodes[*i] {
+                f(&node.borrow(), depth);
+            }
 
-            Self::print_tree_indent(
-                depth,
-                self.nodes[*i].as_ref().unwrap().borrow().parents.len() > 1,
-            );
-            println!("{}", self.nodes[*i].as_ref().unwrap().borrow());
-            self.list_recurse(
+            self.traverse_recurse(
                 self.nodes[*i]
                     .as_ref()
                     .unwrap()
@@ -686,24 +655,10 @@ impl Graph {
                 max_depth,
                 depth + 1,
                 start,
+                f,
             )?;
         }
         Ok(())
-    }
-
-    fn print_tree_indent(depth: u32, dots: bool) {
-        if depth == 0 {
-            return;
-        }
-
-        for _ in 0..(depth - 1) {
-            print!(" |  ");
-        }
-        if dots {
-            print!(" +..");
-        } else {
-            print!(" +--");
-        }
     }
 
     pub fn print_stats(&self, target: Option<String>) -> Result<()> {
@@ -935,5 +890,37 @@ impl fmt::Display for NodeState {
             NodeState::Done => write!(f, "x"),
             NodeState::Pseudo => write!(f, "+"),
         }
+    }
+}
+
+/// Getters for external crates to obtain indices from private fields under `Graph`.
+pub trait GraphGetters {
+    fn get_root_nodes_indices(&self) -> &[usize];
+    fn get_archived_node_indices(&self) -> &[usize];
+    //
+    // TODO: both these uses vectors, is it worth the performance cost?
+    fn get_date_nodes_indices(&self) -> Vec<usize>;
+    fn get_node_children(&self, index: usize) -> Vec<usize>;
+}
+
+impl GraphGetters for Graph {
+    fn get_root_nodes_indices(&self) -> &[usize] {
+        &self.roots
+    }
+    fn get_date_nodes_indices(&self) -> Vec<usize> {
+        let x: Vec<_> = self.dates.values().copied().collect();
+        x
+    }
+    fn get_archived_node_indices(&self) -> &[usize] {
+        &self.archived
+    }
+
+    fn get_node_children(&self, index: usize) -> Vec<usize> {
+        self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .children
+            .to_vec()
     }
 }

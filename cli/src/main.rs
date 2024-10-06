@@ -1,8 +1,10 @@
+mod display;
 use std::path::PathBuf;
 
 use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
+use display::CLIDisplay;
 use tuecore::doc;
 use tuecore::graph::{self, ErrorType, NodeState};
 
