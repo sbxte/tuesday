@@ -73,7 +73,7 @@ impl CLIDisplay for Graph {
         let index = self.get_index(&target)?;
 
         // Display self as well
-        self.with_node(index, |node| Self::display_node(&node, 0));
+        self.with_node(index, |node| Self::display_node(node, 0));
 
         self.traverse_recurse(
             self.get_node_children(index).as_slice(),
@@ -81,7 +81,7 @@ impl CLIDisplay for Graph {
             max_depth,
             1,
             Some(index),
-            &|node, depth| Self::display_node(&node, depth),
+            &|node, depth| Self::display_node(node, depth),
         )?;
         Ok(())
     }
