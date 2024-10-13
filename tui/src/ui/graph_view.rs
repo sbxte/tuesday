@@ -94,6 +94,7 @@ pub struct GraphViewComponent {
     selected_indices: Vec<usize>,
     show_date_graphs: bool,
     path: Vec<usize>,
+    selection_idx_path: Vec<usize>,
     show_archived: bool,
 }
 
@@ -111,6 +112,7 @@ impl GraphViewComponent {
             show_archived: false,
             rendered_nodes_len: 0,
             path: Vec::new(),
+            selection_idx_path: Vec::new(),
             show_date_graphs: false,
         }
     }
@@ -135,6 +137,11 @@ impl GraphViewComponent {
     }
     pub fn step_into(&mut self) {
         if let Some(graph) = &self.graph {
+            self.selection_idx_path.push(
+                self.list_state
+                    .selected()
+                    .expect("Invalid selected node index"),
+            );
             match self.current_node {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
@@ -145,7 +152,7 @@ impl GraphViewComponent {
                             .expect("Invalid selected node index")];
 
                         self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(node_idx);
+                        self.path.push(indices[self.list_state.selected().unwrap()]);
                     } else {
                         let indices = graph.get_root_nodes_indices();
                         let node_idx = indices[self
@@ -154,29 +161,67 @@ impl GraphViewComponent {
                             .expect("Invalid selected node index")];
 
                         self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(node_idx);
+                        self.path.push(indices[self.list_state.selected().unwrap()]);
                     }
                 }
-                NodeLoc::Idx(x) => {}
+                NodeLoc::Idx(idx) => {
+                    self.path.push(idx);
+                    let node_idx = Self::get_node_idx(
+                        graph,
+                        idx,
+                        self.max_depth,
+                        self.list_state.selected().expect("Invalid node selection") + 1,
+                        self.show_archived,
+                    );
+                    self.current_node = NodeLoc::Idx(node_idx);
+                }
             }
         }
         self.list_state.select_first();
     }
 
     pub fn step_out(&mut self) {
+        // not on root
         if self.path.len() > 1 {
-            let idx = self.path.pop().expect("Invalid node index on path stack");
+            self.list_state.select(self.selection_idx_path.pop());
             self.current_node =
-                NodeLoc::Idx(self.path.pop().expect("Invalid node index on path stack"));
-            self.list_state.select(Some(idx));
-        } else {
+                NodeLoc::Idx(self.path.pop().expect("Invalid selected node index found"));
+        } else if self.path.len() == 1 {
+            self.list_state.select(self.selection_idx_path.pop());
+            self.path.pop();
             self.current_node = NodeLoc::Roots;
-            let idx = self.path.pop();
-            self.list_state.select(idx);
         }
     }
 
-    fn get_proper_node_idx() {}
+    /// Get the real node index from selection index.
+    fn get_node_idx(
+        graph: &Graph,
+        parent: usize,
+        depth: u32,
+        selected_index: usize,
+        show_archived: bool,
+    ) -> usize {
+        let children_indices = graph.get_node_children(parent);
+        let mut node_traversal_count = 0;
+        let mut node_idx = 0;
+        graph
+            .traverse_recurse(
+                &children_indices,
+                show_archived,
+                depth,
+                1,
+                None,
+                &mut |node, _depth| {
+                    node_traversal_count += 1;
+                    if node_traversal_count == selected_index {
+                        node_idx = node.index;
+                        // FIXME: do not keep looping when we've found the correct index
+                    }
+                },
+            )
+            .expect("Failed to get node index");
+        children_indices[node_idx]
+    }
 
     pub fn select_next(&mut self) {
         if let Some(idx) = self.list_state.selected() {
@@ -197,6 +242,11 @@ impl GraphViewComponent {
             }
         }
     }
+
+    pub fn check_active(&mut self) {}
+
+    // TODO: maybe use different path stack for the date graphs view
+    pub fn switch_date_graph() {}
 }
 
 impl Widget for &mut GraphViewComponent {

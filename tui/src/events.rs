@@ -30,6 +30,7 @@ pub enum ActiveNodeOperation {
     MoveTo,     // V
     Rename,     // r
     UnlinkFrom, // D
+    Check,      // C
 }
 
 /// Operations done with selected nodes.
@@ -117,6 +118,8 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('X') => {
                     Some(AppEvent::OperateActiveNode(ActiveNodeOperation::Delete))
                 }
+
+                KeyCode::Char('C') => Some(AppEvent::OperateActiveNode(ActiveNodeOperation::Check)),
 
                 KeyCode::Char('p') => {
                     Some(AppEvent::OperateSelected(SelectedNodeOperation::CopyTo))
