@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -76,32 +78,40 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     }
 }
 
+#[derive(Debug)]
 enum NodeLoc {
     Idx(usize),
-    Root,
-    Dates,
+    Roots,
 }
 
 pub struct GraphViewComponent {
     current_node: NodeLoc,
     filter: String,
     graph: Option<Graph>,
+    rendered_nodes_len: usize,
     list_state: ListState,
     max_depth: u32,
     selected_indices: Vec<usize>,
+    show_date_graphs: bool,
+    path: Vec<usize>,
     show_archived: bool,
 }
 
 impl GraphViewComponent {
     pub fn new() -> Self {
+        let mut list_state = ListState::default();
+        list_state.select_first();
         Self {
-            current_node: NodeLoc::Root,
+            current_node: NodeLoc::Roots,
             filter: String::new(),
             graph: None,
-            list_state: ListState::default(),
+            list_state,
             max_depth: 1,
             selected_indices: Vec::new(),
             show_archived: false,
+            rendered_nodes_len: 0,
+            path: Vec::new(),
+            show_date_graphs: false,
         }
     }
 
@@ -116,6 +126,77 @@ impl GraphViewComponent {
     pub fn graph_multiple_selected(&self) -> bool {
         self.selected_indices.len() > 0
     }
+
+    pub fn curr_idx(&self) -> Option<usize> {
+        match self.current_node {
+            NodeLoc::Idx(idx) => Some(idx),
+            _ => None,
+        }
+    }
+    pub fn step_into(&mut self) {
+        if let Some(graph) = &self.graph {
+            match self.current_node {
+                NodeLoc::Roots => {
+                    if self.show_date_graphs {
+                        let indices = graph.get_date_nodes_indices();
+                        let node_idx = indices[self
+                            .list_state
+                            .selected()
+                            .expect("Invalid selected node index")];
+
+                        self.current_node = NodeLoc::Idx(node_idx);
+                        self.path.push(node_idx);
+                    } else {
+                        let indices = graph.get_root_nodes_indices();
+                        let node_idx = indices[self
+                            .list_state
+                            .selected()
+                            .expect("Invalid selected node index")];
+
+                        self.current_node = NodeLoc::Idx(node_idx);
+                        self.path.push(node_idx);
+                    }
+                }
+                NodeLoc::Idx(x) => {}
+            }
+        }
+        self.list_state.select_first();
+    }
+
+    pub fn step_out(&mut self) {
+        if self.path.len() > 1 {
+            let idx = self.path.pop().expect("Invalid node index on path stack");
+            self.current_node =
+                NodeLoc::Idx(self.path.pop().expect("Invalid node index on path stack"));
+            self.list_state.select(Some(idx));
+        } else {
+            self.current_node = NodeLoc::Roots;
+            let idx = self.path.pop();
+            self.list_state.select(idx);
+        }
+    }
+
+    fn get_proper_node_idx() {}
+
+    pub fn select_next(&mut self) {
+        if let Some(idx) = self.list_state.selected() {
+            if idx + 1 < self.rendered_nodes_len {
+                self.list_state.select_next()
+            } else {
+                self.list_state.select_first()
+            }
+        }
+    }
+
+    pub fn select_previous(&mut self) {
+        if let Some(idx) = self.list_state.selected() {
+            if idx > 0 {
+                self.list_state.select_previous()
+            } else {
+                self.list_state.select_last()
+            }
+        }
+    }
 }
 
 impl Widget for &mut GraphViewComponent {
@@ -123,26 +204,51 @@ impl Widget for &mut GraphViewComponent {
     where
         Self: Sized,
     {
+        let mut list_items = Vec::<ListItem>::new();
         if let Some(graph) = &self.graph {
-            let mut list_items = Vec::<ListItem>::new();
             match self.current_node {
-                NodeLoc::Root => {
-                    let indices = graph.get_root_nodes_indices();
-                    graph
-                        .traverse_recurse(
-                            indices,
-                            !self.show_archived,
-                            self.max_depth,
-                            1,
-                            None,
-                            &mut |node, depth| {
-                                list_items.push(list_item_from_node(node.clone(), depth))
-                            },
-                        )
-                        .expect("Failed to traverse nodes");
+                NodeLoc::Roots => {
+                    self.rendered_nodes_len = 0;
+                    if self.show_date_graphs {
+                        let indices = graph.get_date_nodes_indices();
+                        graph
+                            .traverse_recurse(
+                                indices.as_slice(),
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut |node, depth| {
+                                    self.rendered_nodes_len += 1;
+                                    list_items.push(list_item_from_node(node.clone(), depth))
+                                },
+                            )
+                            .expect("Failed to traverse nodes");
+                    } else {
+                        self.rendered_nodes_len = 0;
+                        let indices = graph.get_root_nodes_indices();
+                        graph
+                            .traverse_recurse(
+                                indices,
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut |node, depth| {
+                                    self.rendered_nodes_len += 1;
+                                    list_items.push(list_item_from_node(node.clone(), depth))
+                                },
+                            )
+                            .expect("Failed to traverse nodes");
+                    }
                 }
+
                 NodeLoc::Idx(idx) => {
+                    self.rendered_nodes_len = 1; // there will always be the parent
                     let indices = graph.get_node_children(idx);
+                    graph.with_node(idx, &mut |node| {
+                        list_items.push(list_item_from_node(node.clone(), 0))
+                    });
                     graph
                         .traverse_recurse(
                             indices.as_slice(),
@@ -151,21 +257,7 @@ impl Widget for &mut GraphViewComponent {
                             1,
                             None,
                             &mut |node, depth| {
-                                list_items.push(list_item_from_node(node.clone(), depth))
-                            },
-                        )
-                        .expect("Failed to traverse nodes");
-                }
-                NodeLoc::Dates => {
-                    let indices = graph.get_date_nodes_indices();
-                    graph
-                        .traverse_recurse(
-                            indices.as_slice(),
-                            !self.show_archived,
-                            self.max_depth,
-                            1,
-                            None,
-                            &mut |node, depth| {
+                                self.rendered_nodes_len += 1;
                                 list_items.push(list_item_from_node(node.clone(), depth))
                             },
                         )

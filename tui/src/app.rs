@@ -1,10 +1,6 @@
-use crate::{events::AppEvent, ui};
-use crossterm::event::Event;
-use ratatui::{
-    layout::{Direction, Layout, Rect},
-    prelude::Constraint,
-    widgets::Widget,
-    Frame,
+use crate::{
+    events::{AppEvent, NavDirection},
+    ui,
 };
 use tuecore::graph::Graph;
 
@@ -17,7 +13,7 @@ pub enum AppView {
 }
 
 #[derive(Default)]
-struct AppState {
+pub struct AppState {
     pub(crate) current_view: AppView,
     pub(crate) should_exit: bool,
 }
@@ -59,6 +55,13 @@ impl App {
     pub fn process_event(&mut self, event: &AppEvent) -> Option<AppEvent> {
         match event {
             AppEvent::Quit => self.state.should_exit = true,
+            AppEvent::Navigate(navigation) => match navigation {
+                NavDirection::Next => self.components.graph_view.select_next(),
+                NavDirection::Previous => self.components.graph_view.select_previous(),
+                NavDirection::StepIn => self.components.graph_view.step_into(),
+                NavDirection::StepOut => self.components.graph_view.step_out(),
+                _ => (),
+            },
             _ => (),
         }
         None

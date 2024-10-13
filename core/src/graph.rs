@@ -610,10 +610,11 @@ impl Graph {
     }
 
     /// Call a closure that takes a node, with given index.
-    pub fn with_node(&self, index: usize, f: impl Fn(&Node) -> ()) {
+    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node) -> ()) {
         let node = self.nodes[index].as_ref().unwrap().borrow();
         f(&node);
     }
+
     /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.
     pub fn traverse_recurse(
         &self,

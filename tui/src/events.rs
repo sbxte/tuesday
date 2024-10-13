@@ -25,7 +25,7 @@ pub enum NavDirection {
 pub enum ActiveNodeOperation {
     CopyTo,     // P
     LinkTo,     // S
-    Modify,     // m
+    Modify,     // M
     Delete,     // X
     MoveTo,     // V
     Rename,     // r
@@ -105,7 +105,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('r') => {
                     Some(AppEvent::OperateActiveNode(ActiveNodeOperation::Rename))
                 }
-                KeyCode::Char('m') => {
+                KeyCode::Char('M') => {
                     Some(AppEvent::OperateActiveNode(ActiveNodeOperation::Modify))
                 }
                 KeyCode::Char('S') => {
