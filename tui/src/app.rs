@@ -60,6 +60,8 @@ impl App {
                 NavDirection::Previous => self.components.graph_view.select_previous(),
                 NavDirection::StepIn => self.components.graph_view.step_into(),
                 NavDirection::StepOut => self.components.graph_view.step_out(),
+                NavDirection::First => self.components.graph_view.select_first(),
+                NavDirection::Last => self.components.graph_view.select_last(),
                 _ => (),
             },
             AppEvent::OperateActiveNode(operation) => match operation {

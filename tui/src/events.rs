@@ -17,6 +17,8 @@ pub enum NavDirection {
     Previous,     // k
     StepIn,       // l
     StepOut,      // h
+    First,        // g
+    Last,         // G
     ToDate,       // ~
     ToRoot,       // `
 }
@@ -96,6 +98,8 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('~') => Some(AppEvent::Navigate(NavDirection::ToDate)),
                 KeyCode::Char('-') => Some(AppEvent::Navigate(NavDirection::LastLocation)),
                 KeyCode::Char('J') => Some(AppEvent::Navigate(NavDirection::JumpTo)),
+                KeyCode::Char('g') => Some(AppEvent::Navigate(NavDirection::First)),
+                KeyCode::Char('G') => Some(AppEvent::Navigate(NavDirection::Last)),
 
                 KeyCode::Char('P') => {
                     Some(AppEvent::OperateActiveNode(ActiveNodeOperation::CopyTo))

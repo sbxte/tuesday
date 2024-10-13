@@ -184,14 +184,19 @@ impl GraphViewComponent {
                         graph,
                         idx,
                         self.max_depth,
-                        self.list_state.selected().expect("Invalid node selection"),
+                        self.list_state.selected().expect("Invalid node selection") - 1,
                         self.show_archived,
                     );
                     self.current_node = NodeLoc::Idx(node_idx);
                 }
             }
+
+            if self.rendered_nodes_len > 1 {
+                self.list_state.select(Some(1));
+            } else {
+                self.list_state.select(Some(0));
+            }
         }
-        self.list_state.select_first();
     }
 
     pub fn step_out(&mut self) {
@@ -225,15 +230,23 @@ impl GraphViewComponent {
                 1,
                 None,
                 &mut |node, _depth| {
-                    node_traversal_count += 1;
                     if node_traversal_count == selected_index {
                         node_idx = node.index;
                         // FIXME: do not keep looping when we've found the correct index
                     }
+                    node_traversal_count += 1;
                 },
             )
             .expect("Failed to get node index");
         node_idx
+    }
+
+    pub fn select_first(&mut self) {
+        self.list_state.select_first()
+    }
+
+    pub fn select_last(&mut self) {
+        self.list_state.select_last()
     }
 
     pub fn select_next(&mut self) {
@@ -281,7 +294,7 @@ impl GraphViewComponent {
                         graph,
                         idx,
                         self.max_depth,
-                        self.list_state.selected().expect("Invalid node"),
+                        self.list_state.selected().expect("Invalid node") - 1,
                         self.show_archived,
                     );
 
