@@ -1,6 +1,6 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::{borrow::Borrow, cell::RefCell};
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
@@ -613,6 +613,11 @@ impl Graph {
     pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node) -> ()) {
         let node = self.nodes[index].as_ref().unwrap().borrow();
         f(&node);
+    }
+
+    /// Get a node of an index from graph. Note that the returned node is cloned from the original.
+    pub fn get_node(&self, index: usize) -> Node {
+        self.nodes[index].as_ref().unwrap().borrow().clone()
     }
 
     /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.

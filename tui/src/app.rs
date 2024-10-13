@@ -1,5 +1,5 @@
 use crate::{
-    events::{AppEvent, NavDirection},
+    events::{ActiveNodeOperation, AppEvent, NavDirection},
     ui,
 };
 use tuecore::graph::Graph;
@@ -60,6 +60,10 @@ impl App {
                 NavDirection::Previous => self.components.graph_view.select_previous(),
                 NavDirection::StepIn => self.components.graph_view.step_into(),
                 NavDirection::StepOut => self.components.graph_view.step_out(),
+                _ => (),
+            },
+            AppEvent::OperateActiveNode(operation) => match operation {
+                ActiveNodeOperation::Check => self.components.graph_view.check_active(),
                 _ => (),
             },
             _ => (),

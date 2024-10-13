@@ -9,8 +9,12 @@ use ratatui::{
 };
 use tuecore::graph::{Graph, GraphGetters, Node, NodeState, NodeType};
 
+use super::statusbar::curr_node;
+
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
+
+const INVALID_NODE_SELECTION_MSG: &str = "Invalid selected node index found";
 
 enum TabView {
     Tasks,
@@ -140,7 +144,7 @@ impl GraphViewComponent {
             self.selection_idx_path.push(
                 self.list_state
                     .selected()
-                    .expect("Invalid selected node index"),
+                    .expect(INVALID_NODE_SELECTION_MSG),
             );
             match self.current_node {
                 NodeLoc::Roots => {
@@ -149,7 +153,7 @@ impl GraphViewComponent {
                         let node_idx = indices[self
                             .list_state
                             .selected()
-                            .expect("Invalid selected node index")];
+                            .expect(INVALID_NODE_SELECTION_MSG)];
 
                         self.current_node = NodeLoc::Idx(node_idx);
                         self.path.push(indices[self.list_state.selected().unwrap()]);
@@ -158,7 +162,7 @@ impl GraphViewComponent {
                         let node_idx = indices[self
                             .list_state
                             .selected()
-                            .expect("Invalid selected node index")];
+                            .expect(INVALID_NODE_SELECTION_MSG)];
 
                         self.current_node = NodeLoc::Idx(node_idx);
                         self.path.push(indices[self.list_state.selected().unwrap()]);
@@ -187,8 +191,7 @@ impl GraphViewComponent {
         // not on root
         if self.path.len() > 1 {
             self.list_state.select(self.selection_idx_path.pop());
-            self.current_node =
-                NodeLoc::Idx(self.path.pop().expect("Invalid selected node index found"));
+            self.current_node = NodeLoc::Idx(self.path.pop().expect(INVALID_NODE_SELECTION_MSG));
         } else if self.path.len() == 1 {
             self.list_state.select(self.selection_idx_path.pop());
             self.path.pop();
@@ -246,7 +249,52 @@ impl GraphViewComponent {
         }
     }
 
-    pub fn check_active(&mut self) {}
+    pub fn check_active(&mut self) {
+        if let Some(ref mut graph) = self.graph {
+            match self.current_node {
+                NodeLoc::Roots => {
+                    let indices = graph.get_root_nodes_indices();
+                    let idx = indices[self.list_state.selected().unwrap()];
+                    let state = graph.get_node(idx).state;
+                    match state {
+                        NodeState::Done => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::None, true);
+                        }
+                        NodeState::None => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                        }
+                        NodeState::Pseudo => (),
+                        NodeState::Partial => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                        }
+                    };
+                }
+                NodeLoc::Idx(idx) => {
+                    let node_idx = Self::get_node_idx(
+                        &graph,
+                        idx,
+                        self.max_depth,
+                        self.list_state.selected().expect("Invalid node"),
+                        self.show_archived,
+                    );
+
+                    let state = graph.get_node(node_idx).state;
+                    match state {
+                        NodeState::Done => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::None, true);
+                        }
+                        NodeState::None => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                        }
+                        NodeState::Pseudo => (),
+                        NodeState::Partial => {
+                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                        }
+                    };
+                }
+            }
+        }
+    }
 
     // TODO: maybe use different path stack for the date graphs view
     pub fn switch_date_graph() {}
