@@ -9,8 +9,6 @@ use ratatui::{
 };
 use tuecore::graph::{Graph, GraphGetters, Node, NodeState, NodeType};
 
-use super::statusbar::curr_node;
-
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
 
@@ -64,6 +62,9 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
     let message = Span::raw(value.message.to_owned());
+    let idxbox_left = Span::raw(" (");
+    let idx = Span::styled(value.index.to_string(), GRAPH_STATUSBOX_STYLE);
+    let idxbox_right = Span::raw(")");
     if let Some(indent) = indent {
         return ListItem::new(Line::from(vec![
             indent,
@@ -71,6 +72,9 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
+            idxbox_left,
+            idx,
+            idxbox_right,
         ]));
     } else {
         return ListItem::new(Line::from(vec![
@@ -78,6 +82,9 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
+            idxbox_left,
+            idx,
+            idxbox_right,
         ]));
     }
 }
@@ -215,7 +222,7 @@ impl GraphViewComponent {
                 &children_indices,
                 show_archived,
                 depth,
-                1, // start at 1 - we don't count the first entry (the parent)
+                1,
                 None,
                 &mut |node, _depth| {
                     node_traversal_count += 1;
@@ -271,7 +278,7 @@ impl GraphViewComponent {
                 }
                 NodeLoc::Idx(idx) => {
                     let node_idx = Self::get_node_idx(
-                        &graph,
+                        graph,
                         idx,
                         self.max_depth,
                         self.list_state.selected().expect("Invalid node"),
@@ -281,14 +288,15 @@ impl GraphViewComponent {
                     let state = graph.get_node(node_idx).state;
                     match state {
                         NodeState::Done => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::None, true);
+                            // TODO: error handling?
+                            let _ = graph.set_state(node_idx.to_string(), NodeState::None, true);
                         }
                         NodeState::None => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                            let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
                         }
                         NodeState::Pseudo => (),
                         NodeState::Partial => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
+                            let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
                         }
                     };
                 }

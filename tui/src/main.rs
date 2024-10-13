@@ -16,8 +16,8 @@ use tuecore::doc;
 
 pub mod app;
 pub mod cli;
+pub mod components;
 pub mod events;
-pub mod ui;
 
 fn app_init(stderr: &mut io::Stderr) -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;

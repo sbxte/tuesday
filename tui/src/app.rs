@@ -1,6 +1,6 @@
 use crate::{
+    components,
     events::{ActiveNodeOperation, AppEvent, NavDirection},
-    ui,
 };
 use tuecore::graph::Graph;
 
@@ -20,7 +20,7 @@ pub struct AppState {
 
 /// App state
 pub struct App {
-    pub(crate) components: ui::AppUIComponent,
+    pub(crate) components: components::AppUIComponent,
     pub(crate) state: AppState,
 }
 
@@ -46,7 +46,7 @@ impl App {
 
     pub fn new() -> Self {
         App {
-            components: ui::AppUIComponent::new(),
+            components: components::AppUIComponent::new(),
             state: AppState::default(),
         }
     }

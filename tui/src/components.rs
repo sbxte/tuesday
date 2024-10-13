@@ -4,7 +4,6 @@ pub mod tabs;
 
 use graph_view::GraphViewComponent;
 use ratatui::{
-    buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     widgets::Widget,
     Frame,

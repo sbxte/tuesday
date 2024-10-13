@@ -1,5 +1,3 @@
-pub mod curr_node;
-
 use ratatui::layout::Rect;
 
 use crate::events::AppEvent;
