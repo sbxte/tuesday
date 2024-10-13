@@ -55,7 +55,7 @@ impl NodeTUIDisplay for Node {
 }
 
 fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
-    let indent = Node::print_tree_indent(depth, value.children.len() > 1);
+    let indent = Node::print_tree_indent(depth, value.parents.len() > 1);
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
@@ -165,12 +165,15 @@ impl GraphViewComponent {
                     }
                 }
                 NodeLoc::Idx(idx) => {
+                    if self.list_state.selected() == Some(0) {
+                        return;
+                    }
                     self.path.push(idx);
                     let node_idx = Self::get_node_idx(
                         graph,
                         idx,
                         self.max_depth,
-                        self.list_state.selected().expect("Invalid node selection") + 1,
+                        self.list_state.selected().expect("Invalid node selection"),
                         self.show_archived,
                     );
                     self.current_node = NodeLoc::Idx(node_idx);
@@ -209,7 +212,7 @@ impl GraphViewComponent {
                 &children_indices,
                 show_archived,
                 depth,
-                1,
+                1, // start at 1 - we don't count the first entry (the parent)
                 None,
                 &mut |node, _depth| {
                     node_traversal_count += 1;
@@ -220,7 +223,7 @@ impl GraphViewComponent {
                 },
             )
             .expect("Failed to get node index");
-        children_indices[node_idx]
+        node_idx
     }
 
     pub fn select_next(&mut self) {
