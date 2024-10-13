@@ -622,7 +622,7 @@ impl Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &impl Fn(&Node, u32) -> (),
+        f: &mut impl FnMut(&Node, u32) -> (),
     ) -> Result<(), ErrorType> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -897,7 +897,7 @@ impl fmt::Display for NodeState {
 pub trait GraphGetters {
     fn get_root_nodes_indices(&self) -> &[usize];
     fn get_archived_node_indices(&self) -> &[usize];
-    //
+
     // TODO: both these uses vectors, is it worth the performance cost?
     fn get_date_nodes_indices(&self) -> Vec<usize>;
     fn get_node_children(&self, index: usize) -> Vec<usize>;
