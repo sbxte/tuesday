@@ -269,49 +269,54 @@ impl GraphViewComponent {
         }
     }
 
+    fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {
+        match curr_state {
+            NodeState::Done => {
+                // TODO: error handling?
+                // TODO: this gets the node_idx converted to string, then the internal function
+                // converts it back into an index. nahh.
+                let _ = graph.set_state(node_idx.to_string(), NodeState::None, true);
+            }
+            NodeState::None => {
+                let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
+            }
+            NodeState::Pseudo => (),
+            NodeState::Partial => {
+                let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
+            }
+        };
+    }
     pub fn check_active(&mut self) {
         if let Some(ref mut graph) = self.graph {
             match self.current_node {
                 NodeLoc::Roots => {
                     let indices = graph.get_root_nodes_indices();
-                    let idx = indices[self.list_state.selected().unwrap()];
-                    let state = graph.get_node(idx).state;
-                    match state {
-                        NodeState::Done => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::None, true);
-                        }
-                        NodeState::None => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
-                        }
-                        NodeState::Pseudo => (),
-                        NodeState::Partial => {
-                            let _ = graph.set_state(idx.to_string(), NodeState::Done, true);
-                        }
-                    };
+                    let node_idx = indices[self.list_state.selected().unwrap()];
+                    let state = graph.get_node(node_idx).state;
+                    Self::modify_task_status(graph, node_idx, state);
                 }
                 NodeLoc::Idx(idx) => {
-                    let node_idx = Self::get_node_idx(
-                        graph,
-                        idx,
-                        self.max_depth,
-                        self.list_state.selected().expect("Invalid node") - 1,
-                        self.show_archived,
-                    );
-
-                    let state = graph.get_node(node_idx).state;
-                    match state {
-                        NodeState::Done => {
-                            // TODO: error handling?
-                            let _ = graph.set_state(node_idx.to_string(), NodeState::None, true);
-                        }
-                        NodeState::None => {
-                            let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
-                        }
-                        NodeState::Pseudo => (),
-                        NodeState::Partial => {
-                            let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
+                    let node_idx = {
+                        if self
+                            .list_state
+                            .selected()
+                            .expect(INVALID_NODE_SELECTION_MSG)
+                            == 0
+                        {
+                            idx
+                        } else {
+                            Self::get_node_idx(
+                                graph,
+                                idx,
+                                self.max_depth,
+                                self.list_state.selected().expect("Invalid node") - 1,
+                                self.show_archived,
+                            )
                         }
                     };
+
+                    let state = graph.get_node(node_idx).state;
+                    Self::modify_task_status(graph, node_idx, state);
                 }
             }
         }
