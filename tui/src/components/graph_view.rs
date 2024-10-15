@@ -80,7 +80,7 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     }
 }
 
-#[derive(Debug)]
+#[derive(PartialEq)]
 enum NodeLoc {
     Idx(usize),
     Roots,
@@ -258,6 +258,24 @@ impl GraphViewComponent {
                 self.list_state.select_last()
             }
         }
+    }
+
+    /// Toggle between root date graphs and normal root graphs
+    pub fn toggle_switch_roots_view(&mut self) {
+        if self.current_node == NodeLoc::Roots {
+            self.show_date_graphs = !self.show_date_graphs;
+            self.select_first();
+        }
+    }
+
+    /// Switch to view of root nodes
+    pub fn switch_view_to_roots(&mut self) {
+        self.switch_to_root();
+    }
+
+    fn switch_to_root(&mut self) {
+        self.path.clear();
+        self.current_node = NodeLoc::Roots;
     }
 
     fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {

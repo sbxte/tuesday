@@ -11,16 +11,16 @@ pub enum TabDirection {
 
 /// Possible Navigation Actions.
 pub enum NavDirection {
-    JumpTo,       // J
-    LastLocation, // -
-    Next,         // j
-    Previous,     // k
-    StepIn,       // l
-    StepOut,      // h
-    First,        // g
-    Last,         // G
-    ToDate,       // ~
-    ToRoot,       // `
+    JumpTo,         // J
+    LastLocation,   // -
+    Next,           // j
+    Previous,       // k
+    StepIn,         // l
+    StepOut,        // h
+    First,          // g
+    Last,           // G
+    ToggleRootView, // ~
+    ToRoot,         // `
 }
 
 /// Operations done with active node.
@@ -95,7 +95,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('l') => Some(AppEvent::Navigate(NavDirection::StepIn)),
                 KeyCode::Char('h') => Some(AppEvent::Navigate(NavDirection::StepOut)),
                 KeyCode::Char('`') => Some(AppEvent::Navigate(NavDirection::ToRoot)),
-                KeyCode::Char('~') => Some(AppEvent::Navigate(NavDirection::ToDate)),
+                KeyCode::Char('~') => Some(AppEvent::Navigate(NavDirection::ToggleRootView)),
                 KeyCode::Char('-') => Some(AppEvent::Navigate(NavDirection::LastLocation)),
                 KeyCode::Char('J') => Some(AppEvent::Navigate(NavDirection::JumpTo)),
                 KeyCode::Char('g') => Some(AppEvent::Navigate(NavDirection::First)),

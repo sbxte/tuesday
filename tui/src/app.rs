@@ -62,6 +62,10 @@ impl App {
                 NavDirection::StepOut => self.components.graph_view.step_out(),
                 NavDirection::First => self.components.graph_view.select_first(),
                 NavDirection::Last => self.components.graph_view.select_last(),
+                NavDirection::ToggleRootView => {
+                    self.components.graph_view.toggle_switch_roots_view()
+                }
+                NavDirection::ToRoot => self.components.graph_view.switch_view_to_roots(),
                 _ => (),
             },
             AppEvent::OperateActiveNode(operation) => match operation {
