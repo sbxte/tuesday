@@ -299,10 +299,17 @@ impl GraphViewComponent {
         if let Some(ref mut graph) = self.graph {
             match self.current_node {
                 NodeLoc::Roots => {
-                    let indices = graph.get_root_nodes_indices();
-                    let node_idx = indices[self.list_state.selected().unwrap()];
-                    let state = graph.get_node(node_idx).state;
-                    Self::modify_task_status(graph, node_idx, state);
+                    if self.show_date_graphs {
+                        let indices = graph.get_date_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        let state = graph.get_node(node_idx).state;
+                        Self::modify_task_status(graph, node_idx, state);
+                    } else {
+                        let indices = graph.get_root_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        let state = graph.get_node(node_idx).state;
+                        Self::modify_task_status(graph, node_idx, state);
+                    }
                 }
                 NodeLoc::Idx(idx) => {
                     let node_idx = {
