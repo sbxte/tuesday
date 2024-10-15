@@ -62,9 +62,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
     let message = Span::raw(value.message.to_owned());
-    let idxbox_left = Span::raw(" (");
-    let idx = Span::styled(value.index.to_string(), GRAPH_STATUSBOX_STYLE);
-    let idxbox_right = Span::raw(")");
     if let Some(indent) = indent {
         return ListItem::new(Line::from(vec![
             indent,
@@ -72,9 +69,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
-            idxbox_left,
-            idx,
-            idxbox_right,
         ]));
     } else {
         return ListItem::new(Line::from(vec![
@@ -82,9 +76,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
-            idxbox_left,
-            idx,
-            idxbox_right,
         ]));
     }
 }
@@ -118,7 +109,7 @@ impl GraphViewComponent {
             filter: String::new(),
             graph: None,
             list_state,
-            max_depth: 1,
+            max_depth: 4,
             selected_indices: Vec::new(),
             show_archived: false,
             rendered_nodes_len: 0,
@@ -185,7 +176,7 @@ impl GraphViewComponent {
                         idx,
                         self.max_depth,
                         self.list_state.selected().expect("Invalid node selection") - 1,
-                        self.show_archived,
+                        !self.show_archived,
                     );
                     self.current_node = NodeLoc::Idx(node_idx);
                 }
@@ -310,7 +301,7 @@ impl GraphViewComponent {
                                 idx,
                                 self.max_depth,
                                 self.list_state.selected().expect("Invalid node") - 1,
-                                self.show_archived,
+                                !self.show_archived,
                             )
                         }
                     };
@@ -342,7 +333,7 @@ impl Widget for &mut GraphViewComponent {
                             .traverse_recurse(
                                 indices.as_slice(),
                                 !self.show_archived,
-                                self.max_depth,
+                                1,
                                 1,
                                 None,
                                 &mut |node, depth| {
@@ -358,7 +349,7 @@ impl Widget for &mut GraphViewComponent {
                             .traverse_recurse(
                                 indices,
                                 !self.show_archived,
-                                self.max_depth,
+                                1,
                                 1,
                                 None,
                                 &mut |node, depth| {
