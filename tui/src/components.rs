@@ -1,7 +1,9 @@
+pub mod cmdline;
 pub mod graph_view;
 pub mod statusbar;
 pub mod tabs;
 
+use cmdline::CmdlineComponent;
 use graph_view::GraphViewComponent;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -16,23 +18,26 @@ pub struct AppLayout {
     tabs_view: Rect,
     graph_view: Rect,
     status_bar: Rect,
+    cmdline: Rect,
 }
 
 impl AppLayout {
-    pub fn new(frame: Rect) -> Self {
+    pub fn new(area: Rect) -> Self {
         let rects = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(2),
                 Constraint::Fill(1),
-                Constraint::Percentage(2),
+                Constraint::Length(2),
+                Constraint::Length(2),
             ])
-            .split(frame);
+            .split(area);
 
         Self {
             tabs_view: rects[0],
             graph_view: rects[1],
             status_bar: rects[2],
+            cmdline: rects[3],
         }
     }
 }
@@ -42,6 +47,7 @@ pub struct AppUIComponent {
     pub(crate) tabs: TabComponent,
     pub(crate) graph_view: GraphViewComponent,
     pub(crate) status_bar: StatusBarComponent,
+    pub(crate) cmdline: CmdlineComponent,
 }
 
 impl AppUIComponent {
@@ -50,6 +56,7 @@ impl AppUIComponent {
             tabs: TabComponent::new(),
             graph_view: GraphViewComponent::new(),
             status_bar: StatusBarComponent::new(),
+            cmdline: CmdlineComponent::new(),
         }
     }
 }
@@ -60,8 +67,14 @@ impl Widget for &mut AppUIComponent {
         Self: Sized,
     {
         let layout = AppLayout::new(area);
-        self.tabs.render(layout.tabs_view);
-        self.graph_view.render(layout.graph_view, buf);
+        self.tabs.render(layout.tabs_view, buf);
+
+        match self.tabs.curr_view() {
+            tabs::TabView::Tasks => self.graph_view.render(layout.graph_view, buf),
+            tabs::TabView::Calendar => (),
+            tabs::TabView::DateGraph => (),
+        }
         self.status_bar.render(layout.status_bar);
+        self.cmdline.render(layout.status_bar)
     }
 }

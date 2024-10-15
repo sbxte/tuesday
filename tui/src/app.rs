@@ -1,21 +1,14 @@
 use crate::{
-    components,
+    components::{self, tabs::TabView},
     events::{ActiveNodeOperation, AppEvent, NavDirection},
 };
 use tuecore::graph::Graph;
 
-#[derive(Default, PartialEq)]
-pub enum AppView {
-    #[default]
-    Tasks,
-    DateGraph,
-    Calendar,
-}
-
 #[derive(Default)]
 pub struct AppState {
-    pub(crate) current_view: AppView,
+    pub(crate) current_view: TabView,
     pub(crate) should_exit: bool,
+    pub(crate) cmdline_focused: bool,
 }
 
 /// App state
@@ -36,8 +29,8 @@ impl App {
         self.components.graph_view.graph_is_loaded()
     }
 
-    pub fn current_view(&self) -> &AppView {
-        &self.state.current_view
+    pub fn current_view(&self) -> &TabView {
+        &self.components.tabs.curr_view()
     }
 
     pub fn multiple_nodes_selected(&self) -> bool {
@@ -55,6 +48,7 @@ impl App {
     pub fn process_event(&mut self, event: &AppEvent) -> Option<AppEvent> {
         match event {
             AppEvent::Quit => self.state.should_exit = true,
+            AppEvent::TabChange(direction) => self.components.tabs.switch_view(direction),
             AppEvent::Navigate(navigation) => match navigation {
                 NavDirection::Next => self.components.graph_view.select_next(),
                 NavDirection::Previous => self.components.graph_view.select_previous(),

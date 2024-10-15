@@ -1,11 +1,38 @@
-use ratatui::layout::Rect;
+use ratatui::{
+    layout::Rect,
+    style::{Color, Style},
+    text::Line,
+    widgets::{Tabs, Widget},
+    Frame,
+};
+
+const HIGLIGHTED_COLOR: Style = Style::new().bg(Color::DarkGray).fg(Color::White);
 
 use crate::events::TabDirection;
 
-enum TabView {
+#[derive(Default)]
+pub enum TabView {
+    #[default]
     Tasks,
     DateGraph,
     Calendar,
+}
+
+impl TabView {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Tasks => "Tasks".to_owned(),
+            Self::Calendar => "Calendar".to_owned(),
+            Self::DateGraph => "Date Graph".to_owned(),
+        }
+    }
+    fn idx(&self) -> usize {
+        match self {
+            Self::Tasks => 0,
+            Self::Calendar => 1,
+            Self::DateGraph => 2,
+        }
+    }
 }
 
 pub struct TabComponent {
@@ -13,39 +40,52 @@ pub struct TabComponent {
 }
 
 impl TabComponent {
+    pub fn curr_view(&self) -> &TabView {
+        &self.current_view
+    }
+
     pub fn new() -> Self {
         Self {
             current_view: TabView::Tasks,
         }
     }
-    pub fn switch_view(&mut self, direction: TabDirection) {
+    pub fn switch_view(&mut self, direction: &TabDirection) {
         match self.current_view {
-            TabView::Tasks if direction == TabDirection::Next => {
+            TabView::Tasks if *direction == TabDirection::Previous => {
                 self.current_view = TabView::DateGraph;
             }
-            TabView::Tasks if direction == TabDirection::Previous => {
+            TabView::Tasks if *direction == TabDirection::Next => {
                 self.current_view = TabView::Calendar;
             }
-            TabView::DateGraph if direction == TabDirection::Next => {
+            TabView::DateGraph if *direction == TabDirection::Previous => {
                 self.current_view = TabView::Calendar;
             }
 
-            TabView::DateGraph if direction == TabDirection::Previous => {
+            TabView::DateGraph if *direction == TabDirection::Next => {
                 self.current_view = TabView::Tasks;
             }
 
-            TabView::Calendar if direction == TabDirection::Previous => {
+            TabView::Calendar if *direction == TabDirection::Next => {
                 self.current_view = TabView::DateGraph;
             }
 
-            TabView::Calendar if direction == TabDirection::Previous => {
+            TabView::Calendar if *direction == TabDirection::Previous => {
                 self.current_view = TabView::Tasks;
             }
             _ => (),
         }
     }
+}
 
-    pub fn render(&self, rect: Rect) {
-        ()
+impl Widget for &mut TabComponent {
+    fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer)
+    where
+        Self: Sized,
+    {
+        let tabs = vec![TabView::Tasks, TabView::DateGraph, TabView::Calendar];
+        Tabs::new(tabs.iter().map(|tab| Line::from(tab.to_string())))
+            .highlight_style(HIGLIGHTED_COLOR)
+            .select(self.current_view.idx())
+            .render(area, buf);
     }
 }

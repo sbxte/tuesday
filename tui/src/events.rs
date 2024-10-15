@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 
-use crate::app::{App, AppView};
+use crate::{app::App, components::tabs::TabView};
 
 /// Possible Tab Change Directions.
 #[derive(PartialEq)]
@@ -42,6 +42,7 @@ pub enum SelectedNodeOperation {
     LinkTo,     // s
     MoveTo,     // v
     UnlinkFrom, // d
+    Check,      // c
 }
 
 /// Node filtering operations.
@@ -76,8 +77,10 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
     }
 
     match key_event.code {
-        KeyCode::Char(']') => return Some(AppEvent::TabChange(TabDirection::Next)),
-        KeyCode::Char('[') => return Some(AppEvent::TabChange(TabDirection::Previous)),
+        KeyCode::Char(']') | KeyCode::Tab => return Some(AppEvent::TabChange(TabDirection::Next)),
+        KeyCode::Char('[') | KeyCode::BackTab => {
+            return Some(AppEvent::TabChange(TabDirection::Previous))
+        }
         KeyCode::Char('q') => return Some(AppEvent::Quit),
         KeyCode::F(1) => return Some(AppEvent::Help),
         _ => (),
@@ -85,7 +88,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
 
     // Specific to current view
     match app.current_view() {
-        AppView::Tasks | AppView::DateGraph => {
+        TabView::Tasks | TabView::DateGraph => {
             if !app.graph_is_loaded() {
                 return None;
             };
@@ -156,6 +159,6 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
             };
         }
 
-        AppView::Calendar => todo!(),
+        TabView::Calendar => todo!(),
     }
 }
