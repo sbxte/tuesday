@@ -90,10 +90,16 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 return None;
             };
             return match key_event.code {
-                KeyCode::Char('j') => Some(AppEvent::Navigate(NavDirection::Next)),
-                KeyCode::Char('k') => Some(AppEvent::Navigate(NavDirection::Previous)),
-                KeyCode::Char('l') => Some(AppEvent::Navigate(NavDirection::StepIn)),
-                KeyCode::Char('h') => Some(AppEvent::Navigate(NavDirection::StepOut)),
+                KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::Navigate(NavDirection::Next)),
+                KeyCode::Char('k') | KeyCode::Up => {
+                    Some(AppEvent::Navigate(NavDirection::Previous))
+                }
+                KeyCode::Char('l') | KeyCode::Right => {
+                    Some(AppEvent::Navigate(NavDirection::StepIn))
+                }
+                KeyCode::Char('h') | KeyCode::Left => {
+                    Some(AppEvent::Navigate(NavDirection::StepOut))
+                }
                 KeyCode::Char('`') => Some(AppEvent::Navigate(NavDirection::ToRoot)),
                 KeyCode::Char('~') => Some(AppEvent::Navigate(NavDirection::ToggleRootView)),
                 KeyCode::Char('-') => Some(AppEvent::Navigate(NavDirection::LastLocation)),
