@@ -109,7 +109,7 @@ impl GraphViewComponent {
             filter: String::new(),
             graph: None,
             list_state,
-            max_depth: 4,
+            max_depth: 1,
             selected_indices: Vec::new(),
             show_archived: false,
             rendered_nodes_len: 0,
