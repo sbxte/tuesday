@@ -73,7 +73,7 @@ impl CLIDisplay for Graph {
         let index = self.get_index(&target)?;
 
         // Display self as well
-        self.with_node(index, |node| Self::display_node(node, 0));
+        self.with_node(index, &mut |node| Self::display_node(node, 0));
 
         self.traverse_recurse(
             self.get_node_children(index).as_slice(),
