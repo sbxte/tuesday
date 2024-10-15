@@ -340,8 +340,13 @@ impl GraphViewComponent {
 
     // TODO: maybe use different path stack for the date graphs view
     pub fn switch_date_graph() {}
+}
 
-    pub fn render(&mut self, area: Rect, buf: &mut ratatui::prelude::Buffer) {
+impl Widget for &mut GraphViewComponent {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
         let mut list_items = Vec::<ListItem>::new();
         if let Some(graph) = &self.graph {
             match self.current_node {
