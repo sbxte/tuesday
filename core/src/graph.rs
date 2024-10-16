@@ -877,7 +877,20 @@ impl fmt::Display for Node {
             format!("({})", self.index)
         }
         .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
+        let color = match self.state {
+            NodeState::Done => colored::Color::TrueColor {
+                r: 0,
+                g: 255,
+                b: 159,
+            },
+            NodeState::Partial => colored::Color::TrueColor {
+                r: 255,
+                g: 231,
+                b: 0,
+            },
+            _ => colored::Color::BrightBlue,
+        };
+        let state = format!("{}{}{}", "[".color(color), self.state, "]".color(color));
         write!(f, "{} {} {}", state, self.message, index)
     }
 }
