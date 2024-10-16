@@ -26,6 +26,67 @@ enum NodeViewPosition {
     Node(usize),
 }
 
+trait GraphTUI {
+    fn count_idx(
+        &self,
+        index: usize,
+        indices: &[usize],
+        skip_archived: bool,
+        max_depth: u32,
+        depth: u32,
+        start: Option<usize>,
+        counter: &mut usize,
+    ) -> usize;
+}
+
+impl GraphTUI for Graph {
+    fn count_idx(
+        &self,
+        index: usize,
+        indices: &[usize],
+        skip_archived: bool,
+        max_depth: u32,
+        depth: u32,
+        start: Option<usize>,
+        counter: &mut usize,
+    ) -> usize {
+        // A sentinel value of 0 means infinite depth
+        if max_depth != 0 && depth > max_depth {
+            return 0;
+        }
+
+        for i in indices {
+            if let Some(start) = start {
+                if *i == start {
+                    panic!("Graph looped");
+                }
+            }
+
+            // If theres no need to show archived nodes then ignore it and its children
+            let node = self.get_node(*i);
+            if !skip_archived && node.archived {
+                continue;
+            }
+
+            if *counter == index {
+                return node.index;
+            } else {
+                *counter += 1;
+                self.count_idx(
+                    index,
+                    &self.get_node_children(node.index),
+                    skip_archived,
+                    max_depth,
+                    depth + 1,
+                    start,
+                    counter,
+                );
+            }
+        }
+        0
+    }
+}
+
 trait NodeTUIDisplay {
     fn print_tree_indent(depth: u32, multi_parents: bool) -> Option<Span<'static>>;
     fn get_status(&self) -> Span<'static>;
@@ -171,12 +232,17 @@ impl GraphViewComponent {
                         return;
                     }
                     self.path.push(idx);
-                    let node_idx = Self::get_node_idx(
-                        graph,
-                        idx,
-                        self.max_depth,
-                        self.list_state.selected().expect("Invalid node selection") - 1,
+                    let node_idx = graph.count_idx(
+                        self.list_state
+                            .selected()
+                            .expect(INVALID_NODE_SELECTION_MSG)
+                            - 1,
+                        &graph.get_node_children(idx),
                         !self.show_archived,
+                        self.max_depth,
+                        1,
+                        None,
+                        &mut 0,
                     );
                     self.current_node = NodeLoc::Idx(node_idx);
                 }
@@ -200,36 +266,6 @@ impl GraphViewComponent {
             self.path.pop();
             self.current_node = NodeLoc::Roots;
         }
-    }
-
-    /// Get the real node index from selection index.
-    fn get_node_idx(
-        graph: &Graph,
-        parent: usize,
-        depth: u32,
-        selected_index: usize,
-        show_archived: bool,
-    ) -> usize {
-        let children_indices = graph.get_node_children(parent);
-        let mut node_traversal_count = 0;
-        let mut node_idx = 0;
-        graph
-            .traverse_recurse(
-                &children_indices,
-                show_archived,
-                depth,
-                1,
-                None,
-                &mut |node, _depth| {
-                    if node_traversal_count == selected_index {
-                        node_idx = node.index;
-                        // FIXME: do not keep looping when we've found the correct index
-                    }
-                    node_traversal_count += 1;
-                },
-            )
-            .expect("Failed to get node index");
-        node_idx
     }
 
     pub fn select_first(&mut self) {
@@ -321,12 +357,17 @@ impl GraphViewComponent {
                         {
                             idx
                         } else {
-                            Self::get_node_idx(
-                                graph,
-                                idx,
-                                self.max_depth,
-                                self.list_state.selected().expect("Invalid node") - 1,
+                            graph.count_idx(
+                                self.list_state
+                                    .selected()
+                                    .expect(INVALID_NODE_SELECTION_MSG)
+                                    - 1,
+                                &graph.get_node_children(idx),
                                 !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut 0,
                             )
                         }
                     };
