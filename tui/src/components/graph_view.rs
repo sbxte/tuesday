@@ -202,8 +202,12 @@ impl GraphViewComponent {
     }
 
     pub fn delete_node(&mut self) -> crate::events::AppEvent {
-        if let Some(graph) = &self.graph {
-            let idx = self.get_selected_idx();
+        if let Some(graph) = &mut self.graph {
+            // use the index getter method
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
             // TODO: again, maybe let the graph backend accept only usize and we do the cast ourselves
             graph.remove(idx.to_string());
         }
@@ -354,11 +358,15 @@ impl GraphViewComponent {
                 }
                 NodeLoc::Idx(idx) => {
                     let node_idx = {
-                        if self.get_selected_idx() == 0 {
+                        let idx = self
+                            .list_state
+                            .selected()
+                            .expect(INVALID_NODE_SELECTION_MSG);
+                        if idx == 0 {
                             idx
                         } else {
                             graph.count_idx(
-                                self.get_selected_idx() - 1,
+                                idx - 1,
                                 &graph.get_node_children(idx),
                                 !self.show_archived,
                                 self.max_depth,

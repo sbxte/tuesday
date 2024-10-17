@@ -75,6 +75,6 @@ impl Widget for &mut AppUIComponent {
             tabs::TabView::DateGraph => (),
         }
         self.status_bar.render(layout.status_bar);
-        self.cmdline.render(layout.status_bar)
+        self.cmdline.render(layout.status_bar, buf)
     }
 }

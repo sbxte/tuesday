@@ -39,7 +39,7 @@ impl Widget for &mut CmdlineComponent {
         Self: Sized,
     {
         if self.shown {
-            let message = Line::from(self.hint_text);
+            let message = Line::from(self.hint_text.clone());
             message.render(area, buf)
         }
     }
