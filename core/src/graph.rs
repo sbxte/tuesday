@@ -33,22 +33,35 @@ pub enum ErrorType {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Graph {
+    #[serde(default)]
     pub(crate) nodes: Vec<Option<RefCell<Node>>>,
+    #[serde(default)]
     pub(crate) roots: Vec<usize>,
+    #[serde(default)]
     pub(crate) archived: Vec<usize>,
+    #[serde(default)]
     pub(crate) dates: HashMap<String, usize>,
+    #[serde(default)]
     pub(crate) aliases: HashMap<String, usize>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
+    #[serde(default)]
     pub message: String,
+    #[serde(default)]
     pub r#type: NodeType,
+    #[serde(default)]
     pub state: NodeState,
+    #[serde(default)]
     pub archived: bool,
+    #[serde(default)]
     pub index: usize,
+    #[serde(default)]
     pub alias: Option<String>,
+    #[serde(default)]
     pub parents: Vec<usize>,
+    #[serde(default)]
     pub children: Vec<usize>,
 }
 
