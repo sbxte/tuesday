@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
@@ -7,7 +8,7 @@ use crate::graph::Graph;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use super::util::get_global_save;
+use super::utils;
 
 pub mod compat;
 
@@ -31,8 +32,11 @@ impl Doc {
     }
 }
 
-pub fn save_global(config: &Doc) -> Result<()> {
-    save(&mut get_global_save(FILENAME)?, config)?;
+pub fn default_save(config: &Doc) -> Result<()> {
+    let mut file = get_default_save()?;
+    file.set_len(0)?;
+    serde_yaml_ng::to_writer(&mut file, config)?;
+    file.flush()?;
     Ok(())
 }
 
@@ -43,18 +47,30 @@ pub fn save(mut file: &mut File, config: &Doc) -> Result<()> {
     Ok(())
 }
 
-pub fn save_local(mut path: PathBuf, config: &Doc) -> Result<()> {
-    path.push(FILENAME);
-    save(
-        &mut OpenOptions::new()
+pub fn get_default_save() -> Result<File> {
+    let current_dir = env::current_dir().expect("Current dir inaccessible!");
+    let path = match utils::get_save_path(current_dir.as_path(), FILENAME) {
+        Some(p) => p,
+        None => {
+            let mut p = current_dir;
+            p.push(FILENAME);
+            p
+        }
+    };
+
+    if !path.exists() {
+        Ok(OpenOptions::new()
             .create(true)
-            .write(true)
-            .truncate(true)
+            .append(true)
             .read(true)
-            .open(path)?,
-        config,
-    )?;
-    Ok(())
+            .open(path)?)
+    } else {
+        Ok(OpenOptions::new()
+            .write(true)
+            .truncate(false)
+            .read(true)
+            .open(path)?)
+    }
 }
 
 pub fn load(file: &mut File) -> Result<Graph> {
@@ -120,7 +136,7 @@ pub fn load_local(mut path: PathBuf) -> Result<Graph> {
 }
 
 pub fn load_global() -> Result<Graph> {
-    load(&mut get_global_save(FILENAME)?)
+    load(&mut get_default_save()?)
 }
 
 pub fn local_exists(mut path: PathBuf) -> bool {

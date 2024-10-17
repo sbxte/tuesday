@@ -1,2 +1,2 @@
 pub mod doc;
-mod util;
+pub mod utils;
