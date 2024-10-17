@@ -9,6 +9,8 @@ use ratatui::{
 };
 use tuecore::graph::{Graph, GraphGetters, Node, NodeState, NodeType};
 
+use crate::events::{AppEvent, InternalEvent};
+
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
 
@@ -18,12 +20,6 @@ enum TabView {
     Tasks,
     DateGraph,
     Calendar,
-}
-
-#[derive(PartialEq)]
-enum NodeViewPosition {
-    Root,
-    Node(usize),
 }
 
 trait GraphTUI {
@@ -180,6 +176,12 @@ impl GraphViewComponent {
         }
     }
 
+    fn get_selected_idx(&self) -> usize {
+        self.list_state
+            .selected()
+            .expect(INVALID_NODE_SELECTION_MSG)
+    }
+
     pub fn load_graph(&mut self, graph: Graph) {
         self.graph = Some(graph);
     }
@@ -198,24 +200,27 @@ impl GraphViewComponent {
             _ => None,
         }
     }
+
+    pub fn delete_node(&mut self) -> crate::events::AppEvent {
+        if let Some(graph) = &self.graph {
+            let idx = self.get_selected_idx();
+            // TODO: again, maybe let the graph backend accept only usize and we do the cast ourselves
+            graph.remove(idx.to_string());
+        }
+        todo!()
+    }
+
     pub fn step_into(&mut self) {
         if let Some(graph) = &self.graph {
-            self.selection_idx_path.push(
-                self.list_state
-                    .selected()
-                    .expect(INVALID_NODE_SELECTION_MSG),
-            );
+            self.selection_idx_path.push(self.get_selected_idx());
             match self.current_node {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
                         let indices = graph.get_date_nodes_indices();
-                        let node_idx = indices[self
-                            .list_state
-                            .selected()
-                            .expect(INVALID_NODE_SELECTION_MSG)];
+                        let node_idx = indices[self.get_selected_idx()];
 
                         self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(indices[self.list_state.selected().unwrap()]);
+                        self.path.push(indices[self.get_selected_idx()]);
                     } else {
                         let indices = graph.get_root_nodes_indices();
                         let node_idx = indices[self
@@ -224,7 +229,7 @@ impl GraphViewComponent {
                             .expect(INVALID_NODE_SELECTION_MSG)];
 
                         self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(indices[self.list_state.selected().unwrap()]);
+                        self.path.push(indices[self.get_selected_idx()]);
                     }
                 }
                 NodeLoc::Idx(idx) => {
@@ -319,7 +324,7 @@ impl GraphViewComponent {
             NodeState::Done => {
                 // TODO: error handling?
                 // TODO: this gets the node_idx converted to string, then the internal function
-                // converts it back into an index. nahh.
+                // converts it back into a usize. nahh.
                 let _ = graph.set_state(node_idx.to_string(), NodeState::None, true);
             }
             NodeState::None => {
@@ -349,19 +354,11 @@ impl GraphViewComponent {
                 }
                 NodeLoc::Idx(idx) => {
                     let node_idx = {
-                        if self
-                            .list_state
-                            .selected()
-                            .expect(INVALID_NODE_SELECTION_MSG)
-                            == 0
-                        {
+                        if self.get_selected_idx() == 0 {
                             idx
                         } else {
                             graph.count_idx(
-                                self.list_state
-                                    .selected()
-                                    .expect(INVALID_NODE_SELECTION_MSG)
-                                    - 1,
+                                self.get_selected_idx() - 1,
                                 &graph.get_node_children(idx),
                                 !self.show_archived,
                                 self.max_depth,
@@ -378,9 +375,6 @@ impl GraphViewComponent {
             }
         }
     }
-
-    // TODO: maybe use different path stack for the date graphs view
-    pub fn switch_date_graph() {}
 }
 
 impl Widget for &mut GraphViewComponent {

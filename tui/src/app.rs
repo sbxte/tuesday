@@ -1,6 +1,6 @@
 use crate::{
     components::{self, tabs::TabView},
-    events::{ActiveNodeOperation, AppEvent, NavDirection},
+    events::{self, ActiveNodeOperation, AppEvent, InternalEvent, NavDirection},
 };
 use tuecore::graph::Graph;
 
@@ -47,6 +47,11 @@ impl App {
     /// Process an event, which in turn may emit another event.
     pub fn process_event(&mut self, event: &AppEvent) -> Option<AppEvent> {
         match event {
+            AppEvent::Internal(event) => match event {
+                InternalEvent::AskPrompt(message, f) => {
+                    self.components.cmdline.ask_prompt(message, f)
+                }
+            },
             AppEvent::Quit => self.state.should_exit = true,
             AppEvent::TabChange(direction) => self.components.tabs.switch_view(direction),
             AppEvent::Navigate(navigation) => match navigation {

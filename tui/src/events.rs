@@ -58,6 +58,12 @@ pub enum NodeSelectionOperation {
     ToggleSelect, // space
 }
 
+/// Internal Events
+pub enum InternalEvent {
+    // TODO: should we use callbacks?????
+    AskPrompt(String, Box<dyn Fn(bool) -> ()>),
+}
+
 /// App Events
 pub enum AppEvent {
     Filter(ViewFilterOperation),
@@ -68,6 +74,7 @@ pub enum AppEvent {
     Quit, // q
     Selection(NodeSelectionOperation),
     TabChange(TabDirection),
+    Internal(InternalEvent),
 }
 
 /// Process key inputs based on context and emit the appropriate event.
