@@ -1,2 +1,2 @@
-pub mod doc;
+pub mod storage;
 pub mod graph;

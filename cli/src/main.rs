@@ -5,8 +5,8 @@ use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
 use display::CLIDisplay;
-use tuecore::doc;
 use tuecore::graph::{self, ErrorType, NodeState};
+use tuecore::storage::doc;
 
 fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     match matches.subcommand() {

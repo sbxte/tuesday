@@ -7,6 +7,8 @@ use crate::graph::Graph;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+use super::util::get_global_save;
+
 pub mod compat;
 
 /// Update this whenever the structure of Config or Graph changes
@@ -30,7 +32,7 @@ impl Doc {
 }
 
 pub fn save_global(config: &Doc) -> Result<()> {
-    save(&mut get_global_save()?, config)?;
+    save(&mut get_global_save(FILENAME)?, config)?;
     Ok(())
 }
 
@@ -118,34 +120,12 @@ pub fn load_local(mut path: PathBuf) -> Result<Graph> {
 }
 
 pub fn load_global() -> Result<Graph> {
-    load(&mut get_global_save()?)
+    load(&mut get_global_save(FILENAME)?)
 }
 
 pub fn local_exists(mut path: PathBuf) -> bool {
     path.push(FILENAME);
     path.exists()
-}
-
-pub fn get_global_save() -> Result<File> {
-    let mut path = if let Some(x) = home::home_dir() {
-        x
-    } else {
-        panic!("Home directory unavailable!");
-    };
-    path.push(FILENAME);
-    if !path.exists() {
-        Ok(OpenOptions::new()
-            .create(true)
-            .append(true)
-            .read(true)
-            .open(path)?)
-    } else {
-        Ok(OpenOptions::new()
-            .write(true)
-            .truncate(false)
-            .read(true)
-            .open(path)?)
-    }
 }
 
 pub fn export_json(graph: &Graph) -> Result<String> {
