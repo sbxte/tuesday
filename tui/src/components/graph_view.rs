@@ -214,21 +214,30 @@ impl GraphViewComponent {
                     let _ = graph.remove(node_idx.to_string());
                 }
                 NodeLoc::Idx(idx) => {
-                    let curr_idx = self
+                    let selected_idx = self
                         .list_state
                         .selected()
                         .expect(INVALID_NODE_SELECTION_MSG);
 
-                    let node_idx = graph.count_idx(
-                        curr_idx - 1,
-                        &graph.get_node_children(idx),
-                        !self.show_archived,
-                        self.max_depth,
-                        1,
-                        None,
-                        &mut 0,
-                    );
+                    let node_idx = {
+                        if selected_idx == 0 {
+                            idx
+                        } else {
+                            graph.count_idx(
+                                selected_idx - 1,
+                                &graph.get_node_children(idx),
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut 0,
+                            )
+                        }
+                    };
                     let _ = graph.remove(node_idx.to_string());
+                    if selected_idx == 0 {
+                        self.step_out();
+                    }
                 }
             }
             // TODO: again, maybe let the graph backend accept only usize and we do the cast ourselves
