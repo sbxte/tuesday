@@ -29,7 +29,7 @@ impl AppLayout {
                 Constraint::Length(2),
                 Constraint::Fill(1),
                 Constraint::Length(2),
-                Constraint::Length(2),
+                Constraint::Length(1),
             ])
             .split(area);
 
