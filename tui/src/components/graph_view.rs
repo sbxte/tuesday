@@ -381,15 +381,21 @@ impl GraphViewComponent {
                         .list_state
                         .selected()
                         .expect(INVALID_NODE_SELECTION_MSG);
-                    let node_idx = graph.count_idx(
-                        selected_idx - 1,
-                        &graph.get_node_children(idx),
-                        !self.show_archived,
-                        self.max_depth,
-                        1,
-                        None,
-                        &mut 0,
-                    );
+                    let node_idx = {
+                        if selected_idx == 0 {
+                            idx
+                        } else {
+                            graph.count_idx(
+                                selected_idx - 1,
+                                &graph.get_node_children(idx),
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut 0,
+                            )
+                        }
+                    };
 
                     let state = graph.get_node(node_idx).state;
                     Self::modify_task_status(graph, node_idx, state);
