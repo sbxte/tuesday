@@ -3,33 +3,78 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     text::{Line, Span},
-    widgets::{Paragraph, Widget},
+    widgets::{Block, Paragraph, Widget},
 };
 
+use crate::events::{AppEvent, AskPromptType, OperationalEvent};
+
 pub struct CmdlineComponent {
-    hint_text: String,
+    prompt: String,
+    input_string: String,
     shown: bool,
 }
 
 impl CmdlineComponent {
     pub fn new() -> Self {
         Self {
-            hint_text: String::new(),
+            input_string: String::new(),
+            prompt: String::new(),
             shown: false,
         }
     }
 
-    pub fn ask_prompt(&mut self, message: &str, callback: &dyn Fn(bool) -> ()) {
-        let mut value = false;
-        self.hint_text = message.to_string();
-        self.shown = true;
-        if let Event::Key(key_event) = event::read().expect("Failed to read event") {
-            match key_event.code {
-                KeyCode::Char('y') | KeyCode::Char('Y') => callback(true),
-                _ => callback(false),
+    pub fn process_input(
+        &mut self,
+        key_capture_type: &AskPromptType,
+        code: &KeyCode,
+    ) -> Option<AppEvent> {
+        match key_capture_type {
+            AskPromptType::Confirmation(ev) => {
+                if code == &KeyCode::Char('y') {
+                    return Some(AppEvent::Operational(*ev));
+                }
+                Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt))
             }
-        };
+            AskPromptType::Continual(ev) => {
+                if code == &KeyCode::Esc {
+                    return Some(AppEvent::Operational(*ev));
+                }
+                self.operate_string(code);
+                None
+            }
+            AskPromptType::Input(ev) => {
+                if code == &KeyCode::Enter {
+                    return Some(AppEvent::Operational(*ev));
+                }
+                self.operate_string(code);
+                None
+            }
+        }
+    }
+
+    pub fn get_input(&self) -> &String {
+        &self.input_string
+    }
+
+    pub fn set_prompt(&mut self, prompt: &str) {
+        self.prompt = prompt.to_owned()
+    }
+
+    pub fn show_prompt(&mut self) {
+        self.shown = true;
+    }
+    pub fn hide_prompt(&mut self) {
         self.shown = false;
+    }
+    /// Operate on string based on key code.
+    fn operate_string(&mut self, code: &KeyCode) {
+        match code {
+            KeyCode::Char(c) => self.input_string.push(*c),
+            KeyCode::Backspace => {
+                self.input_string.pop();
+            }
+            _ => (),
+        }
     }
 }
 
@@ -39,8 +84,7 @@ impl Widget for &mut CmdlineComponent {
         Self: Sized,
     {
         if self.shown {
-            let message = Line::from(self.hint_text.clone());
-            message.render(area, buf)
+            Line::from(self.prompt.clone()).render(area, buf);
         }
     }
 }

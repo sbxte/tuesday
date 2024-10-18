@@ -53,9 +53,11 @@ impl StatusBarComponent {
             match ui_item.refresh_interval {
                 RefreshInterval::TreeUpdate => match event {
                     // Do not do anything when these events are received
-                    AppEvent::Help => return None,
-                    AppEvent::Quit => return None,
-                    AppEvent::Selection(_) => return None,
+                    AppEvent::Operational(crate::events::OperationalEvent::Help) => return None,
+                    AppEvent::Operational(crate::events::OperationalEvent::Quit) => return None,
+                    AppEvent::Operational(crate::events::OperationalEvent::Selection(_)) => {
+                        return None
+                    }
                     _ => ui_item.component.update(),
                 },
             }

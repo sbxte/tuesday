@@ -68,6 +68,7 @@ impl Widget for &mut AppUIComponent {
     {
         let layout = AppLayout::new(area);
         self.tabs.render(layout.tabs_view, buf);
+        self.cmdline.render(layout.cmdline, buf);
 
         match self.tabs.curr_view() {
             tabs::TabView::Tasks => self.graph_view.render(layout.graph_view, buf),
@@ -75,6 +76,5 @@ impl Widget for &mut AppUIComponent {
             tabs::TabView::DateGraph => (),
         }
         self.status_bar.render(layout.status_bar);
-        self.cmdline.render(layout.status_bar, buf)
     }
 }

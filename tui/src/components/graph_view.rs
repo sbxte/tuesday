@@ -201,17 +201,37 @@ impl GraphViewComponent {
         }
     }
 
-    pub fn delete_node(&mut self) -> crate::events::AppEvent {
+    pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
-            // use the index getter method
-            let idx = self
-                .list_state
-                .selected()
-                .expect(INVALID_NODE_SELECTION_MSG);
+            match self.current_node {
+                NodeLoc::Roots => {
+                    // TODO: fix ownership issue yeah
+                    let idx = self
+                        .list_state
+                        .selected()
+                        .expect(INVALID_NODE_SELECTION_MSG);
+                    let _ = graph.remove(idx.to_string());
+                }
+                NodeLoc::Idx(idx) => {
+                    let curr_idx = self
+                        .list_state
+                        .selected()
+                        .expect(INVALID_NODE_SELECTION_MSG);
+
+                    let node_idx = graph.count_idx(
+                        curr_idx - 1,
+                        &graph.get_node_children(idx),
+                        !self.show_archived,
+                        self.max_depth,
+                        1,
+                        None,
+                        &mut 0,
+                    );
+                    let _ = graph.remove(node_idx.to_string());
+                }
+            }
             // TODO: again, maybe let the graph backend accept only usize and we do the cast ourselves
-            graph.remove(idx.to_string());
         }
-        todo!()
     }
 
     pub fn step_into(&mut self) {
@@ -357,25 +377,19 @@ impl GraphViewComponent {
                     }
                 }
                 NodeLoc::Idx(idx) => {
-                    let node_idx = {
-                        let idx = self
-                            .list_state
-                            .selected()
-                            .expect(INVALID_NODE_SELECTION_MSG);
-                        if idx == 0 {
-                            idx
-                        } else {
-                            graph.count_idx(
-                                idx - 1,
-                                &graph.get_node_children(idx),
-                                !self.show_archived,
-                                self.max_depth,
-                                1,
-                                None,
-                                &mut 0,
-                            )
-                        }
-                    };
+                    let selected_idx = self
+                        .list_state
+                        .selected()
+                        .expect(INVALID_NODE_SELECTION_MSG);
+                    let node_idx = graph.count_idx(
+                        selected_idx - 1,
+                        &graph.get_node_children(idx),
+                        !self.show_archived,
+                        self.max_depth,
+                        1,
+                        None,
+                        &mut 0,
+                    );
 
                     let state = graph.get_node(node_idx).state;
                     Self::modify_task_status(graph, node_idx, state);

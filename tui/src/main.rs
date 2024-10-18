@@ -34,7 +34,7 @@ where
         if let event::Event::Key(key_event) = event::read()? {
             let mut event = process_key(&app, key_event);
             loop {
-                if let Some(ref e) = event {
+                if let Some(e) = event {
                     event = app.process_event(e);
                 } else {
                     break;
