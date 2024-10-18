@@ -121,7 +121,7 @@ impl App {
                     ActiveNodeOperation::Delete => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Confirmation(ev),
-                            "Delete active node?".to_string(),
+                            "Delete active node? (y/n)".to_string(),
                         )));
                     }
                     _ => (),
