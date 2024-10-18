@@ -210,7 +210,8 @@ impl GraphViewComponent {
                         .list_state
                         .selected()
                         .expect(INVALID_NODE_SELECTION_MSG);
-                    let _ = graph.remove(idx.to_string());
+                    let node_idx = graph.get_root_nodes_indices()[idx];
+                    let _ = graph.remove(node_idx.to_string());
                 }
                 NodeLoc::Idx(idx) => {
                     let curr_idx = self
