@@ -30,7 +30,7 @@ impl CmdlineComponent {
     ) -> Option<AppEvent> {
         match key_capture_type {
             AskPromptType::Confirmation(ev) => {
-                if code == &KeyCode::Char('y') {
+                if code == &KeyCode::Char('y') || code == &KeyCode::Char('Y') {
                     return Some(AppEvent::Operational(*ev));
                 }
                 Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt))
