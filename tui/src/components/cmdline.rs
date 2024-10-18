@@ -64,6 +64,7 @@ impl CmdlineComponent {
         self.shown = true;
     }
     pub fn hide_prompt(&mut self) {
+        self.input_string.clear();
         self.shown = false;
     }
     /// Operate on string based on key code.
@@ -84,7 +85,12 @@ impl Widget for &mut CmdlineComponent {
         Self: Sized,
     {
         if self.shown {
-            Line::from(self.prompt.clone()).render(area, buf);
+            Line::from(vec![
+                Span::from(self.prompt.clone()),
+                Span::from(" "),
+                Span::from(self.input_string.clone()),
+            ])
+            .render(area, buf);
         }
     }
 }
