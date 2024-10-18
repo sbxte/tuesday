@@ -1,8 +1,7 @@
 use crate::{
     components::{self, tabs::TabView},
     events::{
-        self, ActiveNodeOperation, AppEvent, AskPromptType, InternalEvent, NavDirection,
-        OperationalEvent,
+        ActiveNodeOperation, AppEvent, AskPromptType, InternalEvent, NavDirection, OperationalEvent,
     },
 };
 use tuecore::graph::Graph;

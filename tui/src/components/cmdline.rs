@@ -1,16 +1,20 @@
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::KeyCode;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
+    style::Style,
     text::{Line, Span},
-    widgets::{Block, Paragraph, Widget},
+    widgets::Widget,
 };
 
-use crate::events::{AppEvent, AskPromptType, OperationalEvent};
+use crate::events::{AppEvent, AskPromptType};
+
+const PROMPT_STYLE: Style = Style::new().fg(ratatui::style::Color::Yellow);
 
 pub struct CmdlineComponent {
     prompt: String,
     input_string: String,
+    input_pos: usize,
     shown: bool,
 }
 
@@ -19,6 +23,7 @@ impl CmdlineComponent {
         Self {
             input_string: String::new(),
             prompt: String::new(),
+            input_pos: 0,
             shown: false,
         }
     }
@@ -45,6 +50,8 @@ impl CmdlineComponent {
             AskPromptType::Input(ev) => {
                 if code == &KeyCode::Enter {
                     return Some(AppEvent::Operational(*ev));
+                } else if code == &KeyCode::Esc {
+                    return Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt));
                 }
                 self.operate_string(code);
                 None
@@ -65,14 +72,39 @@ impl CmdlineComponent {
     }
     pub fn hide_prompt(&mut self) {
         self.input_string.clear();
+        self.input_pos = 0;
         self.shown = false;
+    }
+
+    pub fn get_cursor_pos(&self, area: Rect) -> (u16, u16) {
+        (
+            area.x + (self.prompt.len() as u16 + 1 + self.input_string.len() as u16)
+                - (self.input_string.len() as u16 - self.input_pos as u16),
+            area.y + 1,
+        )
     }
     /// Operate on string based on key code.
     fn operate_string(&mut self, code: &KeyCode) {
         match code {
-            KeyCode::Char(c) => self.input_string.push(*c),
+            KeyCode::Right => {
+                if self.input_pos < self.input_string.len() {
+                    self.input_pos += 1;
+                }
+            }
+            KeyCode::Left => {
+                if self.input_pos > 0 {
+                    self.input_pos -= 1;
+                }
+            }
+            KeyCode::Char(c) => {
+                self.input_string.insert(self.input_pos, *c);
+                self.input_pos += 1;
+            }
             KeyCode::Backspace => {
-                self.input_string.pop();
+                if self.input_string.len() > 0 {
+                    self.input_string.pop();
+                    self.input_pos -= 1;
+                }
             }
             _ => (),
         }
@@ -86,7 +118,7 @@ impl Widget for &mut CmdlineComponent {
     {
         if self.shown {
             Line::from(vec![
-                Span::from(self.prompt.clone()),
+                Span::from(self.prompt.clone()).style(PROMPT_STYLE),
                 Span::from(" "),
                 Span::from(self.input_string.clone()),
             ])

@@ -3,6 +3,8 @@ pub mod graph_view;
 pub mod statusbar;
 pub mod tabs;
 
+use std::rc::Rc;
+
 use cmdline::CmdlineComponent;
 use graph_view::GraphViewComponent;
 use ratatui::{
@@ -15,24 +17,25 @@ use tabs::TabComponent;
 
 /// Render areas for the app
 pub struct AppLayout {
-    tabs_view: Rect,
-    graph_view: Rect,
-    status_bar: Rect,
-    cmdline: Rect,
+    pub tabs_view: Rect,
+    pub graph_view: Rect,
+    pub status_bar: Rect,
+    pub cmdline: Rect,
+}
+pub fn new_layout() -> Layout {
+    Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(2),
+            Constraint::Fill(1),
+            Constraint::Length(2),
+            Constraint::Length(1),
+        ])
 }
 
 impl AppLayout {
-    pub fn new(area: Rect) -> Self {
-        let rects = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(2),
-                Constraint::Fill(1),
-                Constraint::Length(2),
-                Constraint::Length(1),
-            ])
-            .split(area);
-
+    pub fn split(layout: Layout, area: Rect) -> AppLayout {
+        let rects = layout.split(area);
         Self {
             tabs_view: rects[0],
             graph_view: rects[1],
@@ -66,7 +69,7 @@ impl Widget for &mut AppUIComponent {
     where
         Self: Sized,
     {
-        let layout = AppLayout::new(area);
+        let layout = AppLayout::split(new_layout(), area);
         self.tabs.render(layout.tabs_view, buf);
         self.cmdline.render(layout.cmdline, buf);
 

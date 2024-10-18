@@ -1,6 +1,7 @@
 use anyhow::Result;
 use app::App;
 use clap::Parser;
+use components::{new_layout, AppLayout};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -30,7 +31,15 @@ where
     B: Backend,
 {
     while !app.should_exit() {
-        terminal.draw(|f| f.render_widget(&mut app.components, f.area()))?;
+        terminal.draw(|f| {
+            f.render_widget(&mut app.components, f.area());
+
+            // Set cursor to correct position when typing on Cmdline
+            if app.is_capturing_keys() {
+                let cmdline_rect = AppLayout::split(new_layout(), f.area()).cmdline;
+                f.set_cursor_position(app.components.cmdline.get_cursor_pos(cmdline_rect))
+            }
+        })?;
         if let event::Event::Key(key_event) = event::read()? {
             let mut event = process_key(&app, key_event);
             loop {

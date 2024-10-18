@@ -1,5 +1,3 @@
-use std::process::exit;
-
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -7,20 +5,12 @@ use ratatui::{
     text::{Line, Span},
     widgets::{List, ListItem, ListState, StatefulWidget, Widget},
 };
-use tuecore::graph::{Graph, GraphGetters, Node, NodeState, NodeType};
-
-use crate::events::{AppEvent, InternalEvent};
+use tuecore::graph::{Graph, GraphGetters, Node, NodeState};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
 
 const INVALID_NODE_SELECTION_MSG: &str = "Invalid selected node index found";
-
-enum TabView {
-    Tasks,
-    DateGraph,
-    Calendar,
-}
 
 trait GraphTUI {
     fn count_idx(
@@ -369,6 +359,49 @@ impl GraphViewComponent {
                 let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
             }
         };
+    }
+
+    pub fn rename_active(&mut self, new_name: &str) {
+        if let Some(ref mut graph) = self.graph {
+            match self.current_node {
+                NodeLoc::Roots => {
+                    if self.show_date_graphs {
+                        let indices = graph.get_date_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
+                    } else {
+                        let indices = graph.get_root_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        let state = graph.get_node(node_idx).state;
+                        Self::modify_task_status(graph, node_idx, state);
+                    }
+                }
+                NodeLoc::Idx(idx) => {
+                    let selected_idx = self
+                        .list_state
+                        .selected()
+                        .expect(INVALID_NODE_SELECTION_MSG);
+                    let node_idx = {
+                        if selected_idx == 0 {
+                            idx
+                        } else {
+                            graph.count_idx(
+                                selected_idx - 1,
+                                &graph.get_node_children(idx),
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut 0,
+                            )
+                        }
+                    };
+
+                    let state = graph.get_node(node_idx).state;
+                    Self::modify_task_status(graph, node_idx, state);
+                }
+            }
+        }
     }
     pub fn check_active(&mut self) {
         if let Some(ref mut graph) = self.graph {
