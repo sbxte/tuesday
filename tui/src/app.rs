@@ -76,12 +76,21 @@ impl App {
                     _ => (),
                 },
                 AppEvent::Operational(ev) => match ev {
-                    OperationalEvent::OperateActiveNode(ActiveNodeOperation::Delete) => {
-                        self.components.graph_view.delete_active_node();
-                        // TODO: consider automatically returning this after matching the
-                        // OperationalEvent
-                        return STOP_CAPTURING_KEY;
-                    }
+                    OperationalEvent::OperateActiveNode(op) => match op {
+                        ActiveNodeOperation::Rename => {
+                            self.components
+                                .graph_view
+                                .rename_active(self.components.cmdline.get_curr_input());
+                            return STOP_CAPTURING_KEY;
+                        }
+                        ActiveNodeOperation::Delete => {
+                            self.components.graph_view.delete_active_node();
+                            // TODO: consider automatically returning this after matching the
+                            // OperationalEvent
+                            return STOP_CAPTURING_KEY;
+                        }
+                        _ => (),
+                    },
                     _ => (),
                 },
             }
@@ -117,6 +126,16 @@ impl App {
                 },
                 OperationalEvent::OperateActiveNode(ref operation) => match operation {
                     ActiveNodeOperation::Check => self.components.graph_view.check_active(),
+                    ActiveNodeOperation::Rename => {
+                        if let Some(node) = self.components.graph_view.get_current_node() {
+                            self.components.cmdline.set_curr_input(&node.message);
+
+                            return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                                AskPromptType::Input(ev),
+                                "Rename:".to_string(),
+                            )));
+                        }
+                    }
                     ActiveNodeOperation::Delete => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Confirmation(ev),

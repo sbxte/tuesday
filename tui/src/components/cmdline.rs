@@ -59,8 +59,13 @@ impl CmdlineComponent {
         }
     }
 
-    pub fn get_input(&self) -> &String {
+    pub fn get_curr_input(&self) -> &String {
         &self.input_string
+    }
+
+    pub fn set_curr_input(&mut self, input: &str) {
+        self.input_string = input.to_string();
+        self.input_pos = self.input_string.len();
     }
 
     pub fn set_prompt(&mut self, prompt: &str) {
@@ -101,9 +106,14 @@ impl CmdlineComponent {
                 self.input_pos += 1;
             }
             KeyCode::Backspace => {
-                if self.input_string.len() > 0 {
-                    self.input_string.pop();
+                if self.input_string.len() > 0 && self.input_pos > 0 {
+                    self.input_string.remove(self.input_pos - 1);
                     self.input_pos -= 1;
+                }
+            }
+            KeyCode::Delete => {
+                if self.input_string.len() > 0 && self.input_pos < self.input_string.len() {
+                    self.input_string.remove(self.input_pos);
                 }
             }
             _ => (),

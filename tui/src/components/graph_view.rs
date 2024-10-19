@@ -343,6 +343,49 @@ impl GraphViewComponent {
         self.current_node = NodeLoc::Roots;
     }
 
+    // TODO: use this method to replace everything that requires getting the current node index
+    // based on view
+    pub fn get_current_node(&self) -> Option<Node> {
+        if let Some(graph) = &self.graph {
+            match self.current_node {
+                NodeLoc::Roots => {
+                    if self.show_date_graphs {
+                        let indices = graph.get_date_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        return Some(graph.get_node(node_idx));
+                    } else {
+                        let indices = graph.get_root_nodes_indices();
+                        let node_idx = indices[self.list_state.selected().unwrap()];
+                        return Some(graph.get_node(node_idx));
+                    }
+                }
+                NodeLoc::Idx(idx) => {
+                    let selected_idx = self
+                        .list_state
+                        .selected()
+                        .expect(INVALID_NODE_SELECTION_MSG);
+                    let node_idx = {
+                        if selected_idx == 0 {
+                            idx
+                        } else {
+                            graph.count_idx(
+                                selected_idx - 1,
+                                &graph.get_node_children(idx),
+                                !self.show_archived,
+                                self.max_depth,
+                                1,
+                                None,
+                                &mut 0,
+                            )
+                        }
+                    };
+                    return Some(graph.get_node(node_idx));
+                }
+            }
+        }
+        None
+    }
+
     fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {
         match curr_state {
             NodeState::Done => {
@@ -362,7 +405,7 @@ impl GraphViewComponent {
     }
 
     pub fn rename_active(&mut self, new_name: &str) {
-        if let Some(ref mut graph) = self.graph {
+        if let Some(graph) = &mut self.graph {
             match self.current_node {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
@@ -372,8 +415,7 @@ impl GraphViewComponent {
                     } else {
                         let indices = graph.get_root_nodes_indices();
                         let node_idx = indices[self.list_state.selected().unwrap()];
-                        let state = graph.get_node(node_idx).state;
-                        Self::modify_task_status(graph, node_idx, state);
+                        let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
                     }
                 }
                 NodeLoc::Idx(idx) => {
@@ -397,14 +439,13 @@ impl GraphViewComponent {
                         }
                     };
 
-                    let state = graph.get_node(node_idx).state;
-                    Self::modify_task_status(graph, node_idx, state);
+                    let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
                 }
             }
         }
     }
     pub fn check_active(&mut self) {
-        if let Some(ref mut graph) = self.graph {
+        if let Some(graph) = &mut self.graph {
             match self.current_node {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {

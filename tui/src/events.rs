@@ -35,7 +35,7 @@ pub enum ActiveNodeOperation {
     Modify,     // M
     Delete,     // X
     MoveTo,     // V
-    Rename,     // r
+    Rename,     // R
     UnlinkFrom, // D
     Check,      // C
 }
@@ -170,7 +170,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('V') => Some(AppEvent::Operational(
                     OperationalEvent::OperateActiveNode(ActiveNodeOperation::MoveTo),
                 )),
-                KeyCode::Char('r') => Some(AppEvent::Operational(
+                KeyCode::Char('R') => Some(AppEvent::Operational(
                     OperationalEvent::OperateActiveNode(ActiveNodeOperation::Rename),
                 )),
                 KeyCode::Char('M') => Some(AppEvent::Operational(
