@@ -30,6 +30,10 @@ impl App {
         self.components.graph_view.load_graph(graph);
     }
 
+    pub fn get_graph(&mut self) -> &Option<Graph> {
+        self.components.graph_view.get_graph()
+    }
+
     pub fn graph_is_loaded(&self) -> bool {
         self.components.graph_view.graph_is_loaded()
     }

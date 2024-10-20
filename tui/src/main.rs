@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         (_, true) => (doc::load_global()?, false),
         (true, _) => (
             doc::load_local(PathBuf::from(
-                args.local.expect("--local should provide a path"),
+                args.local.clone().expect("--local should provide a path"),
             ))?,
             true,
         ),
@@ -94,6 +94,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     terminal.show_cursor()?;
+
+    if local {
+        doc::save_local(
+            // Default to current directory if --local is not specified
+            PathBuf::from(args.local.unwrap()),
+            &doc::Doc::new(&app.get_graph().as_ref().expect("Failed to get graph")),
+        )?;
+    } else {
+        doc::save_global(&doc::Doc::new(
+            &app.get_graph().as_ref().expect("Failed to get graph"),
+        ))?;
+    }
 
     Ok(())
 }

@@ -25,6 +25,13 @@ trait GraphTUI {
     ) -> usize;
 }
 
+// TODO: consider returning a list of nodes as a vector when it is relevant
+// to update the node graph (do the ListItem conversion later; or return two vectors of `ListItem`s and `idx`s).
+// That render operation would then be O(2n) (the latter is still O(n)),
+// which would have impact in terms of real performance (compared to
+// directly building list item from nodes). However, this would also mean that
+// getting the real node index based on selection index can be reduced to an O(1) operation.
+// The operation to get the correct node index below is O(n).
 impl GraphTUI for Graph {
     fn count_idx(
         &self,
@@ -174,6 +181,10 @@ impl GraphViewComponent {
 
     pub fn load_graph(&mut self, graph: Graph) {
         self.graph = Some(graph);
+    }
+
+    pub fn get_graph(&self) -> &Option<Graph> {
+        &self.graph
     }
 
     pub fn graph_is_loaded(&self) -> bool {
