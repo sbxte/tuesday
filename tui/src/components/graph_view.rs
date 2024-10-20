@@ -202,6 +202,10 @@ impl GraphViewComponent {
         }
     }
 
+    pub fn set_depth(&mut self, depth: u32) {
+        self.max_depth = depth;
+    }
+
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
             match self.current_node {

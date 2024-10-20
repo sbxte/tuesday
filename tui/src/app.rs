@@ -1,7 +1,8 @@
 use crate::{
     components::{self, tabs::TabView},
     events::{
-        ActiveNodeOperation, AppEvent, AskPromptType, InternalEvent, NavDirection, OperationalEvent,
+        ActiveNodeOperation, AppEvent, AskPromptType, InternalEvent, NavDirection,
+        OperationalEvent, ViewFilterOperation,
     },
 };
 use tuecore::graph::Graph;
@@ -80,6 +81,22 @@ impl App {
                     _ => (),
                 },
                 AppEvent::Operational(ev) => match ev {
+                    OperationalEvent::Filter(op) => match op {
+                        ViewFilterOperation::SetDepth => {
+                            self.components
+                                .graph_view
+                                // TODO: proper invalid input handling
+                                .set_depth(
+                                    self.components
+                                        .cmdline
+                                        .get_curr_input()
+                                        .parse::<u32>()
+                                        .unwrap_or(1),
+                                );
+                            return STOP_CAPTURING_KEY;
+                        }
+                        _ => (),
+                    },
                     OperationalEvent::OperateActiveNode(op) => match op {
                         ActiveNodeOperation::Rename => {
                             self.components
@@ -115,6 +132,16 @@ impl App {
                     self.components.tabs.switch_view(&direction)
                 }
 
+                OperationalEvent::Filter(op) => match op {
+                    ViewFilterOperation::SetDepth => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Input(ev),
+                            "Set depth:".to_string(),
+                        )));
+                    }
+                    _ => (),
+                },
+
                 OperationalEvent::Navigate(navigation) => match navigation {
                     NavDirection::Next => self.components.graph_view.select_next(),
                     NavDirection::Previous => self.components.graph_view.select_previous(),
@@ -128,7 +155,7 @@ impl App {
                     NavDirection::ToRoot => self.components.graph_view.switch_view_to_roots(),
                     _ => (),
                 },
-                OperationalEvent::OperateActiveNode(ref operation) => match operation {
+                OperationalEvent::OperateActiveNode(ref op) => match op {
                     ActiveNodeOperation::Check => self.components.graph_view.check_active(),
                     ActiveNodeOperation::Rename => {
                         if let Some(node) = self.components.graph_view.get_current_node() {
