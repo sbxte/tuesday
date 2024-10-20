@@ -13,39 +13,30 @@ const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
 const INVALID_NODE_SELECTION_MSG: &str = "Invalid selected node index found";
 
 trait GraphTUI {
-    fn count_idx(
+    fn get_nodes(
         &self,
-        index: usize,
         indices: &[usize],
         skip_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        counter: &mut usize,
-    ) -> usize;
+        storage: &mut Vec<(usize, u32)>,
+    );
 }
 
-// TODO: consider returning a list of nodes as a vector when it is relevant
-// to update the node graph (do the ListItem conversion later; or return two vectors of `ListItem`s and `idx`s).
-// That render operation would then be O(2n) (the latter is still O(n)),
-// which would have impact in terms of real performance (compared to
-// directly building list item from nodes). However, this would also mean that
-// getting the real node index based on selection index can be reduced to an O(1) operation.
-// The operation to get the correct node index below is O(n).
 impl GraphTUI for Graph {
-    fn count_idx(
+    fn get_nodes(
         &self,
-        index: usize,
         indices: &[usize],
         skip_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        counter: &mut usize,
-    ) -> usize {
+        storage: &mut Vec<(usize, u32)>,
+    ) {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
-            return 0;
+            return;
         }
 
         for i in indices {
@@ -55,28 +46,23 @@ impl GraphTUI for Graph {
                 }
             }
 
-            // If theres no need to show archived nodes then ignore it and its children
             let node = self.get_node(*i);
+            storage.push((node.index, depth));
+
+            // If there's no need to show archived nodes then ignore it and its children
             if !skip_archived && node.archived {
                 continue;
             }
 
-            if *counter == index {
-                return node.index;
-            } else {
-                *counter += 1;
-                self.count_idx(
-                    index,
-                    &self.get_node_children(node.index),
-                    skip_archived,
-                    max_depth,
-                    depth + 1,
-                    start,
-                    counter,
-                );
-            }
+            self.get_nodes(
+                &self.get_node_children(node.index),
+                skip_archived,
+                max_depth,
+                depth + 1,
+                start,
+                storage,
+            )
         }
-        0
     }
 }
 
@@ -137,14 +123,19 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
 #[derive(PartialEq)]
 enum NodeLoc {
     Idx(usize),
+    // TODO: side effect may arise as this field is not tied to show_archived under the
+    // GraphViewComponent struct below
     Roots,
 }
 
 pub struct GraphViewComponent {
     current_node: NodeLoc,
-    filter: String,
     graph: Option<Graph>,
-    rendered_nodes_len: usize,
+
+    /// Nodes that should be rendered in current view. Stores the node index and its depth.
+    /// Influenced by the depth and whether or not we should be rendering archived nodes.
+    nodes: Vec<(usize, u32)>,
+
     list_state: ListState,
     max_depth: u32,
     selected_indices: Vec<usize>,
@@ -160,16 +151,56 @@ impl GraphViewComponent {
         list_state.select_first();
         Self {
             current_node: NodeLoc::Roots,
-            filter: String::new(),
+            nodes: Vec::new(),
             graph: None,
             list_state,
             max_depth: 1,
             selected_indices: Vec::new(),
             show_archived: false,
-            rendered_nodes_len: 0,
             path: Vec::new(),
             selection_idx_path: Vec::new(),
             show_date_graphs: false,
+        }
+    }
+
+    // Refresh list of nodes to render. Always call after graph is manipulated.
+    pub fn update_nodes(&mut self) {
+        self.nodes.clear();
+        if let Some(graph) = &self.graph {
+            match self.current_node {
+                NodeLoc::Roots => {
+                    if self.show_date_graphs {
+                        graph.get_nodes(
+                            &graph.get_date_nodes_indices(),
+                            self.show_archived,
+                            self.max_depth,
+                            1,
+                            None,
+                            &mut self.nodes,
+                        )
+                    } else {
+                        graph.get_nodes(
+                            graph.get_root_nodes_indices(),
+                            self.show_archived,
+                            self.max_depth,
+                            1,
+                            None,
+                            &mut self.nodes,
+                        );
+                    }
+                }
+                NodeLoc::Idx(idx) => {
+                    self.nodes.push((idx, 0)); // the parent node
+                    graph.get_nodes(
+                        &graph.get_node_children(idx),
+                        self.show_archived,
+                        self.max_depth,
+                        1,
+                        None,
+                        &mut self.nodes,
+                    );
+                }
+            }
         }
     }
 
@@ -179,8 +210,17 @@ impl GraphViewComponent {
             .expect(INVALID_NODE_SELECTION_MSG)
     }
 
+    pub fn get_current_node(&self) -> Option<Node> {
+        if let Some(graph) = &self.graph {
+            let idx = self.get_selected_idx();
+            return Some(graph.get_node(self.nodes[idx].0));
+        }
+        None
+    }
+
     pub fn load_graph(&mut self, graph: Graph) {
         self.graph = Some(graph);
+        self.update_nodes();
     }
 
     pub fn get_graph(&self) -> &Option<Graph> {
@@ -215,8 +255,7 @@ impl GraphViewComponent {
                         .list_state
                         .selected()
                         .expect(INVALID_NODE_SELECTION_MSG);
-                    let node_idx = graph.get_root_nodes_indices()[idx];
-                    let _ = graph.remove(node_idx.to_string());
+                    let _ = graph.remove(self.nodes[idx].0.to_string());
                 }
                 NodeLoc::Idx(idx) => {
                     let selected_idx = self
@@ -224,22 +263,7 @@ impl GraphViewComponent {
                         .selected()
                         .expect(INVALID_NODE_SELECTION_MSG);
 
-                    let node_idx = {
-                        if selected_idx == 0 {
-                            idx
-                        } else {
-                            graph.count_idx(
-                                selected_idx - 1,
-                                &graph.get_node_children(idx),
-                                !self.show_archived,
-                                self.max_depth,
-                                1,
-                                None,
-                                &mut 0,
-                            )
-                        }
-                    };
-                    let _ = graph.remove(node_idx.to_string());
+                    let _ = graph.remove(self.nodes[idx].0.to_string());
                     if selected_idx == 0 {
                         self.step_out();
                     }
@@ -250,49 +274,19 @@ impl GraphViewComponent {
     }
 
     pub fn step_into(&mut self) {
-        if let Some(graph) = &self.graph {
-            self.selection_idx_path.push(self.get_selected_idx());
-            match self.current_node {
-                NodeLoc::Roots => {
-                    if self.show_date_graphs {
-                        let indices = graph.get_date_nodes_indices();
-                        let node_idx = indices[self.get_selected_idx()];
+        if let Some(graph) = &mut self.graph {
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
+            let node = graph.get_node(self.nodes[idx].0);
+            self.current_node = NodeLoc::Idx(node.index);
+            self.path.push(node.index);
+            self.selection_idx_path.push(idx);
 
-                        self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(indices[self.get_selected_idx()]);
-                    } else {
-                        let indices = graph.get_root_nodes_indices();
-                        let node_idx = indices[self
-                            .list_state
-                            .selected()
-                            .expect(INVALID_NODE_SELECTION_MSG)];
+            self.update_nodes();
 
-                        self.current_node = NodeLoc::Idx(node_idx);
-                        self.path.push(indices[self.get_selected_idx()]);
-                    }
-                }
-                NodeLoc::Idx(idx) => {
-                    if self.list_state.selected() == Some(0) {
-                        return;
-                    }
-                    self.path.push(idx);
-                    let node_idx = graph.count_idx(
-                        self.list_state
-                            .selected()
-                            .expect(INVALID_NODE_SELECTION_MSG)
-                            - 1,
-                        &graph.get_node_children(idx),
-                        !self.show_archived,
-                        self.max_depth,
-                        1,
-                        None,
-                        &mut 0,
-                    );
-                    self.current_node = NodeLoc::Idx(node_idx);
-                }
-            }
-
-            if self.rendered_nodes_len > 1 {
+            if self.nodes.len() > 1 {
                 self.list_state.select(Some(1));
             } else {
                 self.list_state.select(Some(0));
@@ -302,13 +296,15 @@ impl GraphViewComponent {
 
     pub fn step_out(&mut self) {
         // not on root
-        if self.path.len() > 1 {
-            self.list_state.select(self.selection_idx_path.pop());
+        if self.path.len() > 0 {
             self.current_node = NodeLoc::Idx(self.path.pop().expect(INVALID_NODE_SELECTION_MSG));
-        } else if self.path.len() == 1 {
             self.list_state.select(self.selection_idx_path.pop());
+            self.update_nodes();
+        } else if self.path.len() == 1 {
             self.path.pop();
             self.current_node = NodeLoc::Roots;
+            self.list_state.select(self.selection_idx_path.pop());
+            self.update_nodes();
         }
     }
 
@@ -322,7 +318,7 @@ impl GraphViewComponent {
 
     pub fn select_next(&mut self) {
         if let Some(idx) = self.list_state.selected() {
-            if idx + 1 < self.rendered_nodes_len {
+            if idx < self.nodes.len() {
                 self.list_state.select_next()
             } else {
                 self.list_state.select_first()
@@ -358,47 +354,11 @@ impl GraphViewComponent {
         self.current_node = NodeLoc::Roots;
     }
 
-    // TODO: use this method to replace everything that requires getting the current node index
-    // based on view
-    pub fn get_current_node(&self) -> Option<Node> {
-        if let Some(graph) = &self.graph {
-            match self.current_node {
-                NodeLoc::Roots => {
-                    if self.show_date_graphs {
-                        let indices = graph.get_date_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        return Some(graph.get_node(node_idx));
-                    } else {
-                        let indices = graph.get_root_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        return Some(graph.get_node(node_idx));
-                    }
-                }
-                NodeLoc::Idx(idx) => {
-                    let selected_idx = self
-                        .list_state
-                        .selected()
-                        .expect(INVALID_NODE_SELECTION_MSG);
-                    let node_idx = {
-                        if selected_idx == 0 {
-                            idx
-                        } else {
-                            graph.count_idx(
-                                selected_idx - 1,
-                                &graph.get_node_children(idx),
-                                !self.show_archived,
-                                self.max_depth,
-                                1,
-                                None,
-                                &mut 0,
-                            )
-                        }
-                    };
-                    return Some(graph.get_node(node_idx));
-                }
-            }
-        }
-        None
+    // Get the currently selected index. This is different from the actual node index.
+    fn get_current_idx(&self) -> usize {
+        self.list_state
+            .selected()
+            .expect(INVALID_NODE_SELECTION_MSG)
     }
 
     fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {
@@ -421,85 +381,26 @@ impl GraphViewComponent {
 
     pub fn rename_active(&mut self, new_name: &str) {
         if let Some(graph) = &mut self.graph {
-            match self.current_node {
-                NodeLoc::Roots => {
-                    if self.show_date_graphs {
-                        let indices = graph.get_date_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
-                    } else {
-                        let indices = graph.get_root_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
-                    }
-                }
-                NodeLoc::Idx(idx) => {
-                    let selected_idx = self
-                        .list_state
-                        .selected()
-                        .expect(INVALID_NODE_SELECTION_MSG);
-                    let node_idx = {
-                        if selected_idx == 0 {
-                            idx
-                        } else {
-                            graph.count_idx(
-                                selected_idx - 1,
-                                &graph.get_node_children(idx),
-                                !self.show_archived,
-                                self.max_depth,
-                                1,
-                                None,
-                                &mut 0,
-                            )
-                        }
-                    };
-
-                    let _ = graph.rename_node(node_idx.to_string(), new_name.to_string());
-                }
-            }
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
+            let node = graph.get_node(self.nodes[idx].0);
+            let _ = graph.rename_node(node.index.to_string(), new_name.to_owned());
+            self.update_nodes();
         }
     }
+
     pub fn check_active(&mut self) {
         if let Some(graph) = &mut self.graph {
-            match self.current_node {
-                NodeLoc::Roots => {
-                    if self.show_date_graphs {
-                        let indices = graph.get_date_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        let state = graph.get_node(node_idx).state;
-                        Self::modify_task_status(graph, node_idx, state);
-                    } else {
-                        let indices = graph.get_root_nodes_indices();
-                        let node_idx = indices[self.list_state.selected().unwrap()];
-                        let state = graph.get_node(node_idx).state;
-                        Self::modify_task_status(graph, node_idx, state);
-                    }
-                }
-                NodeLoc::Idx(idx) => {
-                    let selected_idx = self
-                        .list_state
-                        .selected()
-                        .expect(INVALID_NODE_SELECTION_MSG);
-                    let node_idx = {
-                        if selected_idx == 0 {
-                            idx
-                        } else {
-                            graph.count_idx(
-                                selected_idx - 1,
-                                &graph.get_node_children(idx),
-                                !self.show_archived,
-                                self.max_depth,
-                                1,
-                                None,
-                                &mut 0,
-                            )
-                        }
-                    };
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
 
-                    let state = graph.get_node(node_idx).state;
-                    Self::modify_task_status(graph, node_idx, state);
-                }
-            }
+            let node = graph.get_node(self.nodes[idx].0);
+            Self::modify_task_status(graph, node.index, node.state);
+            self.update_nodes();
         }
     }
 }
@@ -509,66 +410,12 @@ impl Widget for &mut GraphViewComponent {
     where
         Self: Sized,
     {
-        let mut list_items = Vec::<ListItem>::new();
         if let Some(graph) = &self.graph {
-            match self.current_node {
-                NodeLoc::Roots => {
-                    self.rendered_nodes_len = 0;
-                    if self.show_date_graphs {
-                        let indices = graph.get_date_nodes_indices();
-                        graph
-                            .traverse_recurse(
-                                indices.as_slice(),
-                                !self.show_archived,
-                                1,
-                                1,
-                                None,
-                                &mut |node, depth| {
-                                    self.rendered_nodes_len += 1;
-                                    list_items.push(list_item_from_node(node.clone(), depth))
-                                },
-                            )
-                            .expect("Failed to traverse nodes");
-                    } else {
-                        self.rendered_nodes_len = 0;
-                        let indices = graph.get_root_nodes_indices();
-                        graph
-                            .traverse_recurse(
-                                indices,
-                                !self.show_archived,
-                                1,
-                                1,
-                                None,
-                                &mut |node, depth| {
-                                    self.rendered_nodes_len += 1;
-                                    list_items.push(list_item_from_node(node.clone(), depth))
-                                },
-                            )
-                            .expect("Failed to traverse nodes");
-                    }
-                }
-
-                NodeLoc::Idx(idx) => {
-                    self.rendered_nodes_len = 1; // there will always be the parent
-                    let indices = graph.get_node_children(idx);
-                    graph.with_node(idx, &mut |node| {
-                        list_items.push(list_item_from_node(node.clone(), 0))
-                    });
-                    graph
-                        .traverse_recurse(
-                            indices.as_slice(),
-                            !self.show_archived,
-                            self.max_depth,
-                            1,
-                            None,
-                            &mut |node, depth| {
-                                self.rendered_nodes_len += 1;
-                                list_items.push(list_item_from_node(node.clone(), depth))
-                            },
-                        )
-                        .expect("Failed to traverse nodes");
-                }
-            };
+            let list_items: Vec<ListItem> = self
+                .nodes
+                .iter()
+                .map(|(idx, depth)| list_item_from_node(graph.get_node(*idx), *depth))
+                .collect();
 
             let list = List::new(list_items)
                 .highlight_style(SELECTED_STYLE)
