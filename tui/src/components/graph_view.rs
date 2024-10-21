@@ -303,7 +303,7 @@ impl GraphViewComponent {
 
     pub fn select_next(&mut self) {
         if let Some(idx) = self.list_state.selected() {
-            if idx < self.nodes.len() {
+            if idx + 1 < self.nodes.len() {
                 self.list_state.select_next()
             } else {
                 self.list_state.select_first()
@@ -326,6 +326,7 @@ impl GraphViewComponent {
         if self.current_node == NodeLoc::Roots {
             self.show_date_graphs = !self.show_date_graphs;
             self.select_first();
+            self.update_nodes();
         }
     }
 
