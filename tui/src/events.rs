@@ -30,14 +30,18 @@ pub enum NavDirection {
 /// Operations done with active node.
 #[derive(Clone, Copy)]
 pub enum ActiveNodeOperation {
-    CopyTo,     // P
-    LinkTo,     // S
-    Modify,     // M
-    Delete,     // X
-    MoveTo,     // V
-    Rename,     // R
-    UnlinkFrom, // D
-    Check,      // C
+    CopyTo,            // P
+    LinkTo,            // S
+    Modify,            // M
+    Delete,            // X
+    MoveTo,            // V
+    Rename,            // R
+    UnlinkFrom,        // D
+    Check,             // C
+    AddPseudoToParent, // U
+    AddPseudoToActive, // u
+    AddToParent,       // A
+    AddToActive,       // a
 }
 
 /// Operations done with selected nodes.
@@ -184,6 +188,18 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 )),
                 KeyCode::Char('X') => Some(AppEvent::Operational(
                     OperationalEvent::OperateActiveNode(ActiveNodeOperation::Delete),
+                )),
+                KeyCode::Char('A') => Some(AppEvent::Operational(
+                    OperationalEvent::OperateActiveNode(ActiveNodeOperation::AddToParent),
+                )),
+                KeyCode::Char('a') => Some(AppEvent::Operational(
+                    OperationalEvent::OperateActiveNode(ActiveNodeOperation::AddToActive),
+                )),
+                KeyCode::Char('U') => Some(AppEvent::Operational(
+                    OperationalEvent::OperateActiveNode(ActiveNodeOperation::AddPseudoToParent),
+                )),
+                KeyCode::Char('u') => Some(AppEvent::Operational(
+                    OperationalEvent::OperateActiveNode(ActiveNodeOperation::AddPseudoToActive),
                 )),
 
                 KeyCode::Char('C') => Some(AppEvent::Operational(

@@ -102,8 +102,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
     let message = Span::raw(value.message.to_owned());
-    let index = Span::raw(value.index.to_string());
-    let spacer = Span::raw(" ".to_string());
     if let Some(indent) = indent {
         return ListItem::new(Line::from(vec![
             indent,
@@ -111,8 +109,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
-            spacer,
-            index,
         ]));
     } else {
         return ListItem::new(Line::from(vec![
@@ -120,8 +116,6 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
-            spacer,
-            index,
         ]));
     }
 }
@@ -250,32 +244,17 @@ impl GraphViewComponent {
 
     pub fn set_depth(&mut self, depth: u32) {
         self.max_depth = depth;
+        self.update_nodes();
     }
 
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
-            match self.current_node {
-                NodeLoc::Roots => {
-                    // TODO: fix ownership issue yeah
-                    let idx = self
-                        .list_state
-                        .selected()
-                        .expect(INVALID_NODE_SELECTION_MSG);
-                    let _ = graph.remove(self.nodes[idx].0.to_string());
-                }
-                NodeLoc::Idx(idx) => {
-                    let selected_idx = self
-                        .list_state
-                        .selected()
-                        .expect(INVALID_NODE_SELECTION_MSG);
-
-                    let _ = graph.remove(self.nodes[idx].0.to_string());
-                    if selected_idx == 0 {
-                        self.step_out();
-                    }
-                }
-            }
-            // TODO: again, maybe let the graph backend accept only usize and we do the cast ourselves
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
+            let _ = graph.remove(self.nodes[idx].0.to_string());
+            self.update_nodes();
         }
     }
 
@@ -385,16 +364,41 @@ impl GraphViewComponent {
         };
     }
 
-    pub fn rename_active(&mut self, new_name: &str) {
+    pub fn rename_active(&mut self, new_message: &str) {
         if let Some(graph) = &mut self.graph {
             let idx = self
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
             let node = graph.get_node(self.nodes[idx].0);
-            let _ = graph.rename_node(node.index.to_string(), new_name.to_owned());
+            let _ = graph.rename_node(node.index.to_string(), new_message.to_owned());
             self.update_nodes();
         }
+    }
+
+    pub fn add_node_to_active(&mut self, message: &str, pseudo: bool) {
+        if let Some(graph) = &mut self.graph {
+            let idx = self
+                .list_state
+                .selected()
+                .expect(INVALID_NODE_SELECTION_MSG);
+
+            let node_idx = self.nodes[idx].0;
+            let _ = graph.insert_child(message.to_string(), node_idx.to_string(), pseudo);
+            self.update_nodes();
+        }
+    }
+
+    pub fn add_node_to_parent(&mut self, message: &str, pseudo: bool) {
+        if let Some(graph) = &mut self.graph {
+            match self.current_node {
+                NodeLoc::Roots => graph.insert_root(message.to_string(), false),
+                NodeLoc::Idx(idx) => {
+                    let _ = graph.insert_child(message.to_string(), idx.to_string(), pseudo);
+                }
+            }
+        }
+        self.update_nodes();
     }
 
     pub fn check_active(&mut self) {

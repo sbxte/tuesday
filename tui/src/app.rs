@@ -98,6 +98,32 @@ impl App {
                         _ => (),
                     },
                     OperationalEvent::OperateActiveNode(op) => match op {
+                        ActiveNodeOperation::AddToParent => {
+                            self.components.graph_view.add_node_to_parent(
+                                self.components.cmdline.get_curr_input(),
+                                false,
+                            );
+                            return STOP_CAPTURING_KEY;
+                        }
+                        ActiveNodeOperation::AddToActive => {
+                            self.components.graph_view.add_node_to_active(
+                                self.components.cmdline.get_curr_input(),
+                                false,
+                            );
+                            return STOP_CAPTURING_KEY;
+                        }
+                        ActiveNodeOperation::AddPseudoToParent => {
+                            self.components
+                                .graph_view
+                                .add_node_to_active(self.components.cmdline.get_curr_input(), true);
+                            return STOP_CAPTURING_KEY;
+                        }
+                        ActiveNodeOperation::AddPseudoToActive => {
+                            self.components
+                                .graph_view
+                                .add_node_to_active(self.components.cmdline.get_curr_input(), true);
+                            return STOP_CAPTURING_KEY;
+                        }
                         ActiveNodeOperation::Rename => {
                             self.components
                                 .graph_view
@@ -171,6 +197,33 @@ impl App {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Confirmation(ev),
                             "Delete active node? (y/n)".to_string(),
+                        )));
+                    }
+                    ActiveNodeOperation::AddToParent => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Input(ev),
+                            "Add node:".to_string(),
+                        )));
+                    }
+
+                    ActiveNodeOperation::AddToActive => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Input(ev),
+                            "Insert node to selected:".to_string(),
+                        )));
+                    }
+
+                    ActiveNodeOperation::AddPseudoToParent => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Input(ev),
+                            "Add pseudonode:".to_string(),
+                        )));
+                    }
+
+                    ActiveNodeOperation::AddPseudoToActive => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Input(ev),
+                            "Insert pseudonode to selected:".to_string(),
                         )));
                     }
                     _ => (),
