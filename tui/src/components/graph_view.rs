@@ -102,6 +102,8 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
     let message = Span::raw(value.message.to_owned());
+    let index = Span::raw(value.index.to_string());
+    let spacer = Span::raw(" ".to_string());
     if let Some(indent) = indent {
         return ListItem::new(Line::from(vec![
             indent,
@@ -109,6 +111,8 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
+            spacer,
+            index,
         ]));
     } else {
         return ListItem::new(Line::from(vec![
@@ -116,6 +120,8 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
             status,
             statusbox_right,
             message,
+            spacer,
+            index,
         ]));
     }
 }
@@ -296,16 +302,16 @@ impl GraphViewComponent {
 
     pub fn step_out(&mut self) {
         // not on root
-        if self.path.len() > 0 {
-            self.current_node = NodeLoc::Idx(self.path.pop().expect(INVALID_NODE_SELECTION_MSG));
+        if self.path.len() > 1 {
+            self.path.pop();
+            self.current_node = NodeLoc::Idx(*self.path.last().expect(INVALID_NODE_SELECTION_MSG));
             self.list_state.select(self.selection_idx_path.pop());
-            self.update_nodes();
         } else if self.path.len() == 1 {
+            self.list_state.select(self.selection_idx_path.pop());
             self.path.pop();
             self.current_node = NodeLoc::Roots;
-            self.list_state.select(self.selection_idx_path.pop());
-            self.update_nodes();
         }
+        self.update_nodes();
     }
 
     pub fn select_first(&mut self) {
