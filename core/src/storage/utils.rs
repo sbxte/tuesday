@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
@@ -6,8 +7,8 @@ use home::home_dir;
 /// Attempt to obtain save file by recursing through parent directories or searching the home
 /// directory for a file with a matching filename
 /// See also [`get_save_path`]
-pub fn get_save(base_path: &Path, filename: &str) -> Option<File> {
-    let path = get_save_path(base_path, filename)?;
+pub fn get_save_default(filename: &str) -> Option<File> {
+    let path = get_save_path(env::current_dir().ok()?.as_path(), filename)?;
 
     OpenOptions::new()
         .write(true)
