@@ -1,6 +1,9 @@
-# Project: Tuesday
+<div align="center">
+	<h1>Tuesday</h1>
+	<img src="./assets/icon.png" width="100px"/>
+	<p>A To-Do tool. Inspired by <a href="https://github.com/climech/grit">grit</a></p>
+</div>
 
-A To-Do CLI tool. Inspired by [grit](https://github.com/climech/grit)
 
 # Installation and Usage
 
