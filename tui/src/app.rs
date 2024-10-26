@@ -23,6 +23,12 @@ pub struct App {
     pub(crate) state: AppState,
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
     pub fn should_exit(&self) -> bool {
         self.state.should_exit
@@ -40,7 +46,7 @@ impl App {
     }
 
     pub fn current_view(&self) -> &TabView {
-        &self.components.tabs.curr_view()
+        self.components.tabs.curr_view()
     }
 
     pub fn multiple_nodes_selected(&self) -> bool {
@@ -71,7 +77,7 @@ impl App {
             match event {
                 AppEvent::Internal(ev) => match ev {
                     InternalEvent::ForwardKey(code) => {
-                        return self.components.cmdline.process_input(&prompt_type, &code)
+                        return self.components.cmdline.process_input(prompt_type, &code)
                     }
                     InternalEvent::StopPrompt => {
                         self.components.cmdline.hide_prompt();

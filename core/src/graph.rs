@@ -1,6 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::{borrow::Borrow, cell::RefCell};
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
@@ -610,7 +610,7 @@ impl Graph {
     }
 
     /// Call a closure that takes a node, with given index.
-    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node) -> ()) {
+    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node)) {
         let node = self.nodes[index].as_ref().unwrap().borrow();
         f(&node);
     }
@@ -628,7 +628,7 @@ impl Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &mut impl FnMut(&Node, u32) -> (),
+        f: &mut impl FnMut(&Node, u32),
     ) -> Result<(), ErrorType> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -772,12 +772,10 @@ impl Graph {
     /// Format
     /// YYYY-MM-DD
     pub fn is_date(s: &str) -> bool {
-        return match Self::_parse_date(s) {
-            // TODO: Should negative years be allowed??? Who would want to schedule something as
-            // far back as the BCEs ????
+        match Self::_parse_date(s) {
             Ok((_, (y, m, d))) => NaiveDate::from_ymd_opt(y as i32, m, d).is_some(),
             Err(_) => false,
-        };
+        }
     }
 
     fn _parse_date(s: &str) -> IResult<&str, (u32, u32, u32)> {

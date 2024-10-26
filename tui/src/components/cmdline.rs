@@ -18,6 +18,12 @@ pub struct CmdlineComponent {
     shown: bool,
 }
 
+impl Default for CmdlineComponent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CmdlineComponent {
     pub fn new() -> Self {
         Self {
@@ -106,13 +112,13 @@ impl CmdlineComponent {
                 self.input_pos += 1;
             }
             KeyCode::Backspace => {
-                if self.input_string.len() > 0 && self.input_pos > 0 {
+                if !self.input_string.is_empty() && self.input_pos > 0 {
                     self.input_string.remove(self.input_pos - 1);
                     self.input_pos -= 1;
                 }
             }
             KeyCode::Delete => {
-                if self.input_string.len() > 0 && self.input_pos < self.input_string.len() {
+                if !self.input_string.is_empty() && self.input_pos < self.input_string.len() {
                     self.input_string.remove(self.input_pos);
                 }
             }

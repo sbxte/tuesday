@@ -136,7 +136,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
             if !app.graph_is_loaded() {
                 return None;
             };
-            return match key_event.code {
+            match key_event.code {
                 KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::Operational(
                     OperationalEvent::Navigate(NavDirection::Next),
                 )),
@@ -236,7 +236,7 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                     NodeSelectionOperation::ToggleSelect,
                 ))),
                 _ => None,
-            };
+            }
         }
 
         TabView::Calendar => todo!(),

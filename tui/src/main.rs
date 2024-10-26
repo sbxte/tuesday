@@ -41,13 +41,9 @@ where
             }
         })?;
         if let event::Event::Key(key_event) = event::read()? {
-            let mut event = process_key(&app, key_event);
-            loop {
-                if let Some(e) = event {
-                    event = app.process_event(e);
-                } else {
-                    break;
-                }
+            let mut event = process_key(app, key_event);
+            while let Some(e) = event {
+                event = app.process_event(e);
             }
         }
     }
@@ -99,11 +95,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         doc::save_local(
             // Default to current directory if --local is not specified
             PathBuf::from(args.local.unwrap()),
-            &doc::Doc::new(&app.get_graph().as_ref().expect("Failed to get graph")),
+            &doc::Doc::new(app.get_graph().as_ref().expect("Failed to get graph")),
         )?;
     } else {
         doc::save_global(&doc::Doc::new(
-            &app.get_graph().as_ref().expect("Failed to get graph"),
+            app.get_graph().as_ref().expect("Failed to get graph"),
         ))?;
     }
 

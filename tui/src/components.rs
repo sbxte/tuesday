@@ -3,14 +3,12 @@ pub mod graph_view;
 pub mod statusbar;
 pub mod tabs;
 
-use std::rc::Rc;
 
 use cmdline::CmdlineComponent;
 use graph_view::GraphViewComponent;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     widgets::Widget,
-    Frame,
 };
 use statusbar::StatusBarComponent;
 use tabs::TabComponent;
@@ -51,6 +49,12 @@ pub struct AppUIComponent {
     pub(crate) graph_view: GraphViewComponent,
     pub(crate) status_bar: StatusBarComponent,
     pub(crate) cmdline: CmdlineComponent,
+}
+
+impl Default for AppUIComponent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AppUIComponent {

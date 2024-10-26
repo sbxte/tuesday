@@ -103,20 +103,20 @@ fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
     let message = Span::raw(value.message.to_owned());
     if let Some(indent) = indent {
-        return ListItem::new(Line::from(vec![
+        ListItem::new(Line::from(vec![
             indent,
             statusbox_left,
             status,
             statusbox_right,
             message,
-        ]));
+        ]))
     } else {
-        return ListItem::new(Line::from(vec![
+        ListItem::new(Line::from(vec![
             statusbox_left,
             status,
             statusbox_right,
             message,
-        ]));
+        ]))
     }
 }
 
@@ -143,6 +143,12 @@ pub struct GraphViewComponent {
     path: Vec<usize>,
     selection_idx_path: Vec<usize>,
     show_archived: bool,
+}
+
+impl Default for GraphViewComponent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GraphViewComponent {
@@ -232,7 +238,7 @@ impl GraphViewComponent {
     }
 
     pub fn graph_multiple_selected(&self) -> bool {
-        self.selected_indices.len() > 0
+        !self.selected_indices.is_empty()
     }
 
     pub fn curr_idx(&self) -> Option<usize> {
@@ -281,14 +287,19 @@ impl GraphViewComponent {
 
     pub fn step_out(&mut self) {
         // not on root
-        if self.path.len() > 1 {
-            self.path.pop();
-            self.current_node = NodeLoc::Idx(*self.path.last().expect(INVALID_NODE_SELECTION_MSG));
-            self.list_state.select(self.selection_idx_path.pop());
-        } else if self.path.len() == 1 {
-            self.list_state.select(self.selection_idx_path.pop());
-            self.path.pop();
-            self.current_node = NodeLoc::Roots;
+        match self.path.len() {
+            2.. => {
+                self.path.pop();
+                self.current_node =
+                    NodeLoc::Idx(*self.path.last().expect(INVALID_NODE_SELECTION_MSG));
+                self.list_state.select(self.selection_idx_path.pop());
+            }
+            1 => {
+                self.list_state.select(self.selection_idx_path.pop());
+                self.path.pop();
+                self.current_node = NodeLoc::Roots;
+            }
+            _ => {}
         }
         self.update_nodes();
     }

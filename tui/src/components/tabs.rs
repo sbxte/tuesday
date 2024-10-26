@@ -1,9 +1,10 @@
+use std::fmt::Display;
+
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::Line,
     widgets::{Tabs, Widget},
-    Frame,
 };
 
 const HIGLIGHTED_COLOR: Style = Style::new().bg(Color::DarkGray).fg(Color::White);
@@ -18,14 +19,21 @@ pub enum TabView {
     Calendar,
 }
 
-impl TabView {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Tasks => "Tasks".to_owned(),
-            Self::Calendar => "Calendar".to_owned(),
-            Self::DateGraph => "Date Graph".to_owned(),
-        }
+impl Display for TabView {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Tasks => "Tasks".to_owned(),
+                Self::Calendar => "Calendar".to_owned(),
+                Self::DateGraph => "Date Graph".to_owned(),
+            }
+        )
     }
+}
+
+impl TabView {
     fn idx(&self) -> usize {
         match self {
             Self::Tasks => 0,
@@ -37,6 +45,12 @@ impl TabView {
 
 pub struct TabComponent {
     current_view: TabView,
+}
+
+impl Default for TabComponent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TabComponent {
@@ -82,7 +96,7 @@ impl Widget for &mut TabComponent {
     where
         Self: Sized,
     {
-        let tabs = vec![TabView::Tasks, TabView::DateGraph, TabView::Calendar];
+        let tabs = [TabView::Tasks, TabView::DateGraph, TabView::Calendar];
         Tabs::new(tabs.iter().map(|tab| Line::from(tab.to_string())))
             .highlight_style(HIGLIGHTED_COLOR)
             .select(self.current_view.idx())

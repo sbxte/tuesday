@@ -39,6 +39,12 @@ pub struct StatusBarComponent {
     items: Vec<StatusBarItem>,
 }
 
+impl Default for StatusBarComponent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StatusBarComponent {
     pub fn new() -> Self {
         Self { items: Vec::new() }
@@ -66,6 +72,6 @@ impl StatusBarComponent {
     }
 
     pub fn render(&self, rect: Rect) {
-        ()
+        
     }
 }
