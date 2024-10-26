@@ -1,6 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::{borrow::Borrow, cell::RefCell};
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
@@ -623,7 +623,7 @@ impl Graph {
     }
 
     /// Call a closure that takes a node, with given index.
-    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node) -> ()) {
+    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node)) {
         let node = self.nodes[index].as_ref().unwrap().borrow();
         f(&node);
     }
@@ -641,7 +641,7 @@ impl Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &mut impl FnMut(&Node, u32) -> (),
+        f: &mut impl FnMut(&Node, u32),
     ) -> Result<(), ErrorType> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
