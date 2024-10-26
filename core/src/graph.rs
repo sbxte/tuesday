@@ -1,6 +1,6 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::{borrow::Borrow, cell::RefCell};
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
@@ -623,10 +623,16 @@ impl Graph {
     }
 
     /// Call a closure that takes a node, with given index.
-    pub fn with_node(&self, index: usize, f: impl Fn(&Node) -> ()) {
+    pub fn with_node(&self, index: usize, f: &mut impl FnMut(&Node) -> ()) {
         let node = self.nodes[index].as_ref().unwrap().borrow();
         f(&node);
     }
+
+    /// Get a node of an index from graph. Note that the returned node is cloned from the original.
+    pub fn get_node(&self, index: usize) -> Node {
+        self.nodes[index].as_ref().unwrap().borrow().clone()
+    }
+
     /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.
     pub fn traverse_recurse(
         &self,
@@ -635,7 +641,7 @@ impl Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &impl Fn(&Node, u32) -> (),
+        f: &mut impl FnMut(&Node, u32) -> (),
     ) -> Result<(), ErrorType> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -923,7 +929,7 @@ impl fmt::Display for NodeState {
 pub trait GraphGetters {
     fn get_root_nodes_indices(&self) -> &[usize];
     fn get_archived_node_indices(&self) -> &[usize];
-    //
+
     // TODO: both these uses vectors, is it worth the performance cost?
     fn get_date_nodes_indices(&self) -> Vec<usize>;
     fn get_node_children(&self, index: usize) -> Vec<usize>;

@@ -44,7 +44,7 @@ impl CLIDisplay for Graph {
             max_depth,
             1,
             None,
-            &|node, depth| Self::display_node(node, depth),
+            &mut |node, depth| Self::display_node(node, depth),
         )?;
         Ok(())
     }
@@ -56,14 +56,14 @@ impl CLIDisplay for Graph {
             1,
             1,
             None,
-            &|node, depth| Self::display_node(node, depth),
+            &mut |node, depth| Self::display_node(node, depth),
         )?;
         Ok(())
     }
 
     fn list_dates(&self) -> Result<()> {
         let dates = self.get_date_nodes_indices();
-        self.traverse_recurse(dates.as_slice(), false, 1, 1, None, &|node, depth| {
+        self.traverse_recurse(dates.as_slice(), false, 1, 1, None, &mut |node, depth| {
             Self::display_node(node, depth)
         })?;
         Ok(())
@@ -73,7 +73,7 @@ impl CLIDisplay for Graph {
         let index = self.get_index(&target)?;
 
         // Display self as well
-        self.with_node(index, |node| Self::display_node(&node, 0));
+        self.with_node(index, &mut |node| Self::display_node(node, 0));
 
         self.traverse_recurse(
             self.get_node_children(index).as_slice(),
@@ -81,7 +81,7 @@ impl CLIDisplay for Graph {
             max_depth,
             1,
             Some(index),
-            &|node, depth| Self::display_node(&node, depth),
+            &mut |node, depth| Self::display_node(node, depth),
         )?;
         Ok(())
     }
