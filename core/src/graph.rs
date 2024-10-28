@@ -92,6 +92,26 @@ impl Graph {
         self.aliases.len()
     }
 
+    pub fn get_nodes(&self) -> &Vec<Option<RefCell<Node>>> {
+        &self.nodes
+    }
+
+    pub fn get_roots(&self) -> &Vec<usize> {
+        &self.roots
+    }
+
+    pub fn get_aliases(&self) -> &HashMap<String, usize> {
+        &self.aliases
+    }
+
+    pub fn get_dates(&self) -> &HashMap<String, usize> {
+        &self.dates
+    }
+
+    pub fn get_archived(&self) -> &Vec<usize> {
+        &self.archived
+    }
+
     pub fn insert_raw(&mut self, node: Node) {
         self.nodes.push(Some(RefCell::new(node)));
     }
@@ -663,53 +683,6 @@ impl Graph {
                 start,
                 f,
             )?;
-        }
-        Ok(())
-    }
-
-    pub fn print_stats(&self, target: Option<String>) -> Result<()> {
-        // If a specific node is specified
-        if let Some(target) = target {
-            let index = self.get_index(&target)?;
-            let node = self.nodes[index].as_ref().unwrap().borrow();
-            println!("Message : {}", &node.message);
-            println!("Parents :");
-            for i in &node.parents {
-                let parent = self.nodes[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", parent.index, parent.message, parent.state);
-            }
-            println!("Children:");
-            for i in &node.children {
-                let child = self.nodes[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", child.index, child.message, child.state);
-            }
-            if let Some(ref alias) = node.alias {
-                println!("Alias   : {}", alias);
-            }
-            println!("Archived: {}", node.archived);
-            println!("Status  : [{}]", node.state);
-
-        // Else, list out stats for the whole graph
-        } else {
-            println!(
-                "Nodes   : {} (Empty: {})",
-                self.nodes.len(),
-                self.nodes
-                    .iter()
-                    .fold(0, |acc, x| if x.is_none() { acc + 1 } else { acc })
-            );
-            println!(
-                "Edges   : {}",
-                self.nodes.iter().fold(0, |acc, x| if let Some(x) = x {
-                    acc + x.borrow().parents.len()
-                } else {
-                    acc
-                }) + self.roots.len()
-            );
-            println!("Roots   : {}", self.roots.len());
-            println!("Dates   : {}", self.dates.len());
-            println!("Aliases : {}", self.aliases.len());
-            println!("Archived: {}", self.archived.len());
         }
         Ok(())
     }

@@ -14,6 +14,8 @@ pub trait CLIDisplay {
     fn list_dates(&self) -> Result<()>;
 
     fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()>;
+
+    fn print_stats(&self, target: Option<String>) -> Result<()>;
 }
 
 impl CLIDisplay for Graph {
@@ -83,6 +85,56 @@ impl CLIDisplay for Graph {
             Some(index),
             &mut |node, depth| Self::display_node(node, depth),
         )?;
+        Ok(())
+    }
+
+    fn print_stats(&self, target: Option<String>) -> Result<()> {
+        // If a specific node is specified
+        if let Some(target) = target {
+            let index = self.get_index(&target)?;
+            let node = self.get_nodes()[index].as_ref().unwrap().borrow();
+            println!("Message : {}", &node.message);
+            println!("Parents :");
+            for i in &node.parents {
+                let parent = self.get_nodes()[*i].as_ref().unwrap().borrow();
+                println!("({}) {} [{}]", parent.index, parent.message, parent.state);
+            }
+            println!("Children:");
+            for i in &node.children {
+                let child = self.get_nodes()[*i].as_ref().unwrap().borrow();
+                println!("({}) {} [{}]", child.index, child.message, child.state);
+            }
+            if let Some(ref alias) = node.alias {
+                println!("Alias   : {}", alias);
+            }
+            println!("Archived: {}", node.archived);
+            println!("Status  : [{}]", node.state);
+
+        // Else, list out stats for the whole graph
+        } else {
+            println!(
+                "Nodes   : {} (Empty: {})",
+                self.get_nodes().len(),
+                self.get_nodes()
+                    .iter()
+                    .fold(0, |acc, x| if x.is_none() { acc + 1 } else { acc })
+            );
+            println!(
+                "Edges   : {}",
+                self.get_nodes()
+                    .iter()
+                    .fold(0, |acc, x| if let Some(x) = x {
+                        acc + x.borrow().parents.len()
+                    } else {
+                        acc
+                    })
+                    + self.get_roots().len()
+            );
+            println!("Roots   : {}", self.get_roots().len());
+            println!("Dates   : {}", self.get_dates().len());
+            println!("Aliases : {}", self.get_aliases().len());
+            println!("Archived: {}", self.get_archived().len());
+        }
         Ok(())
     }
 }

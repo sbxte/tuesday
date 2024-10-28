@@ -54,7 +54,8 @@ impl GraphTUI for Graph {
                 continue;
             }
 
-            self.get_nodes(
+            GraphTUI::get_nodes(
+                self,
                 &self.get_node_children(node.index),
                 skip_archived,
                 max_depth,
@@ -176,7 +177,8 @@ impl GraphViewComponent {
             match self.current_node {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
-                        graph.get_nodes(
+                        GraphTUI::get_nodes(
+                            graph,
                             &graph.get_date_nodes_indices(),
                             self.show_archived,
                             self.max_depth,
@@ -185,7 +187,8 @@ impl GraphViewComponent {
                             &mut self.nodes,
                         )
                     } else {
-                        graph.get_nodes(
+                        GraphTUI::get_nodes(
+                            graph,
                             graph.get_root_nodes_indices(),
                             self.show_archived,
                             self.max_depth,
@@ -197,7 +200,8 @@ impl GraphViewComponent {
                 }
                 NodeLoc::Idx(idx) => {
                     self.nodes.push((idx, 0)); // the parent node
-                    graph.get_nodes(
+                    GraphTUI::get_nodes(
+                        graph,
                         &graph.get_node_children(idx),
                         self.show_archived,
                         self.max_depth,
