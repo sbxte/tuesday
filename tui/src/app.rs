@@ -87,6 +87,12 @@ impl App {
                     _ => (),
                 },
                 AppEvent::Operational(ev) => match ev {
+                    OperationalEvent::Quit => {
+                        self.state.should_exit = true;
+                        self.components.cmdline.hide_prompt();
+                        self.state.is_capturing_key = None;
+                        return None;
+                    }
                     OperationalEvent::Filter(op) => match op {
                         ViewFilterOperation::SetDepth => {
                             self.components
@@ -159,7 +165,12 @@ impl App {
             }
 
             AppEvent::Operational(ev) => match ev {
-                OperationalEvent::Quit => self.state.should_exit = true,
+                OperationalEvent::Quit => {
+                    return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                        AskPromptType::Confirmation(ev),
+                        "Quit? (y/n)".to_string(),
+                    )))
+                }
                 OperationalEvent::TabChange(direction) => {
                     self.components.tabs.switch_view(&direction)
                 }

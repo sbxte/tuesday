@@ -42,6 +42,8 @@ impl CmdlineComponent {
         match key_capture_type {
             AskPromptType::Confirmation(ev) => {
                 if code == &KeyCode::Char('y') || code == &KeyCode::Char('Y') {
+                    // TODO: we only received a reference, so we're copying the event here. can we
+                    // do better?
                     return Some(AppEvent::Operational(*ev));
                 }
                 Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt))
