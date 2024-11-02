@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{palette::tailwind::SLATE, Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{List, ListItem, ListState, StatefulWidget, Widget},
+    widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 use tuecore::graph::{Graph, GraphGetters, Node, NodeState};
 
@@ -348,10 +348,8 @@ impl GraphViewComponent {
     }
 
     /// Get the currently selected index. This is different from the actual node index.
-    fn get_selected_idx(&self) -> usize {
-        self.list_state
-            .selected()
-            .expect(INVALID_NODE_SELECTION_MSG)
+    fn get_selected_idx(&self) -> Option<usize> {
+        self.list_state.selected()
     }
 
     /// Get the next selection index. Different from actual node index. Handles index wrapping as well.
@@ -374,9 +372,10 @@ impl GraphViewComponent {
 
     pub fn get_current_node(&self) -> Option<Node> {
         if let Some(graph) = &self.graph {
-            let idx = self.get_selected_idx();
-            if self.nodes.len() > idx {
-                return Some(graph.get_node(self.nodes[idx].node_idx));
+            if let Some(idx) = self.get_selected_idx() {
+                if self.nodes.len() > idx {
+                    return Some(graph.get_node(self.nodes[idx].node_idx));
+                }
             }
         }
         None
@@ -393,6 +392,10 @@ impl GraphViewComponent {
 
     pub fn graph_is_loaded(&self) -> bool {
         self.graph.is_some()
+    }
+
+    pub fn nodes_count(&self) -> usize {
+        return self.nodes.len();
     }
 
     pub fn graph_multiple_selected(&self) -> bool {
@@ -419,71 +422,68 @@ impl GraphViewComponent {
     /// Go to next node that matches filter
     // TODO: why not just store everything beforehand?
     pub fn jump_next_filter(&mut self) {
-        let starting_idx = self.get_selected_idx();
-        let mut idx = starting_idx;
-        loop {
-            idx = self.get_next_idx(idx);
-            if starting_idx == idx {
-                break;
+        if let Some(mut idx) = self.get_selected_idx() {
+            let starting_idx = idx;
+            loop {
+                idx = self.get_next_idx(idx);
+                if starting_idx == idx {
+                    break;
+                }
+                if self.nodes[idx].pattern_loc.is_some() {
+                    break;
+                }
             }
-            if self.nodes[idx].pattern_loc.is_some() {
-                break;
-            }
+            self.list_state.select(Some(idx));
         }
-        self.list_state.select(Some(idx));
     }
 
     pub fn jump_prev_filter(&mut self) {
-        let starting_idx = self.get_selected_idx();
-        let mut idx = starting_idx;
-        loop {
-            idx = self.get_prev_idx(idx);
-            if starting_idx == idx {
-                break;
+        if let Some(mut idx) = self.get_selected_idx() {
+            let starting_idx = idx;
+            loop {
+                idx = self.get_prev_idx(idx);
+                if starting_idx == idx {
+                    break;
+                }
+                if self.nodes[idx].pattern_loc.is_some() {
+                    break;
+                }
             }
-            if self.nodes[idx].pattern_loc.is_some() {
-                break;
-            }
+            self.list_state.select(Some(idx));
         }
-        self.list_state.select(Some(idx));
     }
 
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
-            let idx = self
-                .list_state
-                .selected()
-                .expect(INVALID_NODE_SELECTION_MSG);
-            let _ = graph.remove(self.nodes[idx].node_idx.to_string());
-            self.update_nodes();
+            if let Some(idx) = self.list_state.selected() {
+                let _ = graph.remove(self.nodes[idx].node_idx.to_string());
+                self.update_nodes()
+            }
         }
     }
 
     pub fn step_into(&mut self) {
         if let Some(graph) = &mut self.graph {
-            let selection_idx = self
-                .list_state
-                .selected()
-                .expect(INVALID_NODE_SELECTION_MSG);
-
-            // Don't step into parent
-            if let NodeLoc::Idx(_) = self.current_node {
-                if selection_idx == 0 {
-                    return;
+            if let Some(selection_idx) = self.list_state.selected() {
+                // Don't step into parent
+                if let NodeLoc::Idx(_) = self.current_node {
+                    if selection_idx == 0 {
+                        return;
+                    }
                 }
-            }
 
-            let node = graph.get_node(self.nodes[selection_idx].node_idx);
-            self.current_node = NodeLoc::Idx(node.index);
-            self.path.push(node.index);
-            self.selection_idx_path.push(selection_idx);
+                let node = graph.get_node(self.nodes[selection_idx].node_idx);
+                self.current_node = NodeLoc::Idx(node.index);
+                self.path.push(node.index);
+                self.selection_idx_path.push(selection_idx);
 
-            self.update_nodes();
+                self.update_nodes();
 
-            if self.nodes.len() > 1 {
-                self.list_state.select(Some(1));
-            } else {
-                self.list_state.select(Some(0));
+                if self.nodes.len() > 1 {
+                    self.list_state.select(Some(1));
+                } else {
+                    self.list_state.select(Some(0));
+                }
             }
         }
     }
@@ -518,25 +518,20 @@ impl GraphViewComponent {
 
     pub fn select_next(&mut self) {
         // TODO: What :)
-        self.list_state.select(Some(
-            self.get_next_idx(
-                self.list_state
-                    .selected()
-                    .expect(INVALID_NODE_SELECTION_MSG),
-            ),
-        ))
+        if let Some(idx) = self.get_selected_idx() {
+            self.list_state.select(Some(self.get_next_idx(idx)))
+        } else {
+            self.select_first();
+        }
     }
 
     pub fn select_previous(&mut self) {
         // TODO: What
-        //
-        self.list_state.select(Some(
-            self.get_prev_idx(
-                self.list_state
-                    .selected()
-                    .expect(INVALID_NODE_SELECTION_MSG),
-            ),
-        ))
+        if let Some(idx) = self.get_selected_idx() {
+            self.list_state.select(Some(self.get_prev_idx(idx)))
+        } else {
+            self.select_last()
+        }
     }
 
     /// Toggle between root date graphs and normal root graphs
@@ -632,6 +627,9 @@ impl Widget for &mut GraphViewComponent {
     where
         Self: Sized,
     {
+        if self.nodes.len() == 0 {
+            Line::from(" Graph is empty.").render(area, buf)
+        }
         let selected_idx = self.get_current_node();
         let active_node_idx;
         // TODO: refactor (maybe)

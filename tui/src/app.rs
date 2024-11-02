@@ -244,6 +244,9 @@ impl App {
                     }
 
                     ActiveNodeOperation::AddToActive => {
+                        if self.components.graph_view.nodes_count() == 0 {
+                            return None;
+                        }
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
                             "Insert node to selected: ".to_string(),
@@ -258,6 +261,11 @@ impl App {
                     }
 
                     ActiveNodeOperation::AddPseudoToActive => {
+                        // TODO: warn the user when they try to do this. but currently we don't
+                        // have framework to do that
+                        if self.components.graph_view.nodes_count() == 0 {
+                            return None;
+                        }
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
                             "Insert pseudonode to selected: ".to_string(),
