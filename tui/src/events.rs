@@ -61,6 +61,8 @@ pub enum ViewFilterOperation {
     Filter,         // /
     SetDepth,       // *
     ToggleArchived, // .
+    JumpNext,
+    JumpPrev,
 }
 
 /// Node selection operations
@@ -227,6 +229,12 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 ))),
                 KeyCode::Char('.') => Some(AppEvent::Operational(OperationalEvent::Filter(
                     ViewFilterOperation::ToggleArchived,
+                ))),
+                KeyCode::Char('n') => Some(AppEvent::Operational(OperationalEvent::Filter(
+                    ViewFilterOperation::JumpNext,
+                ))),
+                KeyCode::Char('N') => Some(AppEvent::Operational(OperationalEvent::Filter(
+                    ViewFilterOperation::JumpPrev,
                 ))),
 
                 KeyCode::Char('m') => Some(AppEvent::Operational(OperationalEvent::Selection(

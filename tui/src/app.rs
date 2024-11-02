@@ -94,6 +94,11 @@ impl App {
                         return None;
                     }
                     OperationalEvent::Filter(op) => match op {
+                        ViewFilterOperation::Filter => {
+                            self.components
+                                .graph_view
+                                .set_filter(self.components.cmdline.get_curr_input().to_owned());
+                        }
                         ViewFilterOperation::SetDepth => {
                             self.components
                                 .graph_view
@@ -182,6 +187,13 @@ impl App {
                             "Set depth:".to_string(),
                         )));
                     }
+                    ViewFilterOperation::Filter => {
+                        return Some(AppEvent::Internal(InternalEvent::AskPrompt(
+                            AskPromptType::Continual(ev),
+                            "/".to_string(),
+                        )));
+                    }
+
                     _ => (),
                 },
 

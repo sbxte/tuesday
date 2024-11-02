@@ -8,6 +8,14 @@ use ratatui::{
 use tuecore::graph::{Graph, GraphGetters, Node, NodeState};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
+const PATTERN_MATCH_STYLE: Style = Style::new()
+    .bg(Color::LightYellow)
+    .fg(Color::Black)
+    .add_modifier(Modifier::BOLD)
+    .add_modifier(Modifier::UNDERLINED);
+const PATTERN_MATCH_SELECTED_STYLE: Style = Style::new()
+    .bg(Color::Yellow)
+    .add_modifier(Modifier::UNDERLINED);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
 
 const INVALID_NODE_SELECTION_MSG: &str = "Invalid selected node index found";
@@ -20,7 +28,8 @@ trait GraphTUI {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        storage: &mut Vec<(usize, u32)>,
+        filter: &str,
+        storage: &mut Vec<NodeInfo>,
     );
 }
 
@@ -32,7 +41,8 @@ impl GraphTUI for Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        storage: &mut Vec<(usize, u32)>,
+        filter: &str,
+        storage: &mut Vec<NodeInfo>,
     ) {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -47,7 +57,14 @@ impl GraphTUI for Graph {
             }
 
             let node = self.get_node(*i);
-            storage.push((node.index, depth));
+            let pattern_loc;
+            if filter.is_empty() {
+                pattern_loc = None;
+            } else {
+                pattern_loc = node.message.find(filter);
+            }
+            let node_info = NodeInfo::new(node.index, depth, pattern_loc);
+            storage.push(node_info);
 
             // If there's no need to show archived nodes then ignore it and its children
             if !skip_archived && node.archived {
@@ -61,6 +78,7 @@ impl GraphTUI for Graph {
                 max_depth,
                 depth + 1,
                 start,
+                filter,
                 storage,
             )
         }
@@ -97,35 +115,94 @@ impl NodeTUIDisplay for Node {
     }
 }
 
-fn list_item_from_node(value: Node, depth: u32) -> ListItem<'static> {
+/// Get a `Line` from a node message, with its pattern highlighted.
+fn highlight_node_message(
+    message: &str,
+    pos: usize,
+    pattern_len: usize,
+    is_selected: bool,
+) -> (Span<'static>, Span<'static>, Span<'static>) {
+    // FIXME: let me out of this ownership hell
+    // it would be useful to use slices but that'd mean that message has to be a reference as well
+    // but then it would be reference of.. what..? nodes are dropped after they're converted to a
+    // ListItem
+    let left_msg = (&message[0..pos]).to_string();
+    let left = Span::raw(left_msg);
+    let mid_msg: String = (&message[pos..pos + pattern_len]).to_string();
+    let mid;
+    if is_selected {
+        mid = Span::styled(mid_msg, PATTERN_MATCH_SELECTED_STYLE);
+    } else {
+        mid = Span::styled(mid_msg, PATTERN_MATCH_STYLE);
+    }
+    let right_msg: String = (&message[pos + pattern_len..message.len()]).to_string();
+    let right = Span::raw(right_msg);
+    (left, mid, right)
+}
+
+fn list_item_from_node<'a>(
+    value: Node,
+    depth: u32,
+    filter_pos: Option<usize>,
+    pattern_len: usize,
+    is_selected: bool,
+) -> ListItem<'a> {
     let indent = Node::print_tree_indent(depth, value.parents.len() > 1);
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
-    let message = Span::raw(value.message.to_owned());
+
+    // TODO: refactor lol what is this
     if let Some(indent) = indent {
-        ListItem::new(Line::from(vec![
-            indent,
-            statusbox_left,
-            status,
-            statusbox_right,
-            message,
-        ]))
+        if let Some(pos) = filter_pos {
+            let (left, mid, right) =
+                highlight_node_message(&value.message, pos, pattern_len, is_selected);
+            return ListItem::new(Line::from(vec![
+                indent,
+                statusbox_left,
+                status,
+                statusbox_right,
+                left,
+                mid,
+                right,
+            ]));
+        } else {
+            let message = Span::raw(value.message.to_owned());
+            return ListItem::new(Line::from(vec![
+                indent,
+                statusbox_left,
+                status,
+                statusbox_right,
+                message,
+            ]));
+        }
     } else {
-        ListItem::new(Line::from(vec![
-            statusbox_left,
-            status,
-            statusbox_right,
-            message,
-        ]))
+        if let Some(pos) = filter_pos {
+            let (left, mid, right) =
+                highlight_node_message(&value.message, pos, pattern_len, is_selected);
+            return ListItem::new(Line::from(vec![
+                statusbox_left,
+                status,
+                statusbox_right,
+                left,
+                mid,
+                right,
+            ]));
+        } else {
+            let message = Span::raw(value.message.to_owned());
+            return ListItem::new(Line::from(vec![
+                statusbox_left,
+                status,
+                statusbox_right,
+                message,
+            ]));
+        }
     }
 }
 
 #[derive(PartialEq)]
 enum NodeLoc {
     Idx(usize),
-    // TODO: side effect may arise as this field is not tied to show_archived under the
-    // GraphViewComponent struct below
     Roots,
 }
 
@@ -135,7 +212,7 @@ pub struct GraphViewComponent {
 
     /// Nodes that should be rendered in current view. Stores the node index and its depth.
     /// Influenced by the depth and whether or not we should be rendering archived nodes.
-    nodes: Vec<(usize, u32)>,
+    nodes: Vec<NodeInfo>,
 
     list_state: ListState,
     max_depth: u32,
@@ -144,6 +221,33 @@ pub struct GraphViewComponent {
     path: Vec<usize>,
     selection_idx_path: Vec<usize>,
     show_archived: bool,
+    filter: String,
+
+    /// Vector of nodes that match current filter pattern. Consists of node indices (`list_state`'s
+    /// index, not the real node index)
+    filtered_nodes: Vec<usize>,
+}
+
+/// The minimum amount of information needed to be stored locally to enhance the efficiency of nodes rendering.
+struct NodeInfo {
+    /// Real index of node within graph.
+    node_idx: usize,
+
+    /// Depth of node relative to the parent node on current view.
+    depth: u32,
+
+    /// Where the pattern match (if node matches the set filter)
+    pattern_loc: Option<usize>,
+}
+
+impl NodeInfo {
+    fn new(node_idx: usize, depth: u32, pattern_loc: Option<usize>) -> Self {
+        Self {
+            node_idx,
+            depth,
+            pattern_loc,
+        }
+    }
 }
 
 impl Default for GraphViewComponent {
@@ -167,6 +271,8 @@ impl GraphViewComponent {
             path: Vec::new(),
             selection_idx_path: Vec::new(),
             show_date_graphs: false,
+            filter: String::new(),
+            filtered_nodes: Vec::new(),
         }
     }
 
@@ -184,6 +290,7 @@ impl GraphViewComponent {
                             self.max_depth,
                             1,
                             None,
+                            &self.filter,
                             &mut self.nodes,
                         )
                     } else {
@@ -194,12 +301,13 @@ impl GraphViewComponent {
                             self.max_depth,
                             1,
                             None,
+                            &self.filter,
                             &mut self.nodes,
                         );
                     }
                 }
                 NodeLoc::Idx(idx) => {
-                    self.nodes.push((idx, 0)); // the parent node
+                    self.nodes.push(NodeInfo::new(idx, 0, None)); // the parent node
                     GraphTUI::get_nodes(
                         graph,
                         &graph.get_node_children(idx),
@@ -207,13 +315,27 @@ impl GraphViewComponent {
                         self.max_depth,
                         1,
                         None,
+                        &self.filter,
                         &mut self.nodes,
                     );
                 }
             }
+
+            // TODO: maybe build the list below when we build the nodes?
+            self.filtered_nodes = self
+                .nodes
+                .iter()
+                .filter_map(|x| {
+                    if x.pattern_loc.is_some() {
+                        return Some(x.node_idx);
+                    }
+                    None
+                })
+                .collect();
         }
     }
 
+    /// Get the currently selected index. This is different from the actual node index.
     fn get_selected_idx(&self) -> usize {
         self.list_state
             .selected()
@@ -223,7 +345,7 @@ impl GraphViewComponent {
     pub fn get_current_node(&self) -> Option<Node> {
         if let Some(graph) = &self.graph {
             let idx = self.get_selected_idx();
-            return Some(graph.get_node(self.nodes[idx].0));
+            return Some(graph.get_node(self.nodes[idx].node_idx));
         }
         None
     }
@@ -257,13 +379,22 @@ impl GraphViewComponent {
         self.update_nodes();
     }
 
+    pub fn set_filter(&mut self, string: String) {
+        self.filter = string;
+        self.update_nodes();
+    }
+
+    /// Go to next node that matches filter
+    // TODO: why not just store everything beforehand?
+    pub fn jump_next_filter(&self) {}
+
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
             let idx = self
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
-            let _ = graph.remove(self.nodes[idx].0.to_string());
+            let _ = graph.remove(self.nodes[idx].node_idx.to_string());
             self.update_nodes();
         }
     }
@@ -274,7 +405,7 @@ impl GraphViewComponent {
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
-            let node = graph.get_node(self.nodes[idx].0);
+            let node = graph.get_node(self.nodes[idx].node_idx);
             self.current_node = NodeLoc::Idx(node.index);
             self.path.push(node.index);
             self.selection_idx_path.push(idx);
@@ -313,6 +444,7 @@ impl GraphViewComponent {
     }
 
     pub fn select_last(&mut self) {
+        self.update_nodes();
         self.list_state.select_last()
     }
 
@@ -355,13 +487,6 @@ impl GraphViewComponent {
         self.current_node = NodeLoc::Roots;
     }
 
-    // Get the currently selected index. This is different from the actual node index.
-    fn get_current_idx(&self) -> usize {
-        self.list_state
-            .selected()
-            .expect(INVALID_NODE_SELECTION_MSG)
-    }
-
     fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {
         match curr_state {
             NodeState::Done => {
@@ -386,7 +511,7 @@ impl GraphViewComponent {
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
-            let node = graph.get_node(self.nodes[idx].0);
+            let node = graph.get_node(self.nodes[idx].node_idx);
             let _ = graph.rename_node(node.index.to_string(), new_message.to_owned());
             self.update_nodes();
         }
@@ -399,7 +524,7 @@ impl GraphViewComponent {
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
 
-            let node_idx = self.nodes[idx].0;
+            let node_idx = self.nodes[idx].node_idx;
             let _ = graph.insert_child(message.to_string(), node_idx.to_string(), pseudo);
             self.update_nodes();
         }
@@ -424,7 +549,7 @@ impl GraphViewComponent {
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
 
-            let node = graph.get_node(self.nodes[idx].0);
+            let node = graph.get_node(self.nodes[idx].node_idx);
             Self::modify_task_status(graph, node.index, node.state);
             self.update_nodes();
         }
@@ -436,11 +561,27 @@ impl Widget for &mut GraphViewComponent {
     where
         Self: Sized,
     {
+        let selected_idx = self.get_current_node();
+        let active_node_idx;
+        // TODO: refactor (maybe)
+        if let Some(node) = &selected_idx {
+            active_node_idx = node.index;
+        } else {
+            active_node_idx = 0;
+        }
         if let Some(graph) = &self.graph {
             let list_items: Vec<ListItem> = self
                 .nodes
                 .iter()
-                .map(|(idx, depth)| list_item_from_node(graph.get_node(*idx), *depth))
+                .map(|node_info| {
+                    list_item_from_node(
+                        graph.get_node(node_info.node_idx),
+                        node_info.depth,
+                        node_info.pattern_loc,
+                        self.filter.len(),
+                        selected_idx.is_some() && node_info.node_idx == active_node_idx,
+                    )
+                })
                 .collect();
 
             let list = List::new(list_items)

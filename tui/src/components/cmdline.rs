@@ -49,11 +49,11 @@ impl CmdlineComponent {
                 Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt))
             }
             AskPromptType::Continual(ev) => {
-                if code == &KeyCode::Esc {
-                    return Some(AppEvent::Operational(*ev));
+                if code == &KeyCode::Esc || code == &KeyCode::Enter {
+                    return Some(AppEvent::Internal(crate::events::InternalEvent::StopPrompt));
                 }
                 self.operate_string(code);
-                None
+                Some(AppEvent::Operational(*ev))
             }
             AskPromptType::Input(ev) => {
                 if code == &KeyCode::Enter {
@@ -67,7 +67,7 @@ impl CmdlineComponent {
         }
     }
 
-    pub fn get_curr_input(&self) -> &String {
+    pub fn get_curr_input(&self) -> &str {
         &self.input_string
     }
 
