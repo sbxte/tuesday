@@ -91,7 +91,7 @@ impl CmdlineComponent {
 
     pub fn get_cursor_pos(&self, area: Rect) -> (u16, u16) {
         (
-            area.x + (self.prompt.len() as u16 + 1 + self.input_string.len() as u16)
+            area.x + (self.prompt.len() as u16 + self.input_string.len() as u16)
                 - (self.input_string.len() as u16 - self.input_pos as u16),
             area.y + 1,
         )
@@ -137,7 +137,6 @@ impl Widget for &mut CmdlineComponent {
         if self.shown {
             Line::from(vec![
                 Span::from(self.prompt.clone()).style(PROMPT_STYLE),
-                Span::from(" "),
                 Span::from(self.input_string.clone()),
             ])
             .render(area, buf);

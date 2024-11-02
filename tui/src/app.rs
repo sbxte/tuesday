@@ -173,7 +173,7 @@ impl App {
                 OperationalEvent::Quit => {
                     return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                         AskPromptType::Confirmation(ev),
-                        "Quit? (y/n)".to_string(),
+                        "Quit? (y/n) ".to_string(),
                     )))
                 }
                 OperationalEvent::TabChange(direction) => {
@@ -184,7 +184,7 @@ impl App {
                     ViewFilterOperation::SetDepth => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Set depth:".to_string(),
+                            "Set depth: ".to_string(),
                         )));
                     }
                     ViewFilterOperation::Filter => {
@@ -192,6 +192,14 @@ impl App {
                             AskPromptType::Continual(ev),
                             "/".to_string(),
                         )));
+                    }
+
+                    ViewFilterOperation::JumpNext => {
+                        self.components.graph_view.jump_next_filter();
+                    }
+
+                    ViewFilterOperation::JumpPrev => {
+                        self.components.graph_view.jump_prev_filter();
                     }
 
                     _ => (),
@@ -218,41 +226,41 @@ impl App {
 
                             return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                                 AskPromptType::Input(ev),
-                                "Rename:".to_string(),
+                                "Rename: ".to_string(),
                             )));
                         }
                     }
                     ActiveNodeOperation::Delete => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Confirmation(ev),
-                            "Delete active node? (y/n)".to_string(),
+                            "Delete active node? (y/n) ".to_string(),
                         )));
                     }
                     ActiveNodeOperation::AddToParent => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Add node:".to_string(),
+                            "Add node: ".to_string(),
                         )));
                     }
 
                     ActiveNodeOperation::AddToActive => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Insert node to selected:".to_string(),
+                            "Insert node to selected: ".to_string(),
                         )));
                     }
 
                     ActiveNodeOperation::AddPseudoToParent => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Add pseudonode:".to_string(),
+                            "Add pseudonode: ".to_string(),
                         )));
                     }
 
                     ActiveNodeOperation::AddPseudoToActive => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Insert pseudonode to selected:".to_string(),
+                            "Insert pseudonode to selected: ".to_string(),
                         )));
                     }
                     _ => (),

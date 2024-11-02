@@ -57,11 +57,12 @@ impl GraphTUI for Graph {
             }
 
             let node = self.get_node(*i);
+            let msg_match = node.message.clone().to_lowercase();
             let pattern_loc;
             if filter.is_empty() {
                 pattern_loc = None;
             } else {
-                pattern_loc = node.message.find(filter);
+                pattern_loc = msg_match.find(&filter.to_lowercase());
             }
             let node_info = NodeInfo::new(node.index, depth, pattern_loc);
             storage.push(node_info);
@@ -389,11 +390,19 @@ impl GraphViewComponent {
     /// Go to next node that matches filter
     // TODO: why not just store everything beforehand?
     pub fn jump_next_filter(&mut self) {
-        // let idx = self.get_selected_idx();
-        // while (self.nodes[idx + 1].pattern_loc.is_none() {
-        //     self.list_state.select(self.nodes[idx])
-        //
-        // }
+        let mut idx = self.get_selected_idx();
+        while self.nodes[idx + 1].pattern_loc.is_none() {
+            self.list_state.select(Some(idx));
+            idx += 1;
+        }
+    }
+
+    pub fn jump_prev_filter(&mut self) {
+        let mut idx = self.get_selected_idx();
+        while self.nodes[idx - 1].pattern_loc.is_none() {
+            self.list_state.select(Some(idx));
+            idx -= 1;
+        }
     }
 
     pub fn delete_active_node(&mut self) {
