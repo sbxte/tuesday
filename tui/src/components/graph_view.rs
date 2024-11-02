@@ -345,7 +345,9 @@ impl GraphViewComponent {
     pub fn get_current_node(&self) -> Option<Node> {
         if let Some(graph) = &self.graph {
             let idx = self.get_selected_idx();
-            return Some(graph.get_node(self.nodes[idx].node_idx));
+            if self.nodes.len() > idx {
+                return Some(graph.get_node(self.nodes[idx].node_idx));
+            }
         }
         None
     }
@@ -386,7 +388,13 @@ impl GraphViewComponent {
 
     /// Go to next node that matches filter
     // TODO: why not just store everything beforehand?
-    pub fn jump_next_filter(&self) {}
+    pub fn jump_next_filter(&mut self) {
+        // let idx = self.get_selected_idx();
+        // while (self.nodes[idx + 1].pattern_loc.is_none() {
+        //     self.list_state.select(self.nodes[idx])
+        //
+        // }
+    }
 
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
