@@ -353,27 +353,21 @@ impl GraphViewComponent {
     }
 
     /// Get the next selection index. Different from actual node index. Handles index wrapping as well.
-    fn get_next_idx(&self) -> Option<usize> {
-        if let Some(idx) = self.list_state.selected() {
-            if idx + 1 < self.nodes.len() {
-                return Some(idx + 1);
-            } else {
-                return Some(0);
-            }
+    fn get_next_idx(&self, idx: usize) -> usize {
+        if idx + 1 < self.nodes.len() {
+            idx + 1
+        } else {
+            0
         }
-        None
     }
 
     /// Get the next selection index. Different from actual node index. Handles index wrapping as well.
-    fn get_prev_idx(&self) -> Option<usize> {
-        if let Some(idx) = self.list_state.selected() {
-            if idx > 0 {
-                return Some(idx - 1);
-            } else {
-                return Some(self.nodes.len() - 1);
-            }
+    fn get_prev_idx(&self, idx: usize) -> usize {
+        if idx > 0 {
+            idx - 1
+        } else {
+            self.nodes.len() - 1
         }
-        None
     }
 
     pub fn get_current_node(&self) -> Option<Node> {
@@ -423,20 +417,33 @@ impl GraphViewComponent {
     /// Go to next node that matches filter
     // TODO: why not just store everything beforehand?
     pub fn jump_next_filter(&mut self) {
-        let mut idx = self.get_selected_idx();
-        let starting_idx = idx;
-        while self.nodes[idx + 1].pattern_loc.is_none() {
-            idx += 1;
+        let starting_idx = self.get_selected_idx();
+        let mut idx = starting_idx;
+        loop {
+            idx = self.get_next_idx(idx);
+            if starting_idx == idx {
+                break;
+            }
+            if self.nodes[idx].pattern_loc.is_some() {
+                break;
+            }
         }
-        self.list_state.select(Some(idx - 1));
+        self.list_state.select(Some(idx));
     }
 
     pub fn jump_prev_filter(&mut self) {
-        let mut idx = self.get_selected_idx();
-        while self.nodes[idx - 1].pattern_loc.is_none() {
-            self.list_state.select(Some(idx));
-            idx -= 1;
+        let starting_idx = self.get_selected_idx();
+        let mut idx = starting_idx;
+        loop {
+            idx = self.get_prev_idx(idx);
+            if starting_idx == idx {
+                break;
+            }
+            if self.nodes[idx].pattern_loc.is_some() {
+                break;
+            }
         }
+        self.list_state.select(Some(idx));
     }
 
     pub fn delete_active_node(&mut self) {
@@ -505,11 +512,26 @@ impl GraphViewComponent {
     }
 
     pub fn select_next(&mut self) {
-        self.list_state.select(self.get_next_idx())
+        // TODO: What :)
+        self.list_state.select(Some(
+            self.get_next_idx(
+                self.list_state
+                    .selected()
+                    .expect(INVALID_NODE_SELECTION_MSG),
+            ),
+        ))
     }
 
     pub fn select_previous(&mut self) {
-        self.list_state.select(self.get_prev_idx())
+        // TODO: What
+        //
+        self.list_state.select(Some(
+            self.get_prev_idx(
+                self.list_state
+                    .selected()
+                    .expect(INVALID_NODE_SELECTION_MSG),
+            ),
+        ))
     }
 
     /// Toggle between root date graphs and normal root graphs
