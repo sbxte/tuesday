@@ -17,6 +17,9 @@ const PATTERN_MATCH_SELECTED_STYLE: Style = Style::new()
     .bg(Color::Yellow)
     .add_modifier(Modifier::UNDERLINED);
 const GRAPH_STATUSBOX_STYLE: Style = Style::new().fg(Color::Blue);
+const NODE_IDX_STYLE: Style = Style::new()
+    .fg(Color::DarkGray)
+    .add_modifier(Modifier::BOLD);
 
 const INVALID_NODE_SELECTION_MSG: &str = "Invalid selected node index found";
 
@@ -141,24 +144,30 @@ fn highlight_node_message(
     (left, mid, right)
 }
 
-fn list_item_from_node<'a>(
+fn list_item_from_node(
+    area: Rect,
     value: Node,
     depth: u32,
     filter_pos: Option<usize>,
     pattern_len: usize,
     is_selected: bool,
-) -> ListItem<'a> {
+) -> ListItem<'static> {
     let indent = Node::print_tree_indent(depth, value.parents.len() > 1);
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
+    let mut spans;
+
+    // TODO: Are there Ratatui features that allow this?
+    // let space = Span::raw(" ".to_string().repeat();
+    // let idx = Span::styled(value.index.to_string(), NODE_IDX_STYLE);
 
     // TODO: refactor lol what is this
     if let Some(indent) = indent {
         if let Some(pos) = filter_pos {
             let (left, mid, right) =
                 highlight_node_message(&value.message, pos, pattern_len, is_selected);
-            return ListItem::new(Line::from(vec![
+            spans = vec![
                 indent,
                 statusbox_left,
                 status,
@@ -166,39 +175,32 @@ fn list_item_from_node<'a>(
                 left,
                 mid,
                 right,
-            ]));
+            ];
         } else {
             let message = Span::raw(value.message.to_owned());
-            return ListItem::new(Line::from(vec![
-                indent,
-                statusbox_left,
-                status,
-                statusbox_right,
-                message,
-            ]));
+            spans = vec![indent, statusbox_left, status, statusbox_right, message];
         }
     } else {
         if let Some(pos) = filter_pos {
             let (left, mid, right) =
                 highlight_node_message(&value.message, pos, pattern_len, is_selected);
-            return ListItem::new(Line::from(vec![
-                statusbox_left,
-                status,
-                statusbox_right,
-                left,
-                mid,
-                right,
-            ]));
+            spans = vec![statusbox_left, status, statusbox_right, left, mid, right];
         } else {
             let message = Span::raw(value.message.to_owned());
-            return ListItem::new(Line::from(vec![
-                statusbox_left,
-                status,
-                statusbox_right,
-                message,
-            ]));
+            spans = vec![statusbox_left, status, statusbox_right, message];
         }
     }
+    // Insert the index
+    // FIXME: Why so unelegant
+    let mut line = Line::from(spans);
+    let space = " "
+        .to_string()
+        .repeat(area.width as usize - line.width() - value.index.to_string().len() - 1);
+    let space_span = Span::raw(space);
+    line.spans.push(space_span);
+    let idx = Span::styled(value.index.to_string(), NODE_IDX_STYLE);
+    line.spans.push(idx);
+    ListItem::from(line)
 }
 
 #[derive(PartialEq)]
@@ -459,19 +461,22 @@ impl GraphViewComponent {
 
     pub fn step_into(&mut self) {
         if let Some(graph) = &mut self.graph {
-            let idx = self
+            let selection_idx = self
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
 
-            if idx == 0 {
-                // don't step into parent
-                return;
+            // Don't step into parent
+            if let NodeLoc::Idx(_) = self.current_node {
+                if selection_idx == 0 {
+                    return;
+                }
             }
-            let node = graph.get_node(self.nodes[idx].node_idx);
+
+            let node = graph.get_node(self.nodes[selection_idx].node_idx);
             self.current_node = NodeLoc::Idx(node.index);
             self.path.push(node.index);
-            self.selection_idx_path.push(idx);
+            self.selection_idx_path.push(selection_idx);
 
             self.update_nodes();
 
@@ -641,6 +646,7 @@ impl Widget for &mut GraphViewComponent {
                 .iter()
                 .map(|node_info| {
                     list_item_from_node(
+                        area,
                         graph.get_node(node_info.node_idx),
                         node_info.depth,
                         node_info.pattern_loc,

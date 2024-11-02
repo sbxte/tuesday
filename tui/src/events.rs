@@ -139,6 +139,9 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 return None;
             };
             match key_event.code {
+                KeyCode::Modifier(crossterm::event::ModifierKeyCode::LeftControl) => {
+                    todo!();
+                }
                 KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::Operational(
                     OperationalEvent::Navigate(NavDirection::Next),
                 )),
