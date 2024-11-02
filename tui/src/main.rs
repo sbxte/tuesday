@@ -6,7 +6,7 @@ use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use events::process_key;
+use events::{process_key, process_mouse};
 use ratatui::crossterm::execute;
 use ratatui::prelude::{Backend, CrosstermBackend};
 use ratatui::Terminal;
@@ -40,8 +40,14 @@ where
                 f.set_cursor_position(app.components.cmdline.get_cursor_pos(cmdline_rect))
             }
         })?;
-        if let event::Event::Key(key_event) = event::read()? {
+        let captured_event = event::read()?;
+        if let event::Event::Key(key_event) = captured_event {
             let mut event = process_key(app, key_event);
+            while let Some(e) = event {
+                event = app.process_event(e);
+            }
+        } else if let event::Event::Mouse(mouse_event) = captured_event {
+            let mut event = process_mouse(app, mouse_event);
             while let Some(e) = event {
                 event = app.process_event(e);
             }

@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 
 use crate::{app::App, components::tabs::TabView};
 
@@ -103,6 +103,28 @@ pub enum AppEvent {
     Operational(OperationalEvent),
     Internal(InternalEvent),
 }
+
+/// Process mouse inputs based on context and emit the appropriate event.
+pub fn process_mouse(app: &App, mouse_event: MouseEvent) -> Option<AppEvent> {
+    match app.current_view() {
+        TabView::DateGraph | TabView::Tasks => match mouse_event.kind {
+            MouseEventKind::ScrollDown => {
+                return Some(AppEvent::Operational(OperationalEvent::Navigate(
+                    NavDirection::Next,
+                )))
+            }
+
+            MouseEventKind::ScrollUp => {
+                return Some(AppEvent::Operational(OperationalEvent::Navigate(
+                    NavDirection::Previous,
+                )))
+            }
+            _ => return None,
+        },
+        TabView::Calendar => return None,
+    }
+}
+
 /// Process key inputs based on context and emit the appropriate event.
 pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
     if key_event.kind == KeyEventKind::Release {
@@ -139,9 +161,6 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 return None;
             };
             match key_event.code {
-                KeyCode::Modifier(crossterm::event::ModifierKeyCode::LeftControl) => {
-                    todo!();
-                }
                 KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::Operational(
                     OperationalEvent::Navigate(NavDirection::Next),
                 )),
