@@ -184,7 +184,7 @@ impl App {
                     ViewFilterOperation::SetDepth => {
                         return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                             AskPromptType::Input(ev),
-                            "Set depth: ".to_string(),
+                            "Set depth (0 for infinite): ".to_string(),
                         )));
                     }
                     ViewFilterOperation::Filter => {

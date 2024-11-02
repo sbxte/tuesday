@@ -57,7 +57,7 @@ impl GraphTUI for Graph {
             }
 
             let node = self.get_node(*i);
-            let msg_match = node.message.clone().to_lowercase();
+            let msg_match = node.message.to_lowercase();
             let pattern_loc;
             if filter.is_empty() {
                 pattern_loc = None;
@@ -308,7 +308,16 @@ impl GraphViewComponent {
                     }
                 }
                 NodeLoc::Idx(idx) => {
-                    self.nodes.push(NodeInfo::new(idx, 0, None)); // the parent node
+                    // TODO: move this whole pattern matching shenanigans somewhere else for less
+                    // duplication
+                    let message = graph.get_node(idx).message.to_lowercase();
+                    let pattern_loc;
+                    if message.is_empty() {
+                        pattern_loc = None;
+                    } else {
+                        pattern_loc = message.find(&self.filter);
+                    }
+                    self.nodes.push(NodeInfo::new(idx, 0, pattern_loc)); // the parent node
                     GraphTUI::get_nodes(
                         graph,
                         &graph.get_node_children(idx),
@@ -341,6 +350,30 @@ impl GraphViewComponent {
         self.list_state
             .selected()
             .expect(INVALID_NODE_SELECTION_MSG)
+    }
+
+    /// Get the next selection index. Different from actual node index. Handles index wrapping as well.
+    fn get_next_idx(&self) -> Option<usize> {
+        if let Some(idx) = self.list_state.selected() {
+            if idx + 1 < self.nodes.len() {
+                return Some(idx + 1);
+            } else {
+                return Some(0);
+            }
+        }
+        None
+    }
+
+    /// Get the next selection index. Different from actual node index. Handles index wrapping as well.
+    fn get_prev_idx(&self) -> Option<usize> {
+        if let Some(idx) = self.list_state.selected() {
+            if idx > 0 {
+                return Some(idx - 1);
+            } else {
+                return Some(self.nodes.len() - 1);
+            }
+        }
+        None
     }
 
     pub fn get_current_node(&self) -> Option<Node> {
@@ -391,10 +424,11 @@ impl GraphViewComponent {
     // TODO: why not just store everything beforehand?
     pub fn jump_next_filter(&mut self) {
         let mut idx = self.get_selected_idx();
+        let starting_idx = idx;
         while self.nodes[idx + 1].pattern_loc.is_none() {
-            self.list_state.select(Some(idx));
             idx += 1;
         }
+        self.list_state.select(Some(idx - 1));
     }
 
     pub fn jump_prev_filter(&mut self) {
@@ -422,6 +456,11 @@ impl GraphViewComponent {
                 .list_state
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
+
+            if idx == 0 {
+                // don't step into parent
+                return;
+            }
             let node = graph.get_node(self.nodes[idx].node_idx);
             self.current_node = NodeLoc::Idx(node.index);
             self.path.push(node.index);
@@ -466,23 +505,11 @@ impl GraphViewComponent {
     }
 
     pub fn select_next(&mut self) {
-        if let Some(idx) = self.list_state.selected() {
-            if idx + 1 < self.nodes.len() {
-                self.list_state.select_next()
-            } else {
-                self.list_state.select_first()
-            }
-        }
+        self.list_state.select(self.get_next_idx())
     }
 
     pub fn select_previous(&mut self) {
-        if let Some(idx) = self.list_state.selected() {
-            if idx > 0 {
-                self.list_state.select_previous()
-            } else {
-                self.list_state.select_last()
-            }
-        }
+        self.list_state.select(self.get_prev_idx())
     }
 
     /// Toggle between root date graphs and normal root graphs
