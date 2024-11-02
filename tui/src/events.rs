@@ -167,9 +167,9 @@ pub fn process_key(app: &App, key_event: KeyEvent) -> Option<AppEvent> {
                 KeyCode::Char('k') | KeyCode::Up => Some(AppEvent::Operational(
                     OperationalEvent::Navigate(NavDirection::Previous),
                 )),
-                KeyCode::Char('l') | KeyCode::Right => Some(AppEvent::Operational(
-                    OperationalEvent::Navigate(NavDirection::StepIn),
-                )),
+                KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => Some(
+                    AppEvent::Operational(OperationalEvent::Navigate(NavDirection::StepIn)),
+                ),
                 KeyCode::Char('h') | KeyCode::Left => Some(AppEvent::Operational(
                     OperationalEvent::Navigate(NavDirection::StepOut),
                 )),
