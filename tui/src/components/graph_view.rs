@@ -394,6 +394,10 @@ impl GraphViewComponent {
         self.graph.is_some()
     }
 
+    pub fn is_date_view(&self) -> bool {
+        self.show_date_graphs
+    }
+
     pub fn nodes_count(&self) -> usize {
         return self.nodes.len();
     }
@@ -599,7 +603,16 @@ impl GraphViewComponent {
     pub fn add_node_to_parent(&mut self, message: &str, pseudo: bool) {
         if let Some(graph) = &mut self.graph {
             match self.current_node {
-                NodeLoc::Roots => graph.insert_root(message.to_string(), false),
+                NodeLoc::Roots => {
+                    if self.show_date_graphs {
+                        // TODO: warn when date is invalid
+                        if Graph::is_date(&message) {
+                            graph.insert_date(message.to_string());
+                        }
+                    } else {
+                        graph.insert_root(message.to_string(), false)
+                    }
+                }
                 NodeLoc::Idx(idx) => {
                     let _ = graph.insert_child(message.to_string(), idx.to_string(), pseudo);
                 }
