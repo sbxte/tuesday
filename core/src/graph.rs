@@ -635,11 +635,6 @@ impl Graph {
         f(&node);
     }
 
-    /// Get a node of an index from graph. Note that the returned node is cloned from the original.
-    pub fn get_node(&self, index: usize) -> Node {
-        self.nodes[index].as_ref().unwrap().borrow().clone()
-    }
-
     /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.
     pub fn traverse_recurse(
         &self,
@@ -872,6 +867,7 @@ impl fmt::Display for NodeState {
 
 /// Getters for external crates to obtain indices from private fields under `Graph`.
 pub trait GraphGetters {
+    fn get_node(&self, index: usize) -> Node;
     fn get_root_nodes_indices(&self) -> &[usize];
     fn get_archived_node_indices(&self) -> &[usize];
 
@@ -881,6 +877,11 @@ pub trait GraphGetters {
 }
 
 impl GraphGetters for Graph {
+    /// Get a node of an index from graph. Note that the returned node is cloned from the original.
+    fn get_node(&self, index: usize) -> Node {
+        self.nodes[index].as_ref().unwrap().borrow().clone()
+    }
+
     fn get_root_nodes_indices(&self) -> &[usize] {
         &self.roots
     }
