@@ -11,7 +11,9 @@ use tuecore::graph::{self, ErrorType, NodeState};
 fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
-            let message = sub_matches.get_one::<String>("message").expect("required");
+            let message = sub_matches
+                .get_one::<String>("message")
+                .expect("message required");
             let root = sub_matches.get_flag("root");
             let date = sub_matches.get_flag("date");
             let pseudo = sub_matches.get_flag("pseudo");
@@ -26,13 +28,15 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             } else if root {
                 graph.insert_root(message.to_string(), pseudo);
             } else {
-                let parent = sub_matches.get_one::<String>("parent").expect("required");
+                let parent = sub_matches
+                    .get_one::<String>("parent")
+                    .expect("parent ID required");
                 graph.insert_child(message.to_string(), parent.to_string(), pseudo)?;
             }
             Ok(())
         }
         Some(("rm", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             let recursive = sub_matches.get_flag("recursive");
             if recursive {
                 graph.remove_children_recursive(id.to_string())?;
@@ -42,21 +46,33 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("link", sub_matches)) => {
-            let parent = sub_matches.get_one::<String>("parent").expect("required");
-            let child = sub_matches.get_one::<String>("child").expect("required");
+            let parent = sub_matches
+                .get_one::<String>("parent")
+                .expect("parent ID required");
+            let child = sub_matches
+                .get_one::<String>("child")
+                .expect("child ID required");
             graph.link(parent, child)?;
             graph.print_link(parent, child, true)?;
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
-            let parent = sub_matches.get_one::<String>("parent").expect("required");
-            let child = sub_matches.get_one::<String>("child").expect("required");
+            let parent = sub_matches
+                .get_one::<String>("parent")
+                .expect("parent ID required");
+            let child = sub_matches
+                .get_one::<String>("child")
+                .expect("child ID required");
             graph.unlink(parent.to_string(), child.to_string())?;
             Ok(())
         }
         Some(("mv", sub_matches)) => {
-            let node = sub_matches.get_one::<String>("node").expect("required");
-            let parent = sub_matches.get_one::<String>("parent").expect("required");
+            let node = sub_matches
+                .get_one::<String>("node")
+                .expect("node ID required");
+            let parent = sub_matches
+                .get_one::<String>("parent")
+                .expect("parent ID required");
 
             graph.clean_parents(node.to_string())?;
             graph.link(parent, node)?;
@@ -64,39 +80,43 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("set", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
-            let state = sub_matches.get_one::<NodeState>("state").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
+            let state = sub_matches
+                .get_one::<NodeState>("state")
+                .expect("node state required");
             graph.set_state(id.to_string(), *state, true)?;
             Ok(())
         }
         Some(("check", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             graph.set_state(id.to_string(), NodeState::Done, true)?;
             Ok(())
         }
         Some(("uncheck", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             graph.set_state(id.to_string(), NodeState::None, true)?;
             Ok(())
         }
         Some(("arc", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             graph.set_archived(id.to_string(), true)?;
             Ok(())
         }
         Some(("unarc", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             graph.set_archived(id.to_string(), false)?;
             Ok(())
         }
         Some(("alias", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
-            let alias = sub_matches.get_one::<String>("alias").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
+            let alias = sub_matches
+                .get_one::<String>("alias")
+                .expect("alias required");
             graph.set_alias(id.to_string(), alias.to_string())?;
             Ok(())
         }
         Some(("unalias", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
             graph.unset_alias(id.to_string())?;
             Ok(())
         }
@@ -105,8 +125,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
             Ok(())
         }
         Some(("rename", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("required");
-            let message = sub_matches.get_one::<String>("message").expect("required");
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
+            let message = sub_matches
+                .get_one::<String>("message")
+                .expect("ID required");
             graph.rename_node(id.to_string(), message.to_string())?;
             Ok(())
         }
