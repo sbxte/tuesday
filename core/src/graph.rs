@@ -1,35 +1,17 @@
+pub mod errors;
+pub mod node;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt;
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
-use clap::ValueEnum;
 use colored::Colorize;
 use nom::IResult;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
-#[derive(Clone, Debug, Error)]
-pub enum ErrorType {
-    #[error("Invalid index: {0}")]
-    InvalidIndex(usize),
-
-    #[error("Malfored index: {0}")]
-    MalformedIndex(String),
-
-    #[error("Invalid alias: {0}")]
-    InvalidAlias(String),
-
-    #[error("Invalid date: {0}")]
-    InvalidDate(String),
-
-    #[error("Malformed date string: {0}")]
-    MalformedDate(String),
-
-    #[error("Graph looped back: {0}->...->{1}->{0}")]
-    GraphLooped(usize, usize),
-}
+use errors::ErrorType;
+use node::{Node, NodeState, NodeType};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Graph {
@@ -38,35 +20,6 @@ pub struct Graph {
     pub(crate) archived: Vec<usize>,
     pub(crate) dates: HashMap<String, usize>,
     pub(crate) aliases: HashMap<String, usize>,
-}
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct Node {
-    pub message: String,
-    pub r#type: NodeType,
-    pub state: NodeState,
-    pub archived: bool,
-    pub index: usize,
-    pub alias: Option<String>,
-    pub parents: Vec<usize>,
-    pub children: Vec<usize>,
-}
-
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
-pub enum NodeType {
-    #[default]
-    Normal,
-    Date,
-}
-
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
-pub enum NodeState {
-    #[default]
-    None,
-    Partial,
-    Done,
-    /// Does not count to completion
-    Pseudo,
 }
 
 impl Graph {
@@ -813,55 +766,6 @@ impl Graph {
             self.nodes[index].as_ref().unwrap().borrow_mut().alias = None;
         }
         Ok(())
-    }
-}
-
-impl Node {
-    fn new(message: String, index: usize, r#type: NodeType) -> Self {
-        Self {
-            message,
-            r#type,
-            state: NodeState::None,
-            archived: false,
-            index,
-            alias: None,
-            parents: vec![],
-            children: vec![],
-        }
-    }
-
-    fn map_indices(&mut self, map: &[(usize, Option<usize>)]) {
-        self.index = map[self.index].1.unwrap();
-        for i in self.parents.iter_mut() {
-            *i = map[*i].1.unwrap();
-        }
-        for i in self.children.iter_mut() {
-            *i = map[*i].1.unwrap();
-        }
-    }
-}
-
-impl fmt::Display for Node {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let index = if let Some(ref alias) = self.alias {
-            format!("({}:{})", self.index, alias)
-        } else {
-            format!("({})", self.index)
-        }
-        .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
-        write!(f, "{} {} {}", state, self.message, index)
-    }
-}
-
-impl fmt::Display for NodeState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NodeState::None => write!(f, " "),
-            NodeState::Partial => write!(f, "~"),
-            NodeState::Done => write!(f, "x"),
-            NodeState::Pseudo => write!(f, "+"),
-        }
     }
 }
 

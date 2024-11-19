@@ -5,10 +5,12 @@ use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
 use display::CLIDisplay;
-use tuecore::doc;
-use tuecore::graph::{self, ErrorType, NodeState};
+use tuecore::doc::{self, Doc};
+use tuecore::graph::errors::ErrorType;
+use tuecore::graph::node::NodeState;
+use tuecore::graph::Graph;
 
-fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> {
+fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
             let message = sub_matches
@@ -21,7 +23,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut graph::Graph) -> Result<()> 
                 bail!("Node cannot be both date node and root node!");
             }
             if date {
-                if !graph::Graph::is_date(message) {
+                if !Graph::is_date(message) {
                     return Err(ErrorType::MalformedDate(message.to_string()))?;
                 }
                 graph.insert_date(message.to_string());
@@ -362,10 +364,10 @@ fn main() -> Result<()> {
                     .get_one::<String>("local")
                     .unwrap_or(&".".to_string()),
             ),
-            &doc::Doc::new(&graph),
+            &Doc::new(&graph),
         )?;
     } else {
-        doc::save_global(&doc::Doc::new(&graph))?;
+        doc::save_global(&Doc::new(&graph))?;
     }
 
     Ok(())

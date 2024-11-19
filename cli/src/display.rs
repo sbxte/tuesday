@@ -1,5 +1,6 @@
 use anyhow::Result;
-use tuecore::graph::{Graph, GraphGetters, Node};
+use tuecore::graph::node::Node;
+use tuecore::graph::{Graph, GraphGetters};
 
 /// CLI display methods.
 pub trait CLIDisplay {

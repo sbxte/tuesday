@@ -7,6 +7,7 @@ use clap::ValueEnum;
 use thiserror::Error;
 use yaml_rust2::{Yaml, YamlLoader};
 
+use crate::graph::node::{Node, NodeState, NodeType};
 use crate::graph::Graph;
 
 use super::{Doc, VERSION};
@@ -113,19 +114,15 @@ pub fn parse_yaml(doc: &Yaml) -> Result<Doc> {
             aliases.insert(alias.to_string(), index);
         }
 
-        nodes.push(Some(RefCell::new(crate::graph::Node {
+        nodes.push(Some(RefCell::new(Node {
             message: node_doc["message"].as_str().unwrap_or("").to_string(),
-            r#type: node_doc["type"]
-                .as_str()
-                .map_or(crate::graph::NodeType::default(), |n| {
-                    crate::graph::NodeType::from_str(n, true)
-                        .unwrap_or(crate::graph::NodeType::default())
-                }),
+            r#type: node_doc["type"].as_str().map_or(NodeType::default(), |n| {
+                NodeType::from_str(n, true).unwrap_or(NodeType::default())
+            }),
             state: node_doc["state"]
                 .as_str()
-                .map_or(crate::graph::NodeState::default(), |n| {
-                    crate::graph::NodeState::from_str(n, true)
-                        .unwrap_or(crate::graph::NodeState::default())
+                .map_or(NodeState::default(), |n| {
+                    NodeState::from_str(n, true).unwrap_or(NodeState::default())
                 }),
             archived: node_doc["archived"].as_bool().unwrap_or(false),
             index,

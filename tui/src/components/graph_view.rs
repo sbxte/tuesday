@@ -5,7 +5,10 @@ use ratatui::{
     text::{Line, Span},
     widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
-use tuecore::graph::{Graph, GraphGetters, Node, NodeState};
+use tuecore::graph::{
+    node::{Node, NodeState},
+    Graph, GraphGetters,
+};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const PATTERN_MATCH_STYLE: Style = Style::new()
