@@ -1,5 +1,11 @@
-# Usage
+# Building and Installation 
 
+```
+cargo build -r
+```
+or alternatively, you could cargo install it 
+
+# Usage
 
 Run `cargo install` on the `cli` directory to install `tuecli`.
 ```
