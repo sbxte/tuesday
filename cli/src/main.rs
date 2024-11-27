@@ -5,10 +5,12 @@ use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
 use display::CLIDisplay;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use tuecore::doc::{self, Doc};
 use tuecore::graph::errors::ErrorType;
 use tuecore::graph::node::NodeState;
-use tuecore::graph::Graph;
+use tuecore::graph::{Graph, GraphGetters};
 
 fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
     match matches.subcommand() {
@@ -159,6 +161,20 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             graph.list_archived()?;
             Ok(())
         }
+        Some(("rand", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").expect("ID required");
+            match graph
+                .get_node_children(graph.get_index(id)?)
+                .choose(&mut thread_rng())
+            {
+                None => bail!("Node does not have children!"),
+                Some(children) => {
+                    // TODO: Don't use stat
+                    graph.print_stats(Some(children.to_string().clone()));
+                }
+            };
+            Ok(())
+        }
         Some(("stats", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID");
             graph.print_stats(id.map(|i| i.to_string()))?;
@@ -285,6 +301,10 @@ fn cli() -> Result<Command> {
         )
         .subcommand(Command::new("lsa")
             .about("Lists all archived nodes")
+        )
+        .subcommand(Command::new("rand")
+            .about("Picks a random child node")
+            .arg(arg!(<ID> "Which parent node to randomly pick a child from"))
         )
         .subcommand(Command::new("stats")
             .about("Displays statistics of a node")
