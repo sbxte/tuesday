@@ -170,7 +170,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
                 None => bail!("Node does not have children!"),
                 Some(children) => {
                     // TODO: Don't use stat
-                    graph.print_stats(Some(children.to_string().clone()));
+                    graph.print_stats(Some(children.to_string().clone()))?;
                 }
             };
             Ok(())
