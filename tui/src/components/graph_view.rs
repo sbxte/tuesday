@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{palette::tailwind::SLATE, Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
+    widgets::{List, ListItem, ListState, StatefulWidget, Widget},
 };
 use tuecore::graph::{
     node::{Node, NodeState},
@@ -463,7 +463,7 @@ impl GraphViewComponent {
     pub fn delete_active_node(&mut self) {
         if let Some(graph) = &mut self.graph {
             if let Some(idx) = self.list_state.selected() {
-                let _ = graph.remove(self.nodes[idx].node_idx.to_string());
+                let _ = graph.remove(idx);
                 self.update_nodes()
             }
         }
@@ -566,14 +566,14 @@ impl GraphViewComponent {
                 // TODO: error handling?
                 // TODO: this gets the node_idx converted to string, then the internal function
                 // converts it back into a usize. nahh.
-                let _ = graph.set_state(node_idx.to_string(), NodeState::None, true);
+                let _ = graph.set_state(node_idx, NodeState::None, true);
             }
             NodeState::None => {
-                let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
+                let _ = graph.set_state(node_idx, NodeState::Done, true);
             }
             NodeState::Pseudo => (),
             NodeState::Partial => {
-                let _ = graph.set_state(node_idx.to_string(), NodeState::Done, true);
+                let _ = graph.set_state(node_idx, NodeState::Done, true);
             }
         };
     }
@@ -585,7 +585,7 @@ impl GraphViewComponent {
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
             let node = graph.get_node(self.nodes[idx].node_idx);
-            let _ = graph.rename_node(node.index.to_string(), new_message.to_owned());
+            let _ = graph.rename_node(node.index, new_message.to_owned());
             self.update_nodes();
         }
     }
@@ -598,7 +598,7 @@ impl GraphViewComponent {
                 .expect(INVALID_NODE_SELECTION_MSG);
 
             let node_idx = self.nodes[idx].node_idx;
-            let _ = graph.insert_child(message.to_string(), node_idx.to_string(), pseudo);
+            let _ = graph.insert_child(message.to_string(), node_idx, pseudo);
             self.update_nodes();
         }
     }
@@ -617,7 +617,7 @@ impl GraphViewComponent {
                     }
                 }
                 NodeLoc::Idx(idx) => {
-                    let _ = graph.insert_child(message.to_string(), idx.to_string(), pseudo);
+                    let _ = graph.insert_child(message.to_string(), idx, pseudo);
                 }
             }
         }
