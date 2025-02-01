@@ -40,12 +40,14 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             Ok(())
         }
         Some(("rm", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            let recursive = sub_matches.get_flag("recursive");
-            if recursive {
-                graph.remove_children_recursive(id.to_string())?;
-            } else {
-                graph.remove(id.to_string())?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                let recursive = sub_matches.get_flag("recursive");
+                if recursive {
+                    graph.remove_children_recursive(id.to_string())?;
+                } else {
+                    graph.remove(id.to_string())?;
+                }
             }
             Ok(())
         }
@@ -71,16 +73,17 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             Ok(())
         }
         Some(("mv", sub_matches)) => {
-            let node = sub_matches
-                .get_one::<String>("node")
+            let nodes = sub_matches
+                .get_many::<String>("node")
                 .expect("node ID required");
             let parent = sub_matches
                 .get_one::<String>("parent")
                 .expect("parent ID required");
 
-            graph.clean_parents(node.to_string())?;
-            graph.link(parent, node)?;
-
+            for node in nodes {
+                graph.clean_parents(node.to_string())?;
+                graph.link(parent, node)?;
+            }
             Ok(())
         }
         Some(("set", sub_matches)) => {
@@ -92,23 +95,31 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             Ok(())
         }
         Some(("check", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            graph.set_state(id.to_string(), NodeState::Done, true)?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                graph.set_state(id.to_string(), NodeState::Done, true)?;
+            }
             Ok(())
         }
         Some(("uncheck", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            graph.set_state(id.to_string(), NodeState::None, true)?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                graph.set_state(id.to_string(), NodeState::None, true)?;
+            }
             Ok(())
         }
         Some(("arc", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            graph.set_archived(id.to_string(), true)?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                graph.set_archived(id.to_string(), true)?;
+            }
             Ok(())
         }
         Some(("unarc", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            graph.set_archived(id.to_string(), false)?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                graph.set_archived(id.to_string(), false)?;
+            }
             Ok(())
         }
         Some(("alias", sub_matches)) => {
@@ -120,8 +131,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             Ok(())
         }
         Some(("unalias", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").expect("ID required");
-            graph.unset_alias(id.to_string())?;
+            let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            for id in ids {
+                graph.unset_alias(id.to_string())?;
+            }
             Ok(())
         }
         Some(("aliases", _)) => {
@@ -228,8 +241,8 @@ fn cli() -> Result<Command> {
                 .conflicts_with_all(["parent", "root"]))
         )
         .subcommand(Command::new("rm")
-            .about("Removes a node from the graph")
-            .arg(arg!(<ID> "Which node to remove"))
+            .about("Removes nodes from the graph")
+            .arg(arg!(<ID>... "Which nodes to remove"))
             .arg(arg!(-r --recursive "Whether to remove child nodes recursively").required(false))
         )
         .subcommand(Command::new("link")
@@ -243,8 +256,8 @@ fn cli() -> Result<Command> {
             .arg(arg!(child: <ID> "Which node should be the child in this connection"))
         )
         .subcommand(Command::new("mv")
-            .about("Unlink node from all current parents, then link to a new parent")
-            .arg(arg!(node: <ID> "Which node to unlink "))
+            .about("Unlink nodes from all current parents, then link to a new parent")
+            .arg(arg!(node: <ID>... "Which nodes to unlink"))
             .arg(arg!(parent: <ID> "New parent for node"))
         )
         .subcommand(Command::new("set")
@@ -253,20 +266,20 @@ fn cli() -> Result<Command> {
             .arg(arg!(<state> "What state to set the node").value_parser(value_parser!(NodeState)))
         )
         .subcommand(Command::new("check")
-            .about("Marks a node as completed")
-            .arg(arg!(<ID> "Which node to mark as completed"))
+            .about("Marks nodes as completed")
+            .arg(arg!(<ID>... "Which nodes to mark as completed"))
         )
         .subcommand(Command::new("uncheck")
-            .about("Marks a node as incomplete")
-            .arg(arg!(<ID> "Which node to mark as incomplete"))
+            .about("Marks nodes as incomplete")
+            .arg(arg!(<ID>... "Which nodes to mark as incomplete"))
         )
         .subcommand(Command::new("arc")
-            .about("Archives (hides) a node from view")
-            .arg(arg!(<ID> "Which node to archive"))
+            .about("Archives (hides) nodes from view")
+            .arg(arg!(<ID>... "Which nodes to archive"))
         )
         .subcommand(Command::new("unarc")
-            .about("Unarchives (unhides) a node from view")
-            .arg(arg!(<ID> "Which node to archive"))
+            .about("Unarchives (unhides) nodes from view")
+            .arg(arg!(<ID>... "Which nodes to archive"))
         )
         .subcommand(Command::new("alias")
             .about("Adds an alias for a node")
@@ -274,9 +287,9 @@ fn cli() -> Result<Command> {
             .arg(arg!(<alias> "What alias to give this node"))
         )
         .subcommand(Command::new("unalias")
-            .about("Removes an alias")
-            .long_about("Removes all aliases of a node")
-            .arg(arg!(<ID> ""))
+            .about("Removes nodes' alias")
+            .long_about("Removes all aliases of nodes")
+            .arg(arg!(<ID>... "Which nodes to remove aliases"))
         )
         .subcommand(Command::new("aliases")
             .about("Lists all aliases")
