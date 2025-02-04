@@ -117,7 +117,11 @@ impl Graph {
         self.roots.retain(|i| *i != index);
 
         // Unset alias
-        self.unset_alias(index)?;
+        let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
+        if alias {
+            self.unset_alias(index)?;
+
+        }
 
         // Delete from date hashmap first if node is a date root node
         let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
@@ -216,7 +220,14 @@ impl Graph {
                 .retain(|i| *i != index);
             self._remove_children_recursive(child)?;
         }
+
+        let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
+        if alias {
+            self.unset_alias(index)?;
+
+        }
         self.unset_alias(index)?;
+
         self.nodes[index] = None;
         Ok(())
     }
