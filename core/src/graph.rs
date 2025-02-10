@@ -317,13 +317,13 @@ impl Graph {
             .borrow_mut()
             .parents
             .iter()
-            .for_each(|index| {
-                self.nodes[*index]
+            .for_each(|i| {
+                self.nodes[*i]
                     .as_ref()
                     .unwrap()
                     .borrow_mut()
                     .children
-                    .retain(|x| x != index);
+                    .retain(|x| *x != index);
             });
 
         self.nodes[index]
