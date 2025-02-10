@@ -642,8 +642,8 @@ impl Graph {
         let index = id
             .parse::<usize>()
             .or(Err(ErrorType::MalformedIndex(id.to_string())))?;
-        if index > self.nodes.len() || self.nodes[index].is_none() {
-            Err(ErrorType::InvalidIndex(index))?;
+        if index >= self.nodes.len() || self.nodes[index].is_none() {
+            return Err(ErrorType::InvalidIndex(index));
         }
         Ok(index)
     }
