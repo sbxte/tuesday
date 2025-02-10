@@ -2,42 +2,34 @@ use core::str;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use anyhow::{bail, Result};
 use clap::ValueEnum;
-use thiserror::Error;
 use yaml_rust2::{Yaml, YamlLoader};
 
 use crate::graph::node::{Node, NodeState, NodeType};
 use crate::graph::Graph;
 
-use super::{Doc, VERSION};
-
-#[derive(Clone, Debug, Error)]
-enum ParseError {
-    #[error("No parseable document version is implemented for this document version!")]
-    Unimplemented,
-}
+use super::{Doc, DocResult, VERSION, errors::ErrorType};
 
 /// Parse (possibly) old version documents
-pub fn compat_parse(input: &[u8]) -> Result<Doc> {
+pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
     // String form
     if let Ok(input) = str::from_utf8(input) {
         if let Ok(docs) = YamlLoader::load_from_str(input) {
             return parse_yaml(&docs[0]);
         }
     }
-    Err(ParseError::Unimplemented.into())
+    Err(super::errors::ErrorType::ParseError("Unimplemented".to_string()))
 }
 
 /// Manually parse yaml instead of using serde_derive
-pub fn parse_yaml(doc: &Yaml) -> Result<Doc> {
+pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
     // Version mismatch
     let doc_ver = doc["version"].as_i64();
     if doc_ver.is_none() {
-        bail!("Yaml parse error: Version field does not exist");
+        return Err(ErrorType::ParseError("Version field not found!".to_string()))
     } else if let Some(version) = doc_ver {
         if version != VERSION as i64 {
-            bail!("Yaml parse error: Version mismatch");
+            return Err(ErrorType::ParseError("Document version mismatch!".to_string()));
         }
     }
 

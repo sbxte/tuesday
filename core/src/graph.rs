@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use errors::ErrorType;
 use node::{Node, NodeState, NodeType};
 
+/// Result of graph operation.
+type GraphResult<T> = Result<T, ErrorType>;
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Graph {
     pub(crate) nodes: Vec<Option<RefCell<Node>>>,
@@ -103,7 +106,7 @@ impl Graph {
         idx
     }
 
-    pub fn insert_child(&mut self, message: String, parent: usize, pseudo: bool) -> Result<()> {
+    pub fn insert_child(&mut self, message: String, parent: usize, pseudo: bool) -> GraphResult<()> {
         self.insert_child_unchecked(message, parent, pseudo);
         if !pseudo {
             self.update_state_recurse_parents(&[parent] as *const _, 1)?;
@@ -112,7 +115,7 @@ impl Graph {
     }
 
     /// Removes a node by `index`
-    pub fn remove(&mut self, index: usize) -> Result<()> {
+    pub fn remove(&mut self, index: usize) -> GraphResult<()> {
         // Remove node if it was root
         self.roots.retain(|i| *i != index);
 
@@ -179,13 +182,13 @@ impl Graph {
         Ok(())
     }
 
-    pub fn remove_children_recursive(&mut self, index: usize) -> Result<()> {
+    pub fn remove_children_recursive(&mut self, index: usize) -> GraphResult<()> {
         self.roots.retain(|i| *i != index);
         self._remove_children_recursive(index)?;
         Ok(())
     }
 
-    fn _remove_children_recursive(&mut self, index: usize) -> Result<()> {
+    fn _remove_children_recursive(&mut self, index: usize) -> GraphResult<()> {
         let parents_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
@@ -249,7 +252,7 @@ impl Graph {
         self.roots.retain(|i| *i != to);
     }
 
-    pub fn link(&mut self, from: usize, to: usize) -> Result<()> {
+    pub fn link(&mut self, from: usize, to: usize) -> GraphResult<()> {
         self.link_unchecked(from, to);
 
         // Update parent completion
@@ -289,7 +292,7 @@ impl Graph {
         }
     }
 
-    pub fn unlink(&mut self, from: usize, to: usize) -> Result<()> {
+    pub fn unlink(&mut self, from: usize, to: usize) -> GraphResult<()> {
         let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
         let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
         self.unlink_unchecked(from, to);
@@ -298,7 +301,7 @@ impl Graph {
     }
 
     /// Clear parents of target node and other nodes that hold the target as their child
-    pub fn clean_parents(&mut self, index: usize) -> Result<()> {
+    pub fn clean_parents(&mut self, index: usize) -> GraphResult<()> {
         let parents_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
@@ -323,8 +326,6 @@ impl Graph {
                     .retain(|x| x != index);
             });
 
-        self.update_state_recurse_parents(parents_ptr, parents_len)?;
-
         self.nodes[index]
             .as_ref()
             .unwrap()
@@ -332,11 +333,13 @@ impl Graph {
             .parents
             .clear();
 
+        self.update_state_recurse_parents(parents_ptr, parents_len)?;
+
         Ok(())
     }
 
     /// Sets node state and optionally propogates changes to children and parents
-    pub fn set_state(&mut self, index: usize, state: NodeState, propogate: bool) -> Result<()> {
+    pub fn set_state(&mut self, index: usize, state: NodeState, propogate: bool) -> GraphResult<()> {
         self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
             return Ok(());
@@ -366,7 +369,7 @@ impl Graph {
         indices: *const usize,
         len: usize,
         state: NodeState,
-    ) -> Result<()> {
+    ) -> GraphResult<()> {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
 
@@ -387,7 +390,7 @@ impl Graph {
     }
 
     // Check individually (because partially completed state)
-    fn update_state_recurse_parents(&mut self, indices: *const usize, len: usize) -> Result<()> {
+    fn update_state_recurse_parents(&mut self, indices: *const usize, len: usize) -> GraphResult<()> {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
             let mut count = 0;
@@ -433,7 +436,7 @@ impl Graph {
         Ok(())
     }
 
-    pub fn set_archived(&mut self, index: usize, archived: bool) -> Result<()> {
+    pub fn set_archived(&mut self, index: usize, archived: bool) -> GraphResult<()> {
         let status = &mut self.nodes[index].as_ref().unwrap().borrow_mut().archived;
 
         // Add to list of archived nodes if necessary
@@ -451,7 +454,7 @@ impl Graph {
         Ok(())
     }
 
-    pub fn rename_node(&mut self, index: usize, message: String) -> Result<()> {
+    pub fn rename_node(&mut self, index: usize, message: String) -> GraphResult<()> {
         self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
         Ok(())
     }
@@ -576,7 +579,7 @@ impl Graph {
         depth: u32,
         start: Option<usize>,
         f: &mut impl FnMut(&Node, u32),
-    ) -> Result<(), ErrorType> {
+    ) -> GraphResult<()> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
             return Ok(());
@@ -616,7 +619,7 @@ impl Graph {
 
     /// Returns the node index based on a identifier string.
     /// The identifier string may be an a date, an alias, or an index
-    pub fn get_index(&self, id: &str) -> Result<usize> {
+    pub fn get_index(&self, id: &str) -> GraphResult<usize> {
         // Check if it is a date
         if Self::is_date(id) {
             return match self.dates.get(id) {
@@ -646,7 +649,7 @@ impl Graph {
     }
 
     // TODO: Is this needed? Should link use this instead?
-    pub fn get_or_insert_index(&mut self, target: &str) -> Result<usize> {
+    pub fn get_or_insert_index(&mut self, target: &str) -> GraphResult<usize> {
         if Self::is_date(target) {
             return match self.dates.get(target) {
                 Some(x) => Ok(*x),
@@ -693,7 +696,7 @@ impl Graph {
         s == "today" || s == "tomorrow" || s == "yesterday"
     }
 
-    pub fn parse_relative_date(s: &str) -> Result<String> {
+    pub fn parse_relative_date(s: &str) -> GraphResult<String> {
         match s {
             "today" => Ok(Self::format_naivedate(Local::now().date_naive())),
             "tomorrow" => Ok(Self::format_naivedate(
@@ -717,14 +720,14 @@ impl Graph {
     }
 
     /// Sets an alias for node at `index`
-    pub fn set_alias(&mut self, index: usize, alias: String) -> Result<()> {
+    pub fn set_alias(&mut self, index: usize, alias: String) -> GraphResult<()> {
         self.aliases.insert(alias.clone(), index);
         self.nodes[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
         Ok(())
     }
 
     /// Unsets a node at `index`'s alias
-    pub fn unset_alias(&mut self, index: usize) -> Result<()> {
+    pub fn unset_alias(&mut self, index: usize) -> GraphResult<()> {
         let alias = self.nodes[index]
             .as_ref()
             .unwrap()
@@ -736,7 +739,7 @@ impl Graph {
         Ok(())
     }
 
-    pub fn list_aliases(&self) -> Result<()> {
+    pub fn list_aliases(&self) -> GraphResult<()> {
         for i in self.aliases.values() {
             println!("{}", self.nodes[*i].as_ref().unwrap().borrow());
         }

@@ -1,18 +1,23 @@
+pub mod errors;
+pub mod compat;
+
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 
 use crate::graph::Graph;
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-pub mod compat;
+use errors::ErrorType;
 
 /// Update this whenever the structure of Config or Graph changes
 const VERSION: u32 = 4;
 
 const FILENAME: &str = ".tuesday";
+
+/// Result of save file operation.
+type DocResult<T> = Result<T, ErrorType>;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Doc {
@@ -29,19 +34,19 @@ impl Doc {
     }
 }
 
-pub fn save_global(config: &Doc) -> Result<()> {
+pub fn save_global(config: &Doc) -> DocResult<()> {
     save(&mut get_global_save()?, config)?;
     Ok(())
 }
 
-pub fn save(mut file: &mut File, config: &Doc) -> Result<()> {
+pub fn save(mut file: &mut File, config: &Doc) -> DocResult<()> {
     file.set_len(0)?;
     serde_yaml_ng::to_writer(&mut file, config)?;
     file.flush()?;
     Ok(())
 }
 
-pub fn save_local(mut path: PathBuf, config: &Doc) -> Result<()> {
+pub fn save_local(mut path: PathBuf, config: &Doc) -> DocResult<()> {
     path.push(FILENAME);
     save(
         &mut OpenOptions::new()
@@ -55,7 +60,7 @@ pub fn save_local(mut path: PathBuf, config: &Doc) -> Result<()> {
     Ok(())
 }
 
-pub fn load(file: &mut File) -> Result<Graph> {
+pub fn load(file: &mut File) -> DocResult<Graph> {
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
     let graph: Graph = if bytes.is_empty() {
@@ -68,7 +73,7 @@ pub fn load(file: &mut File) -> Result<Graph> {
     Ok(graph)
 }
 
-pub fn try_load_local(mut path: PathBuf) -> Result<Option<Graph>> {
+pub fn try_load_local(mut path: PathBuf) -> DocResult<Option<Graph>> {
     path.push(FILENAME);
     if path.exists() {
         Ok(Some(load(
@@ -83,7 +88,7 @@ pub fn try_load_local(mut path: PathBuf) -> Result<Option<Graph>> {
     }
 }
 
-pub fn load_local(mut path: PathBuf) -> Result<Graph> {
+pub fn load_local(mut path: PathBuf) -> DocResult<Graph> {
     // For when user specifies custom path
     if path.exists() && path.is_file() {
         return load(
@@ -117,7 +122,7 @@ pub fn load_local(mut path: PathBuf) -> Result<Graph> {
     Ok(graph)
 }
 
-pub fn load_global() -> Result<Graph> {
+pub fn load_global() -> DocResult<Graph> {
     load(&mut get_global_save()?)
 }
 
@@ -126,11 +131,11 @@ pub fn local_exists(mut path: PathBuf) -> bool {
     path.exists()
 }
 
-pub fn get_global_save() -> Result<File> {
+pub fn get_global_save() -> DocResult<File> {
     let mut path = if let Some(x) = home::home_dir() {
         x
     } else {
-        panic!("Home directory unavailable!");
+        return Err(ErrorType::NoHome);
     };
     path.push(FILENAME);
     if !path.exists() {
@@ -148,12 +153,12 @@ pub fn get_global_save() -> Result<File> {
     }
 }
 
-pub fn export_json(graph: &Graph) -> Result<String> {
+pub fn export_json(graph: &Graph) -> DocResult<String> {
     Ok(serde_json::to_string(&Doc::new(graph))?)
 }
 
 /// Imports from stdin
-pub fn import_json_stdin() -> Result<Doc> {
+pub fn import_json_stdin() -> DocResult<Doc> {
     let mut stdin = io::stdin();
     let mut bytes = vec![];
     stdin.read_to_end(&mut bytes)?;
