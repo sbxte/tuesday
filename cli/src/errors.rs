@@ -18,8 +18,8 @@ pub(crate) enum AppError {
     #[error("Node doesn't have children to pick from")]
     NodeNoChildren,
 
-    #[error("No subcommand given, try --help to view all subcommands and options")]
-    NoSubcommand,
+    #[error("Invalid subcommand given, try --help to view all subcommands and options")]
+    InvalidSubcommand,
 
     #[error("Invalid argument(s): {0}")]
     InvalidArg(String),

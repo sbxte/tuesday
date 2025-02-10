@@ -236,7 +236,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         _ => {
-            Err(AppError::NoSubcommand)
+            Err(AppError::InvalidSubcommand)
         }
     }
 }
