@@ -1,6 +1,7 @@
-use anyhow::Result;
 use tuecore::graph::node::Node;
 use tuecore::graph::{Graph, GraphGetters};
+
+use crate::AppResult;
 
 /// CLI display methods.
 pub trait CLIDisplay {
@@ -8,15 +9,15 @@ pub trait CLIDisplay {
 
     fn print_tree_indent(depth: u32, dots: bool);
 
-    fn list_roots(&self, max_depth: u32, show_archived: bool) -> Result<()>;
+    fn list_roots(&self, max_depth: u32, show_archived: bool) -> AppResult<()>;
 
-    fn list_archived(&self) -> Result<()>;
+    fn list_archived(&self) -> AppResult<()>;
 
-    fn list_dates(&self) -> Result<()>;
+    fn list_dates(&self) -> AppResult<()>;
 
-    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()>;
+    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> AppResult<()>;
 
-    fn print_stats(&self, target: Option<String>) -> Result<()>;
+    fn print_stats(&self, target: Option<String>) -> AppResult<()>;
 }
 
 impl CLIDisplay for Graph {
@@ -40,7 +41,7 @@ impl CLIDisplay for Graph {
         }
     }
 
-    fn list_roots(&self, max_depth: u32, show_archived: bool) -> Result<()> {
+    fn list_roots(&self, max_depth: u32, show_archived: bool) -> AppResult<()> {
         self.traverse_recurse(
             self.get_root_nodes_indices(),
             show_archived,
@@ -52,7 +53,7 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn list_archived(&self) -> Result<()> {
+    fn list_archived(&self) -> AppResult<()> {
         self.traverse_recurse(
             self.get_archived_node_indices(),
             true,
@@ -64,7 +65,7 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn list_dates(&self) -> Result<()> {
+    fn list_dates(&self) -> AppResult<()> {
         let dates = self.get_date_nodes_indices();
         self.traverse_recurse(dates.as_slice(), false, 1, 1, None, &mut |node, depth| {
             Self::display_node(node, depth)
@@ -72,7 +73,7 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> Result<()> {
+    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> AppResult<()> {
         let index = self.get_index(&target)?;
 
         // Display self as well
@@ -89,7 +90,7 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn print_stats(&self, target: Option<String>) -> Result<()> {
+    fn print_stats(&self, target: Option<String>) -> AppResult<()> {
         // If a specific node is specified
         if let Some(target) = target {
             let index = self.get_index(&target)?;

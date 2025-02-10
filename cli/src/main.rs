@@ -1,18 +1,20 @@
 mod display;
+mod errors;
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
 use clap::{arg, value_parser, ArgMatches, Command};
 
 use display::CLIDisplay;
+use errors::AppError;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use tuecore::doc::{self, Doc};
-use tuecore::graph::errors::ErrorType;
 use tuecore::graph::node::NodeState;
 use tuecore::graph::{Graph, GraphGetters};
 
-fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
+type AppResult<T> = Result<T, AppError>;
+
+fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
             let message = sub_matches
@@ -22,21 +24,23 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             let date = sub_matches.get_flag("date");
             let pseudo = sub_matches.get_flag("pseudo");
             if date && root {
-                bail!("Node cannot be both date node and root node!");
+                return Err(AppError::ConflictingArgs("Node cannot be both date node and root node!".to_string()));
             }
             if date {
                 if !Graph::is_date(message) {
-                    return Err(ErrorType::MalformedDate(message.to_string()))?;
+                    return Err(AppError::MalformedDate(message.to_string()));
                 }
                 graph.insert_date(message.to_string());
             } else if root {
                 graph.insert_root(message.to_string(), pseudo);
             } else {
-                let parent = graph.get_index(
-                    sub_matches
-                        .get_one::<String>("parent")
-                        .expect("parent ID required"),
-                )?;
+                let idx = if let Some(i) = sub_matches.get_one::<String>("parent")
+                {
+                    i
+                } else {
+                    return Err(AppError::InvalidArg("Parent ID required!".to_string()));
+                };
+                let parent = graph.get_index(idx)?;
                 graph.insert_child(message.to_string(), parent, pseudo)?;
             }
             Ok(())
@@ -200,7 +204,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
                 .get_node_children(graph.get_index(id)?)
                 .choose(&mut thread_rng())
             {
-                None => bail!("Node does not have children!"),
+                None => return Err(AppError::NodeNoChildren),
                 Some(children) => {
                     // TODO: Don't use stat
                     graph.print_stats(Some(children.to_string().clone()))?;
@@ -232,13 +236,12 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> Result<()> {
             Ok(())
         }
         _ => {
-            println!("Welcome to Tuesday");
-            Ok(())
+            Err(AppError::NoSubcommand)
         }
     }
 }
 
-fn cli() -> Result<Command> {
+fn cli() -> AppResult<Command> {
     Ok(Command::new("tue")
         .about("Tuesday CLI, todo graph")
         .subcommand_required(false)
@@ -355,7 +358,7 @@ fn cli() -> Result<Command> {
     )
 }
 
-fn main() -> Result<()> {
+fn main() -> AppResult<()> {
     let matches = cli()?.get_matches();
 
     if matches.get_flag("version") {
@@ -404,10 +407,7 @@ fn main() -> Result<()> {
         }
     };
 
-    let result: Result<()> = handle_command(&matches, &mut graph);
-    if let Err(e) = result {
-        println!("{}\n{}", e, e.backtrace());
-    }
+    handle_command(&matches, &mut graph)?;
 
     if local {
         doc::save_local(
