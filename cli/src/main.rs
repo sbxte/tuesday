@@ -201,10 +201,18 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         Some(("rand", sub_matches)) => {
             let id = sub_matches.get_one::<String>("ID").ok_or(AppError::InvalidArg("ID required".to_string()))?;
             let unchecked = sub_matches.get_one::<bool>("unchecked").unwrap_or(&false);
+            let checked = sub_matches.get_one::<bool>("checked").unwrap_or(&false);
+            if *unchecked && *checked {
+                return Err(AppError::InvalidArg("--unchecked and --checked cannot be used together!".to_string()));
+            }
+
             let mut nodes = graph.get_node_children(graph.get_index(id)?).clone();
             let item;
             if *unchecked {
                 nodes.retain(|x| graph.get_node(*x).state != NodeState::Done);
+                item = nodes.choose(&mut thread_rng());
+            } else if *checked {
+                nodes.retain(|x| graph.get_node(*x).state == NodeState::Done);
                 item = nodes.choose(&mut thread_rng());
             } else {
                 item = nodes.choose(&mut thread_rng());
@@ -348,6 +356,7 @@ fn cli() -> AppResult<Command> {
             .about("Picks a random child node")
             .arg(arg!(<ID> "Which parent node to randomly pick a child from"))
             .arg(arg!(-u --unchecked "Only pick among unchecked tasks"))
+            .arg(arg!(-c --checked "Only pick among checked tasks"))
         )
         .subcommand(Command::new("stats")
             .about("Displays statistics of a node")
