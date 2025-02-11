@@ -5,7 +5,7 @@ pub enum ErrorType {
     #[error("Invalid index: '{0}'")]
     InvalidIndex(usize),
 
-    #[error("Malfored index: '{0}'")]
+    #[error("Malformed index: '{0}'")]
     MalformedIndex(String),
 
     #[error("Invalid alias: '{0}'")]
