@@ -229,7 +229,6 @@ impl Graph {
             self.unset_alias(index)?;
 
         }
-        self.unset_alias(index)?;
 
         self.nodes[index] = None;
         Ok(())
