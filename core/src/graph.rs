@@ -227,7 +227,13 @@ impl Graph {
         let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
         if alias {
             self.unset_alias(index)?;
+        }
 
+        // Delete from date hashmap first if node is a date root node
+        let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
+        if node_type == NodeType::Date {
+            let node_date = &self.nodes[index].as_ref().unwrap().borrow().message;
+            self.dates.remove(node_date);
         }
 
         self.nodes[index] = None;
