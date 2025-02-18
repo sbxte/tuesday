@@ -95,6 +95,7 @@ impl CLIDisplay for Graph {
         if let Some(target) = target {
             let index = self.get_index(&target)?;
             let node = self.get_nodes()[index].as_ref().unwrap().borrow();
+            println!("ID      : {}", index);
             println!("Message : {}", &node.message);
             println!("Parents :");
             for i in &node.parents {
