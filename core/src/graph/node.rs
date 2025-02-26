@@ -34,6 +34,7 @@ pub enum NodeState {
 }
 
 impl Node {
+    /// Creates a new node from a message, an index, and a node type
     pub fn new(message: String, index: usize, r#type: NodeType) -> Self {
         Self {
             message,
@@ -47,13 +48,15 @@ impl Node {
         }
     }
 
-    pub fn map_indices(&mut self, map: &[(usize, Option<usize>)]) {
-        self.index = map[self.index].1.unwrap();
+    /// Maps the locally stored indices (self, parents, and children) using a slice
+    /// Where an index `i` gets mapped into a `map[i]` where `map[i]` **MUST BE** a `Some(usize)`
+    pub fn map_indices(&mut self, map: &[Option<usize>]) {
+        self.index = map[self.index].unwrap();
         for i in self.parents.iter_mut() {
-            *i = map[*i].1.unwrap();
+            *i = map[*i].unwrap();
         }
         for i in self.children.iter_mut() {
-            *i = map[*i].1.unwrap();
+            *i = map[*i].unwrap();
         }
     }
 }

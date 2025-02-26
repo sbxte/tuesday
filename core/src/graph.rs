@@ -26,6 +26,7 @@ pub struct Graph {
 }
 
 impl Graph {
+    /// Instantiates an empty `Graph`
     pub fn new() -> Self {
         Self {
             nodes: vec![],
@@ -36,42 +37,50 @@ impl Graph {
         }
     }
 
+    /// Returns the number of alive nodes present in the graph
+    /// Alive as in does NOT include deleted (`None`) nodes in the graph
     pub fn node_count(&self) -> usize {
-        self.nodes.len()
+        self.nodes
+            .iter()
+            .fold(0, |acc, item| if item.is_some() { acc + 1 } else { acc })
     }
 
+    /// Returns the number of root nodes in the graph
     pub fn root_count(&self) -> usize {
         self.roots.len()
     }
 
+    /// Returns the number of node aliases in the graph
     pub fn alias_count(&self) -> usize {
         self.aliases.len()
     }
 
+    /// Returns an immutable reference to the underlying nodes `Vec`
     pub fn get_nodes(&self) -> &Vec<Option<RefCell<Node>>> {
         &self.nodes
     }
 
+    /// Returns an immutable reference to the underlying roots `Vec`
     pub fn get_roots(&self) -> &Vec<usize> {
         &self.roots
     }
 
+    /// Returns an immutable reference to the underlying alias `HashMap`
     pub fn get_aliases(&self) -> &HashMap<String, usize> {
         &self.aliases
     }
 
+    /// Returns an immutable reference to the underlying dates `HashMap`
     pub fn get_dates(&self) -> &HashMap<String, usize> {
         &self.dates
     }
 
+    /// Returns an immutable reference to the underlying archived nodes `Vec`
     pub fn get_archived(&self) -> &Vec<usize> {
         &self.archived
     }
 
-    pub fn insert_raw(&mut self, node: Node) {
-        self.nodes.push(Some(RefCell::new(node)));
-    }
-
+    /// Inserts a node into the graph and sets it as a root node
     pub fn insert_root(&mut self, message: String, pseudo: bool) {
         let idx = self.nodes.len();
         let mut node = Node::new(message, idx, NodeType::Normal);
@@ -82,6 +91,7 @@ impl Graph {
         self.roots.push(idx);
     }
 
+    /// Inserts a date node into the graph
     pub fn insert_date(&mut self, date: String) -> usize {
         let idx = self.nodes.len();
         let node = Node::new(date.clone(), idx, NodeType::Date);
@@ -90,6 +100,10 @@ impl Graph {
         idx
     }
 
+    /// Inserts a node into the graph and sets it as a child of a parent node without updating the
+    /// states of its parent
+    ///
+    /// The parent node is represented using its node index
     pub fn insert_child_unchecked(
         &mut self,
         message: String,
@@ -106,7 +120,16 @@ impl Graph {
         idx
     }
 
-    pub fn insert_child(&mut self, message: String, parent: usize, pseudo: bool) -> GraphResult<()> {
+    /// Inserts a node into the graph and sets it as a child of a parent node and updates the
+    /// states of its parent
+    ///
+    /// The parent node is represented using its node index
+    pub fn insert_child(
+        &mut self,
+        message: String,
+        parent: usize,
+        pseudo: bool,
+    ) -> GraphResult<()> {
         self.insert_child_unchecked(message, parent, pseudo);
         if !pseudo {
             self.update_state_recurse_parents(&[parent] as *const _, 1)?;
@@ -123,7 +146,6 @@ impl Graph {
         let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
         if alias {
             self.unset_alias(index)?;
-
         }
 
         // Delete from date hashmap first if node is a date root node
@@ -182,6 +204,7 @@ impl Graph {
         Ok(())
     }
 
+    /// Removes a node from the graph and recursively removes its children, grandchildren, etc.
     pub fn remove_children_recursive(&mut self, index: usize) -> GraphResult<()> {
         self.roots.retain(|i| *i != index);
         self._remove_children_recursive(index)?;
@@ -240,6 +263,8 @@ impl Graph {
         Ok(())
     }
 
+    /// Connects two nodes on the graph with an edge
+    /// Does NOT update parent states
     pub fn link_unchecked(&mut self, from: usize, to: usize) {
         self.nodes[from]
             .as_ref()
@@ -257,6 +282,8 @@ impl Graph {
         self.roots.retain(|i| *i != to);
     }
 
+    /// Connects two nodes on the graph with an edge
+    /// And updates the parents' states recursively
     pub fn link(&mut self, from: usize, to: usize) -> GraphResult<()> {
         self.link_unchecked(from, to);
 
@@ -278,6 +305,7 @@ impl Graph {
         }
     }
 
+    /// Unlinks two nodes on the graph without updating parent states
     fn unlink_unchecked(&mut self, from: usize, to: usize) {
         self.nodes[from]
             .as_ref()
@@ -297,6 +325,8 @@ impl Graph {
         }
     }
 
+    /// Unlinks two nodes on the graph
+    /// And updates parent states
     pub fn unlink(&mut self, from: usize, to: usize) -> GraphResult<()> {
         let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
         let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
@@ -344,7 +374,12 @@ impl Graph {
     }
 
     /// Sets node state and optionally propogates changes to children and parents
-    pub fn set_state(&mut self, index: usize, state: NodeState, propogate: bool) -> GraphResult<()> {
+    pub fn set_state(
+        &mut self,
+        index: usize,
+        state: NodeState,
+        propogate: bool,
+    ) -> GraphResult<()> {
         self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
             return Ok(());
@@ -395,7 +430,11 @@ impl Graph {
     }
 
     // Check individually (because partially completed state)
-    fn update_state_recurse_parents(&mut self, indices: *const usize, len: usize) -> GraphResult<()> {
+    fn update_state_recurse_parents(
+        &mut self,
+        indices: *const usize,
+        len: usize,
+    ) -> GraphResult<()> {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
             let mut count = 0;
@@ -459,6 +498,7 @@ impl Graph {
         Ok(())
     }
 
+    /// Replaces a node on the graph's message with a new provided message
     pub fn rename_node(&mut self, index: usize, message: String) -> GraphResult<()> {
         self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
         Ok(())
@@ -528,11 +568,11 @@ impl Graph {
         // New [Some(a), Some(b), Some(c), Some(d)]
         let mut map = Vec::with_capacity(self.nodes.len());
         let mut last_used_index: usize = 0;
-        for (i, node) in self.nodes.iter().enumerate() {
+        for node in &self.nodes {
             match node {
-                None => map.push((i, None)), // Ignored sentinel value
+                None => map.push(None), // Ignored sentinel value
                 Some(_) => {
-                    map.push((i, Some(last_used_index)));
+                    map.push(Some(last_used_index));
                     last_used_index += 1;
                 }
             }
@@ -546,23 +586,21 @@ impl Graph {
                 Some(node) => {
                     let mut new_node = node.borrow().clone();
                     new_node.map_indices(&map);
-                    new_graph.insert_raw(new_node);
+                    new_graph.nodes.push(Some(RefCell::new(new_node)));
                 }
             }
         }
         for (alias, idx) in self.aliases.iter() {
-            new_graph
-                .aliases
-                .insert(alias.clone(), map[*idx].1.unwrap());
+            new_graph.aliases.insert(alias.clone(), map[*idx].unwrap());
         }
         for r in self.roots.iter() {
-            new_graph.roots.push(map[*r].1.unwrap());
+            new_graph.roots.push(map[*r].unwrap());
         }
         for (d, i) in self.dates.iter() {
-            new_graph.dates.insert(d.clone(), map[*i].1.unwrap());
+            new_graph.dates.insert(d.clone(), map[*i].unwrap());
         }
         for a in self.archived.iter() {
-            new_graph.archived.push(map[*a].1.unwrap());
+            new_graph.archived.push(map[*a].unwrap());
         }
 
         // Replace self with new cleaned and fixed graph
@@ -697,10 +735,19 @@ impl Graph {
         Ok(("", (year, month, day)))
     }
 
+    /// Returns whether the provided string is a relative date
+    ///
+    /// The currently available relative dates are
+    /// - today
+    /// - tomorrow
+    /// - yesterday
     pub fn is_relative_date(s: &str) -> bool {
         s == "today" || s == "tomorrow" || s == "yesterday"
     }
 
+    /// Parses relative dates into NaiveDate format
+    /// See [is_relative_date](Self::is_relative_date) for available relative dates
+    /// See also [format_naivedate](Self::format_naivedate)
     pub fn parse_relative_date(s: &str) -> GraphResult<String> {
         match s {
             "today" => Ok(Self::format_naivedate(Local::now().date_naive())),
@@ -720,6 +767,9 @@ impl Graph {
         }
     }
 
+    /// Formats a [NaiveDate] into a [String]
+    /// The format goes %Y-%m-%d
+    /// See also [NaiveDate::format]
     pub fn format_naivedate(date: NaiveDate) -> String {
         date.format("%Y-%m-%d").to_string()
     }
