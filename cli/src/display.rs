@@ -96,16 +96,16 @@ impl CLIDisplay for Graph {
             let index = self.get_index(&target)?;
             let node = self.get_nodes()[index].as_ref().unwrap().borrow();
             println!("ID      : {}", index);
-            println!("Message : {}", &node.message);
+            println!("Message : {}", &node.title);
             println!("Parents :");
             for i in &node.parents {
                 let parent = self.get_nodes()[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", parent.index, parent.message, parent.state);
+                println!("({}) {} [{}]", parent.index, parent.title, parent.state);
             }
             println!("Children:");
             for i in &node.children {
                 let child = self.get_nodes()[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", child.index, child.message, child.state);
+                println!("({}) {} [{}]", child.index, child.title, child.state);
             }
             if let Some(ref alias) = node.alias {
                 println!("Alias   : {}", alias);

@@ -151,7 +151,7 @@ impl Graph {
         // Delete from date hashmap first if node is a date root node
         let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
         if node_type == NodeType::Date {
-            let node_date = &self.nodes[index].as_ref().unwrap().borrow().message;
+            let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
             self.dates.remove(node_date);
         }
 
@@ -255,7 +255,7 @@ impl Graph {
         // Delete from date hashmap first if node is a date root node
         let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
         if node_type == NodeType::Date {
-            let node_date = &self.nodes[index].as_ref().unwrap().borrow().message;
+            let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
             self.dates.remove(node_date);
         }
 
@@ -500,7 +500,7 @@ impl Graph {
 
     /// Replaces a node on the graph's message with a new provided message
     pub fn rename_node(&mut self, index: usize, message: String) -> GraphResult<()> {
-        self.nodes[index].as_ref().unwrap().borrow_mut().message = message;
+        self.nodes[index].as_ref().unwrap().borrow_mut().title = message;
         Ok(())
     }
 
@@ -524,8 +524,8 @@ impl Graph {
                 self.aliases
                     .insert(rnode.alias.as_ref().unwrap().clone(), rnode.index);
             }
-            if Self::is_date(&rnode.message) {
-                self.dates.insert(rnode.message.clone(), rnode.index);
+            if Self::is_date(&rnode.title) {
+                self.dates.insert(rnode.title.clone(), rnode.index);
             }
             if rnode.archived {
                 self.archived.push(rnode.index);

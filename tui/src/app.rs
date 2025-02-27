@@ -222,7 +222,7 @@ impl App {
                     ActiveNodeOperation::Check => self.components.graph_view.check_active(),
                     ActiveNodeOperation::Rename => {
                         if let Some(node) = self.components.graph_view.get_current_node() {
-                            self.components.cmdline.set_curr_input(&node.message);
+                            self.components.cmdline.set_curr_input(&node.title);
 
                             return Some(AppEvent::Internal(InternalEvent::AskPrompt(
                                 AskPromptType::Input(ev),

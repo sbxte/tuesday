@@ -63,7 +63,7 @@ impl GraphTUI for Graph {
             }
 
             let node = self.get_node(*i);
-            let msg_match = node.message.to_lowercase();
+            let msg_match = node.title.to_lowercase();
             let pattern_loc;
             if filter.is_empty() {
                 pattern_loc = None;
@@ -169,7 +169,7 @@ fn list_item_from_node(
     if let Some(indent) = indent {
         if let Some(pos) = filter_pos {
             let (left, mid, right) =
-                highlight_node_message(&value.message, pos, pattern_len, is_selected);
+                highlight_node_message(&value.title, pos, pattern_len, is_selected);
             spans = vec![
                 indent,
                 statusbox_left,
@@ -180,16 +180,16 @@ fn list_item_from_node(
                 right,
             ];
         } else {
-            let message = Span::raw(value.message.to_owned());
+            let message = Span::raw(value.title.to_owned());
             spans = vec![indent, statusbox_left, status, statusbox_right, message];
         }
     } else {
         if let Some(pos) = filter_pos {
             let (left, mid, right) =
-                highlight_node_message(&value.message, pos, pattern_len, is_selected);
+                highlight_node_message(&value.title, pos, pattern_len, is_selected);
             spans = vec![statusbox_left, status, statusbox_right, left, mid, right];
         } else {
-            let message = Span::raw(value.message.to_owned());
+            let message = Span::raw(value.title.to_owned());
             spans = vec![statusbox_left, status, statusbox_right, message];
         }
     }
@@ -315,7 +315,7 @@ impl GraphViewComponent {
                 NodeLoc::Idx(idx) => {
                     // TODO: move this whole pattern matching shenanigans somewhere else for less
                     // duplication
-                    let message = graph.get_node(idx).message.to_lowercase();
+                    let message = graph.get_node(idx).title.to_lowercase();
                     let pattern_loc;
                     if message.is_empty() {
                         pattern_loc = None;

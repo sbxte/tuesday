@@ -8,7 +8,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 use crate::graph::node::{Node, NodeState, NodeType};
 use crate::graph::Graph;
 
-use super::{Doc, DocResult, VERSION, errors::ErrorType};
+use super::{errors::ErrorType, Doc, DocResult, VERSION};
 
 /// Parse (possibly) old version documents
 pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
@@ -18,7 +18,9 @@ pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
             return parse_yaml(&docs[0]);
         }
     }
-    Err(super::errors::ErrorType::ParseError("Unimplemented".to_string()))
+    Err(super::errors::ErrorType::ParseError(
+        "Unimplemented".to_string(),
+    ))
 }
 
 /// Manually parse yaml instead of using serde_derive
@@ -26,10 +28,14 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
     // Version mismatch
     let doc_ver = doc["version"].as_i64();
     if doc_ver.is_none() {
-        return Err(ErrorType::ParseError("Version field not found!".to_string()))
+        return Err(ErrorType::ParseError(
+            "Version field not found!".to_string(),
+        ));
     } else if let Some(version) = doc_ver {
         if version != VERSION as i64 {
-            return Err(ErrorType::ParseError("Document version mismatch!".to_string()));
+            return Err(ErrorType::ParseError(
+                "Document version mismatch!".to_string(),
+            ));
         }
     }
 
@@ -107,7 +113,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
         }
 
         nodes.push(Some(RefCell::new(Node {
-            message: node_doc["message"].as_str().unwrap_or("").to_string(),
+            title: node_doc["message"].as_str().unwrap_or("").to_string(),
             r#type: node_doc["type"].as_str().map_or(NodeType::default(), |n| {
                 NodeType::from_str(n, true).unwrap_or(NodeType::default())
             }),

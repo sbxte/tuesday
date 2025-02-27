@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
-    pub message: String,
+    pub title: String,
     pub r#type: NodeType,
     pub state: NodeState,
     pub archived: bool,
@@ -37,7 +37,7 @@ impl Node {
     /// Creates a new node from a message, an index, and a node type
     pub fn new(message: String, index: usize, r#type: NodeType) -> Self {
         Self {
-            message,
+            title: message,
             r#type,
             state: NodeState::None,
             archived: false,
@@ -70,7 +70,7 @@ impl fmt::Display for Node {
         }
         .bright_blue();
         let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
-        write!(f, "{} {} {}", state, self.message, index)
+        write!(f, "{} {} {}", state, self.title, index)
     }
 }
 
