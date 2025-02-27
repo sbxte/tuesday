@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use clap::ValueEnum;
 use yaml_rust2::{Yaml, YamlLoader};
 
-use crate::graph::node::{Node, NodeState, NodeType};
+use crate::graph::node::{Node, NodeMetadata, NodeState, NodeType};
 use crate::graph::Graph;
 
 use super::{errors::ErrorType, Doc, DocResult, VERSION};
@@ -122,11 +122,13 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
                 .map_or(NodeState::default(), |n| {
                     NodeState::from_str(n, true).unwrap_or(NodeState::default())
                 }),
-            archived: node_doc["archived"].as_bool().unwrap_or(false),
-            index,
-            alias: alias.map(|s| s.to_string()),
-            parents,
-            children,
+            metadata: NodeMetadata {
+                archived: node_doc["archived"].as_bool().unwrap_or(false),
+                index,
+                alias: alias.map(|s| s.to_string()),
+                parents,
+                children,
+            },
         })));
     }
 
@@ -135,7 +137,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
 
     // Fix any node aliases that may be desynchronized with the root doc's aliases
     for (k, v) in aliases.iter() {
-        nodes[*v].as_ref().unwrap().borrow_mut().alias = Some(k.clone());
+        nodes[*v].as_ref().unwrap().borrow_mut().metadata.alias = Some(k.clone());
     }
 
     // Unify everything

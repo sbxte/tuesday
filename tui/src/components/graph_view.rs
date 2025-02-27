@@ -70,17 +70,17 @@ impl GraphTUI for Graph {
             } else {
                 pattern_loc = msg_match.find(&filter.to_lowercase());
             }
-            let node_info = NodeInfo::new(node.index, depth, pattern_loc);
+            let node_info = NodeInfo::new(node.metadata.index, depth, pattern_loc);
             storage.push(node_info);
 
             // If there's no need to show archived nodes then ignore it and its children
-            if !skip_archived && node.archived {
+            if !skip_archived && node.metadata.archived {
                 continue;
             }
 
             GraphTUI::get_nodes(
                 self,
-                &self.get_node_children(node.index),
+                &self.get_node_children(node.metadata.index),
                 skip_archived,
                 max_depth,
                 depth + 1,
@@ -155,7 +155,7 @@ fn list_item_from_node(
     pattern_len: usize,
     is_selected: bool,
 ) -> ListItem<'static> {
-    let indent = Node::print_tree_indent(depth, value.parents.len() > 1);
+    let indent = Node::print_tree_indent(depth, value.metadata.parents.len() > 1);
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
@@ -198,10 +198,10 @@ fn list_item_from_node(
     let mut line = Line::from(spans);
     let space = " "
         .to_string()
-        .repeat(area.width as usize - line.width() - value.index.to_string().len() - 1);
+        .repeat(area.width as usize - line.width() - value.metadata.index.to_string().len() - 1);
     let space_span = Span::raw(space);
     line.spans.push(space_span);
-    let idx = Span::styled(value.index.to_string(), NODE_IDX_STYLE);
+    let idx = Span::styled(value.metadata.index.to_string(), NODE_IDX_STYLE);
     line.spans.push(idx);
     ListItem::from(line)
 }
@@ -480,8 +480,8 @@ impl GraphViewComponent {
                 }
 
                 let node = graph.get_node(self.nodes[selection_idx].node_idx);
-                self.current_node = NodeLoc::Idx(node.index);
-                self.path.push(node.index);
+                self.current_node = NodeLoc::Idx(node.metadata.index);
+                self.path.push(node.metadata.index);
                 self.selection_idx_path.push(selection_idx);
 
                 self.update_nodes();
@@ -585,7 +585,7 @@ impl GraphViewComponent {
                 .selected()
                 .expect(INVALID_NODE_SELECTION_MSG);
             let node = graph.get_node(self.nodes[idx].node_idx);
-            let _ = graph.rename_node(node.index, new_message.to_owned());
+            let _ = graph.rename_node(node.metadata.index, new_message.to_owned());
             self.update_nodes();
         }
     }
@@ -632,7 +632,7 @@ impl GraphViewComponent {
                 .expect(INVALID_NODE_SELECTION_MSG);
 
             let node = graph.get_node(self.nodes[idx].node_idx);
-            Self::modify_task_status(graph, node.index, node.state);
+            Self::modify_task_status(graph, node.metadata.index, node.state);
             self.update_nodes();
         }
     }
@@ -650,7 +650,7 @@ impl Widget for &mut GraphViewComponent {
         let active_node_idx;
         // TODO: refactor (maybe)
         if let Some(node) = &selected_idx {
-            active_node_idx = node.index;
+            active_node_idx = node.metadata.index;
         } else {
             active_node_idx = 0;
         }

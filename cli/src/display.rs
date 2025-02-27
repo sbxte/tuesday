@@ -22,7 +22,7 @@ pub trait CLIDisplay {
 
 impl CLIDisplay for Graph {
     fn display_node(node: &Node, depth: u32) {
-        Graph::print_tree_indent(depth, node.parents.len() > 1);
+        Graph::print_tree_indent(depth, node.metadata.parents.len() > 1);
         println!("{}", node);
     }
 
@@ -98,19 +98,25 @@ impl CLIDisplay for Graph {
             println!("ID      : {}", index);
             println!("Message : {}", &node.title);
             println!("Parents :");
-            for i in &node.parents {
+            for i in &node.metadata.parents {
                 let parent = self.get_nodes()[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", parent.index, parent.title, parent.state);
+                println!(
+                    "({}) {} [{}]",
+                    parent.metadata.index, parent.title, parent.state
+                );
             }
             println!("Children:");
-            for i in &node.children {
+            for i in &node.metadata.children {
                 let child = self.get_nodes()[*i].as_ref().unwrap().borrow();
-                println!("({}) {} [{}]", child.index, child.title, child.state);
+                println!(
+                    "({}) {} [{}]",
+                    child.metadata.index, child.title, child.state
+                );
             }
-            if let Some(ref alias) = node.alias {
+            if let Some(ref alias) = node.metadata.alias {
                 println!("Alias   : {}", alias);
             }
-            println!("Archived: {}", node.archived);
+            println!("Archived: {}", node.metadata.archived);
             println!("Status  : [{}]", node.state);
 
         // Else, list out stats for the whole graph
@@ -127,7 +133,7 @@ impl CLIDisplay for Graph {
                 self.get_nodes()
                     .iter()
                     .fold(0, |acc, x| if let Some(x) = x {
-                        acc + x.borrow().parents.len()
+                        acc + x.borrow().metadata.parents.len()
                     } else {
                         acc
                     })

@@ -143,7 +143,13 @@ impl Graph {
         self.roots.retain(|i| *i != index);
 
         // Unset alias
-        let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
+        let alias = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .alias
+            .is_some();
         if alias {
             self.unset_alias(index)?;
         }
@@ -160,15 +166,23 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .parents
             .as_ptr();
-        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
+        let parents_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
         for i in 0..parents_len {
             let parent = unsafe { *parents_ptr.add(i) };
             self.nodes[parent]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
+                .metadata
                 .children
                 .retain(|i| *i != index);
         }
@@ -178,21 +192,30 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .children
             .as_ptr();
-        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .children
+            .len();
         for i in 0..children_len {
             let child = unsafe { *children_ptr.add(i) };
             self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
+                .metadata
                 .parents
                 .retain(|i| *i != index);
             if self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow()
+                .metadata
                 .parents
                 .is_empty()
             {
@@ -216,15 +239,23 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .parents
             .as_ptr();
-        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
+        let parents_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
         for i in 0..parents_len {
             let parent = unsafe { *parents_ptr.add(i) };
             self.nodes[parent]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
+                .metadata
                 .children
                 .retain(|i| *i != index);
         }
@@ -233,21 +264,35 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .children
             .as_ptr();
-        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .children
+            .len();
         for i in 0..children_len {
             let child = unsafe { *children_ptr.add(i) };
             self.nodes[child]
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
+                .metadata
                 .parents
                 .retain(|i| *i != index);
             self._remove_children_recursive(child)?;
         }
 
-        let alias = self.nodes[index].as_ref().unwrap().borrow().alias.is_some();
+        let alias = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .alias
+            .is_some();
         if alias {
             self.unset_alias(index)?;
         }
@@ -270,12 +315,14 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .children
             .push(to);
         self.nodes[to]
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .parents
             .push(from);
         // Remove node from list of roots if it has a parent
@@ -288,8 +335,20 @@ impl Graph {
         self.link_unchecked(from, to);
 
         // Update parent completion
-        let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
-        let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
+        let parents_ptr = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
 
         Ok(())
@@ -311,16 +370,25 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .children
             .retain(|i| *i != to);
         self.nodes[to]
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .parents
             .retain(|i| *i != from);
         // Add node to list of roots if it does not have a parent
-        if self.nodes[to].as_ref().unwrap().borrow().parents.is_empty() {
+        if self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .is_empty()
+        {
             self.roots.push(to);
         }
     }
@@ -328,8 +396,20 @@ impl Graph {
     /// Unlinks two nodes on the graph
     /// And updates parent states
     pub fn unlink(&mut self, from: usize, to: usize) -> GraphResult<()> {
-        let parents_ptr = self.nodes[to].as_ref().unwrap().borrow().parents.as_ptr();
-        let parents_len = self.nodes[to].as_ref().unwrap().borrow().parents.len();
+        let parents_ptr = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .as_ptr();
+        let parents_len = self.nodes[to]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
         self.unlink_unchecked(from, to);
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
         Ok(())
@@ -341,15 +421,23 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .parents
             .as_ptr();
 
-        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
+        let parents_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
 
         self.nodes[index]
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .parents
             .iter()
             .for_each(|i| {
@@ -357,6 +445,7 @@ impl Graph {
                     .as_ref()
                     .unwrap()
                     .borrow_mut()
+                    .metadata
                     .children
                     .retain(|x| *x != index);
             });
@@ -365,6 +454,7 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .parents
             .clear();
 
@@ -388,17 +478,31 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .children
             .as_ptr();
-        let children_len = self.nodes[index].as_ref().unwrap().borrow().children.len();
+        let children_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .children
+            .len();
         self.set_state_recurse_children(children_ptr, children_len, state)?;
         let parents_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .parents
             .as_ptr();
-        let parents_len = self.nodes[index].as_ref().unwrap().borrow().parents.len();
+        let parents_len = self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .parents
+            .len();
         self.update_state_recurse_parents(parents_ptr, parents_len)?;
         Ok(())
     }
@@ -418,12 +522,36 @@ impl Graph {
             }
             self.nodes[i].as_ref().unwrap().borrow_mut().state = state;
 
-            let children_ptr = self.nodes[i].as_ref().unwrap().borrow().children.as_ptr();
-            let children_len = self.nodes[i].as_ref().unwrap().borrow().children.len();
+            let children_ptr = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .children
+                .as_ptr();
+            let children_len = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .children
+                .len();
             self.set_state_recurse_children(children_ptr, children_len, state)?;
 
-            let parents_ptr = self.nodes[i].as_ref().unwrap().borrow().parents.as_ptr();
-            let parents_len = self.nodes[i].as_ref().unwrap().borrow().parents.len();
+            let parents_ptr = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .parents
+                .as_ptr();
+            let parents_len = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .parents
+                .len();
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
         Ok(())
@@ -440,7 +568,14 @@ impl Graph {
             let mut count = 0;
             let mut pseudo = 0;
             let mut partial = false;
-            for child in self.nodes[i].as_ref().unwrap().borrow().children.iter() {
+            for child in self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .children
+                .iter()
+            {
                 match self.nodes[*child].as_ref().unwrap().borrow().state {
                     NodeState::None => continue,
                     NodeState::Partial => {
@@ -460,7 +595,15 @@ impl Graph {
                 NodeState::Pseudo
             // Every child task is completed
             } else if count != 0
-                && count == (self.nodes[i].as_ref().unwrap().borrow().children.len() - pseudo)
+                && count
+                    == (self.nodes[i]
+                        .as_ref()
+                        .unwrap()
+                        .borrow()
+                        .metadata
+                        .children
+                        .len()
+                        - pseudo)
             {
                 NodeState::Done
             // At least one child task is completed or partially completed
@@ -473,15 +616,32 @@ impl Graph {
                 // No need to recurse for pseudo nodes as they do not affect parent status
                 continue;
             }
-            let parents_ptr = self.nodes[i].as_ref().unwrap().borrow().parents.as_ptr();
-            let parents_len = self.nodes[i].as_ref().unwrap().borrow().parents.len();
+            let parents_ptr = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .parents
+                .as_ptr();
+            let parents_len = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .metadata
+                .parents
+                .len();
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
         Ok(())
     }
 
     pub fn set_archived(&mut self, index: usize, archived: bool) -> GraphResult<()> {
-        let status = &mut self.nodes[index].as_ref().unwrap().borrow_mut().archived;
+        let status = &mut self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .metadata
+            .archived;
 
         // Add to list of archived nodes if necessary
         if *status != archived {
@@ -520,22 +680,24 @@ impl Graph {
             let rnode = node.borrow();
 
             // Add aliases, dates, and archival status
-            if rnode.alias.is_some() {
-                self.aliases
-                    .insert(rnode.alias.as_ref().unwrap().clone(), rnode.index);
+            if rnode.metadata.alias.is_some() {
+                self.aliases.insert(
+                    rnode.metadata.alias.as_ref().unwrap().clone(),
+                    rnode.metadata.index,
+                );
             }
             if Self::is_date(&rnode.title) {
-                self.dates.insert(rnode.title.clone(), rnode.index);
+                self.dates.insert(rnode.title.clone(), rnode.metadata.index);
             }
-            if rnode.archived {
-                self.archived.push(rnode.index);
+            if rnode.metadata.archived {
+                self.archived.push(rnode.metadata.index);
             }
 
             // Remove invalid edges
             drop(rnode);
             let mut mnode = node.borrow_mut();
-            mnode.parents.retain(|i| self.nodes[*i].is_some());
-            mnode.children.retain(|i| self.nodes[*i].is_some());
+            mnode.metadata.parents.retain(|i| self.nodes[*i].is_some());
+            mnode.metadata.children.retain(|i| self.nodes[*i].is_some());
         }
 
         // Add unreachable nodes into roots
@@ -549,11 +711,11 @@ impl Graph {
             let node = node.as_ref().unwrap();
             let rnode = node.borrow();
 
-            let parents = rnode.parents.len();
+            let parents = rnode.metadata.parents.len();
             if parents > 0 {
                 continue;
             }
-            let index = rnode.index;
+            let index = rnode.metadata.index;
             if !self.roots.contains(&index) && !date_values.contains(&&index) {
                 self.roots.push(i);
             }
@@ -636,7 +798,7 @@ impl Graph {
             }
 
             // If theres no need to show archived nodes then ignore it and its children
-            if !skip_archived && self.nodes[*i].as_ref().unwrap().borrow().archived {
+            if !skip_archived && self.nodes[*i].as_ref().unwrap().borrow().metadata.archived {
                 continue;
             }
             if let Some(node) = &self.nodes[*i] {
@@ -648,6 +810,7 @@ impl Graph {
                     .as_ref()
                     .unwrap()
                     .borrow()
+                    .metadata
                     .children
                     .as_slice(),
                 false,
@@ -777,7 +940,12 @@ impl Graph {
     /// Sets an alias for node at `index`
     pub fn set_alias(&mut self, index: usize, alias: String) -> GraphResult<()> {
         self.aliases.insert(alias.clone(), index);
-        self.nodes[index].as_ref().unwrap().borrow_mut().alias = Some(alias);
+        self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .metadata
+            .alias = Some(alias);
         Ok(())
     }
 
@@ -787,6 +955,7 @@ impl Graph {
             .as_ref()
             .unwrap()
             .borrow_mut()
+            .metadata
             .alias
             .take()
             .unwrap();
@@ -835,6 +1004,7 @@ impl GraphGetters for Graph {
             .as_ref()
             .unwrap()
             .borrow()
+            .metadata
             .children
             .to_vec()
     }
