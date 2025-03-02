@@ -2,10 +2,9 @@ use core::str;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use clap::ValueEnum;
-use yaml_rust2::{Yaml, YamlLoader};
+use serde_yaml_ng::{Mapping, Value};
 
-use crate::graph::node::{Node, NodeMetadata, NodeState, NodeType};
+use crate::graph::node::{Node, NodeMetadata};
 use crate::graph::Graph;
 
 use super::{errors::ErrorType, Doc, DocResult, VERSION};
@@ -14,7 +13,7 @@ use super::{errors::ErrorType, Doc, DocResult, VERSION};
 pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
     // String form
     if let Ok(input) = str::from_utf8(input) {
-        if let Ok(docs) = YamlLoader::load_from_str(input) {
+        if let Ok(docs) = serde_yaml_ng::from_str::<Value>(input) {
             return parse_yaml(&docs[0]);
         }
     }
@@ -24,7 +23,7 @@ pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
 }
 
 /// Manually parse yaml instead of using serde_derive
-pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
+pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
     // Version mismatch
     let doc_ver = doc["version"].as_i64();
     if doc_ver.is_none() {
@@ -43,20 +42,20 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
 
     // Roots, archived, and dates
     let roots = graph_doc["roots"]
-        .as_vec()
+        .as_sequence()
         .unwrap_or(&vec![])
         .iter()
         .map(|i| i.as_i64().expect("Root index must be an integer") as usize)
         .collect::<Vec<_>>();
     let archived = graph_doc["archived"]
-        .as_vec()
+        .as_sequence()
         .unwrap_or(&vec![])
         .iter()
         .map(|i| i.as_i64().expect("Archived index must be an integer") as usize)
         .collect::<Vec<_>>();
     let dates = graph_doc["dates"]
-        .as_hash()
-        .unwrap_or(&yaml_rust2::yaml::Hash::new())
+        .as_mapping()
+        .unwrap_or(&Mapping::new())
         .iter()
         .map(|(k, v)| {
             (
@@ -66,8 +65,8 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
         })
         .collect::<HashMap<_, _>>();
     let mut aliases = graph_doc["aliases"]
-        .as_hash()
-        .unwrap_or(&yaml_rust2::yaml::Hash::new())
+        .as_mapping()
+        .unwrap_or(&Mapping::new())
         .iter()
         .map(|(k, v)| {
             (
@@ -81,7 +80,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
     // Provide default values if any are missing
     // ~ Maps are funky, functional programming go brrrr
     let mut nodes = vec![];
-    for node_doc in graph_doc["nodes"].as_vec().unwrap_or(&vec![]) {
+    for node_doc in graph_doc["nodes"].as_sequence().unwrap_or(&vec![]) {
         if node_doc.is_null() {
             nodes.push(None);
             continue;
@@ -94,7 +93,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
 
         // Update parent and children
         let mut parents = vec![];
-        for parent_doc in node_doc["parents"].as_vec().unwrap_or(&vec![]) {
+        for parent_doc in node_doc["parents"].as_sequence().unwrap_or(&vec![]) {
             parents.push(
                 parent_doc
                     .as_i64()
@@ -102,7 +101,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
             );
         }
         let mut children = vec![];
-        for child_doc in node_doc["children"].as_vec().unwrap_or(&vec![]) {
+        for child_doc in node_doc["children"].as_sequence().unwrap_or(&vec![]) {
             children.push(child_doc.as_i64().expect("Parent index must be an integer") as usize);
         }
 
@@ -114,14 +113,7 @@ pub fn parse_yaml(doc: &Yaml) -> DocResult<Doc> {
 
         nodes.push(Some(RefCell::new(Node {
             title: node_doc["message"].as_str().unwrap_or("").to_string(),
-            r#type: node_doc["type"].as_str().map_or(NodeType::default(), |n| {
-                NodeType::from_str(n, true).unwrap_or(NodeType::default())
-            }),
-            state: node_doc["state"]
-                .as_str()
-                .map_or(NodeState::default(), |n| {
-                    NodeState::from_str(n, true).unwrap_or(NodeState::default())
-                }),
+            data: serde_yaml_ng::from_value(node_doc["type"].clone())?,
             metadata: NodeMetadata {
                 archived: node_doc["archived"].as_bool().unwrap_or(false),
                 index,

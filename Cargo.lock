@@ -965,7 +965,6 @@ dependencies = [
  "serde_yaml_ng",
  "thiserror",
  "toml",
- "yaml-rust2",
 ]
 
 [[package]]
