@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
 use colored::Colorize;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
@@ -912,11 +912,11 @@ impl Graph {
         use nom::bytes::complete::tag;
         use nom::character::complete::digit1;
         use nom::combinator::map_res;
-        let (s, year): (&str, u32) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        let (s, year): (&str, u32) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
         let (s, _) = tag("-")(s)?;
-        let (s, month) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        let (s, month) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
         let (s, _) = tag("-")(s)?;
-        let (_, day) = map_res(digit1, |s: &str| s.parse::<u32>())(s)?;
+        let (_, day) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
         Ok(("", (year, month, day)))
     }
 

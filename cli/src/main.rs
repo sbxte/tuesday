@@ -6,8 +6,8 @@ use clap::{arg, value_parser, ArgMatches, Command};
 
 use display::CLIDisplay;
 use errors::AppError;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::rng;
+use rand::seq::IndexedRandom as _;
 use tuecore::doc::{self, Doc};
 use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
@@ -222,7 +222,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                         .map(|task| task.state != TaskState::Done)
                         .unwrap_or(true)
                 });
-                item = nodes.choose(&mut thread_rng());
+                item = nodes.choose(&mut rng());
             } else if *checked {
                 nodes.retain(|x| {
                     graph
@@ -232,9 +232,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                         .map(|task| task.state == TaskState::Done)
                         .unwrap_or(true)
                 });
-                item = nodes.choose(&mut thread_rng());
+                item = nodes.choose(&mut rng());
             } else {
-                item = nodes.choose(&mut thread_rng());
+                item = nodes.choose(&mut rng());
             }
             match item {
                 None => return Err(AppError::NodeNoChildren),
