@@ -9,7 +9,7 @@ use errors::AppError;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use tuecore::doc::{self, Doc};
-use tuecore::graph::node::NodeState;
+use tuecore::graph::node::{NodeState, NodeType};
 use tuecore::graph::{Graph, GraphGetters};
 
 type AppResult<T> = Result<T, AppError>;
@@ -115,17 +115,37 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("check", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            let len = ids.len();
             for id in ids {
                 let id = graph.get_index(id)?;
-                graph.set_state(id, NodeState::Done, true)?;
+                if graph.get_node(id).r#type == NodeType::Pseudo {
+                    if len == 1 {
+                        // If we only have one argument, exit with an error.
+                        return Err(AppError::PseudoStateChange(id))
+                    } else {
+                        println!("Error: node {} is a pseudo-node and thus its state cannot be modified", id)
+                    }
+                } else {
+                    graph.set_state(id, NodeState::Done, true)?;
+                }
             }
             Ok(())
         }
         Some(("uncheck", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
+            let len = ids.len();
             for id in ids {
                 let id = graph.get_index(id)?;
-                graph.set_state(id, NodeState::None, true)?;
+                if graph.get_node(id).r#type == NodeType::Pseudo {
+                    if len == 1 {
+                        // If we only have one argument, exit with an error.
+                        return Err(AppError::PseudoStateChange(id))
+                    } else {
+                        println!("Error: node {} is a pseudo-node and thus its state cannot be modified", id)
+                    }
+                } else {
+                    graph.set_state(id, NodeState::None, true)?;
+                }
             }
             Ok(())
         }

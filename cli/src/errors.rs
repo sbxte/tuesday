@@ -28,7 +28,10 @@ pub(crate) enum AppError {
     MalformedDate(String),
 
     #[error("I/O error: {0}")]
-    IOError(#[from] std::io::Error)
+    IOError(#[from] std::io::Error),
+
+    #[error("Node {0} is a pseudo-node and thus its state cannot be modified")]
+    PseudoStateChange(usize)
 }
 
 // The default Debug implementation displays the enum like so:
