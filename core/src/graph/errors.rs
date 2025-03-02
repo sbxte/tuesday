@@ -19,4 +19,7 @@ pub enum ErrorType {
 
     #[error("Graph looped back: {0}->...->{1}->{0}")]
     GraphLooped(usize, usize),
+
+    #[error("Node is not a Task node: {0}")]
+    NotTaskNode(usize),
 }

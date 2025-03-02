@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{List, ListItem, ListState, StatefulWidget, Widget},
 };
 use tuecore::graph::{
-    node::{Node, NodeState},
+    node::{task::TaskState, Node, NodeType},
     Graph, GraphGetters,
 };
 
@@ -113,11 +113,14 @@ impl NodeTUIDisplay for Node {
     }
 
     fn get_status(&self) -> Span<'static> {
-        match self.state {
-            NodeState::None => Span::raw(" "),
-            NodeState::Partial => Span::raw("~"),
-            NodeState::Done => Span::raw("x"),
-            NodeState::Pseudo => Span::raw("+"),
+        match self.data {
+            NodeType::Task(ref data) => match data.state {
+                TaskState::None => Span::raw(" "),
+                TaskState::Partial => Span::raw("~"),
+                TaskState::Done => Span::raw("x"),
+            },
+            NodeType::Pseudo => Span::raw("+"),
+            NodeType::Date(_) => Span::raw("#"),
         }
     }
 }
@@ -560,20 +563,19 @@ impl GraphViewComponent {
         self.current_node = NodeLoc::Roots;
     }
 
-    fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: NodeState) {
+    fn modify_task_status(graph: &mut Graph, node_idx: usize, curr_state: TaskState) {
         match curr_state {
-            NodeState::Done => {
+            TaskState::Done => {
                 // TODO: error handling?
                 // TODO: this gets the node_idx converted to string, then the internal function
                 // converts it back into a usize. nahh.
-                let _ = graph.set_state(node_idx, NodeState::None, true);
+                let _ = graph.set_task_state(node_idx, TaskState::None, true);
             }
-            NodeState::None => {
-                let _ = graph.set_state(node_idx, NodeState::Done, true);
+            TaskState::None => {
+                let _ = graph.set_task_state(node_idx, TaskState::Done, true);
             }
-            NodeState::Pseudo => (),
-            NodeState::Partial => {
-                let _ = graph.set_state(node_idx, NodeState::Done, true);
+            TaskState::Partial => {
+                let _ = graph.set_task_state(node_idx, TaskState::Done, true);
             }
         };
     }
@@ -632,7 +634,13 @@ impl GraphViewComponent {
                 .expect(INVALID_NODE_SELECTION_MSG);
 
             let node = graph.get_node(self.nodes[idx].node_idx);
-            Self::modify_task_status(graph, node.metadata.index, node.state);
+            if node.data.is_task() {
+                Self::modify_task_status(
+                    graph,
+                    node.metadata.index,
+                    node.data.as_task().unwrap().state,
+                )
+            };
             self.update_nodes();
         }
     }

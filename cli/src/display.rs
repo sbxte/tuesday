@@ -102,7 +102,7 @@ impl CLIDisplay for Graph {
                 let parent = self.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    parent.metadata.index, parent.title, parent.state
+                    parent.metadata.index, parent.title, parent.data
                 );
             }
             println!("Children:");
@@ -110,14 +110,14 @@ impl CLIDisplay for Graph {
                 let child = self.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    child.metadata.index, child.title, child.state
+                    child.metadata.index, child.title, child.data
                 );
             }
             if let Some(ref alias) = node.metadata.alias {
                 println!("Alias   : {}", alias);
             }
             println!("Archived: {}", node.metadata.archived);
-            println!("Status  : [{}]", node.state);
+            println!("Status  : [{}]", node.data);
 
         // Else, list out stats for the whole graph
         } else {

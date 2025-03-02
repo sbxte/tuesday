@@ -11,7 +11,7 @@ use nom::IResult;
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
-use node::{Node, NodeState, NodeType};
+use node::{task, Node, NodeType};
 
 /// Result of graph operation.
 type GraphResult<T> = Result<T, ErrorType>;
@@ -83,9 +83,9 @@ impl Graph {
     /// Inserts a node into the graph and sets it as a root node
     pub fn insert_root(&mut self, message: String, pseudo: bool) {
         let idx = self.nodes.len();
-        let mut node = Node::new(message, idx, NodeType::Normal);
+        let mut node = Node::new(message, idx, Default::default());
         if pseudo {
-            node.state = NodeState::Pseudo;
+            node.data = NodeType::Pseudo;
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.roots.push(idx);
@@ -94,7 +94,7 @@ impl Graph {
     /// Inserts a date node into the graph
     pub fn insert_date(&mut self, date: String) -> usize {
         let idx = self.nodes.len();
-        let node = Node::new(date.clone(), idx, NodeType::Date);
+        let node = Node::new(date.clone(), idx, NodeType::Date(Default::default()));
         self.nodes.push(Some(RefCell::new(node)));
         self.dates.insert(date, idx);
         idx
@@ -111,9 +111,9 @@ impl Graph {
         pseudo: bool,
     ) -> usize {
         let idx = self.nodes.len();
-        let mut node = Node::new(message, idx, NodeType::Normal);
+        let mut node = Node::new(message, idx, Default::default());
         if pseudo {
-            node.state = NodeState::Pseudo
+            node.data = NodeType::Pseudo;
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.link_unchecked(parent, idx);
@@ -155,8 +155,7 @@ impl Graph {
         }
 
         // Delete from date hashmap first if node is a date root node
-        let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
-        if node_type == NodeType::Date {
+        if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
             let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
             self.dates.remove(node_date);
         }
@@ -298,8 +297,7 @@ impl Graph {
         }
 
         // Delete from date hashmap first if node is a date root node
-        let node_type = self.nodes[index].as_ref().unwrap().borrow().r#type;
-        if node_type == NodeType::Date {
+        if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
             let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
             self.dates.remove(node_date);
         }
@@ -463,17 +461,22 @@ impl Graph {
         Ok(())
     }
 
-    /// Sets node state and optionally propogates changes to children and parents
-    pub fn set_state(
+    /// Sets task node state and optionally propogates changes to children and parents
+    pub fn set_task_state(
         &mut self,
         index: usize,
-        state: NodeState,
+        state: task::TaskState,
         propogate: bool,
     ) -> GraphResult<()> {
-        self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
+        match self.nodes[index].as_ref().unwrap().borrow_mut().data {
+            NodeType::Task(ref mut d) => d.state = state,
+            _ => return Err(ErrorType::NotTaskNode(index)),
+        };
+
         if !propogate {
             return Ok(());
         }
+
         let children_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
@@ -488,7 +491,7 @@ impl Graph {
             .metadata
             .children
             .len();
-        self.set_state_recurse_children(children_ptr, children_len, state)?;
+        self.set_task_state_recurse(children_ptr, children_len, state)?;
         let parents_ptr = self.nodes[index]
             .as_ref()
             .unwrap()
@@ -508,19 +511,23 @@ impl Graph {
     }
 
     // Absolute
-    fn set_state_recurse_children(
+    fn set_task_state_recurse(
         &mut self,
         indices: *const usize,
         len: usize,
-        state: NodeState,
+        state: task::TaskState,
     ) -> GraphResult<()> {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
 
-            if self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo {
+            if self.nodes[i].as_ref().unwrap().borrow().data == NodeType::Pseudo {
                 continue;
             }
-            self.nodes[i].as_ref().unwrap().borrow_mut().state = state;
+
+            match self.nodes[i].as_ref().unwrap().borrow_mut().data {
+                NodeType::Task(ref mut d) => d.state = state,
+                _ => return Err(ErrorType::NotTaskNode(i)),
+            };
 
             let children_ptr = self.nodes[i]
                 .as_ref()
@@ -536,7 +543,7 @@ impl Graph {
                 .metadata
                 .children
                 .len();
-            self.set_state_recurse_children(children_ptr, children_len, state)?;
+            self.set_task_state_recurse(children_ptr, children_len, state)?;
 
             let parents_ptr = self.nodes[i]
                 .as_ref()
@@ -563,6 +570,8 @@ impl Graph {
         indices: *const usize,
         len: usize,
     ) -> GraphResult<()> {
+        use task::TaskState;
+
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
             let mut count = 0;
@@ -576,46 +585,58 @@ impl Graph {
                 .children
                 .iter()
             {
-                match self.nodes[*child].as_ref().unwrap().borrow().state {
-                    NodeState::None => continue,
-                    NodeState::Partial => {
-                        partial = true;
-                    }
-                    NodeState::Done => {
-                        partial = true;
-                        count += 1;
-                    }
-                    NodeState::Pseudo => {
+                let node = self.nodes[*child].as_ref().unwrap().borrow();
+                match &node.data {
+                    NodeType::Pseudo => {
                         pseudo += 1;
                     }
+                    NodeType::Task(data) => match data.state {
+                        TaskState::None => continue,
+                        TaskState::Partial => {
+                            partial = true;
+                        }
+                        TaskState::Done => {
+                            partial = true;
+                            count += 1;
+                        }
+                    },
+                    _ => {} // Other node types should not count towards completion
                 }
             }
-            let is_pseudo = self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo;
-            self.nodes[i].as_ref().unwrap().borrow_mut().state = if is_pseudo {
-                NodeState::Pseudo
-            // Every child task is completed
-            } else if count != 0
-                && count
-                    == (self.nodes[i]
-                        .as_ref()
-                        .unwrap()
-                        .borrow()
-                        .metadata
-                        .children
-                        .len()
-                        - pseudo)
+
+            if let Some(task) = self.nodes[i]
+                .as_ref()
+                .unwrap()
+                .borrow_mut()
+                .data
+                .as_task_mut()
             {
-                NodeState::Done
-            // At least one child task is completed or partially completed
-            } else if partial {
-                NodeState::Partial
-            } else {
-                NodeState::None
+                // Every child task is completed
+                task.state = if count > 0
+                    && count
+                        == (self.nodes[i]
+                            .as_ref()
+                            .unwrap()
+                            .borrow()
+                            .metadata
+                            .children
+                            .len()
+                            - pseudo)
+                {
+                    TaskState::Done
+                // At least one child task is completed or partially completed
+                } else if partial {
+                    TaskState::Partial
+                } else {
+                    TaskState::None
+                };
             };
-            if is_pseudo {
+
+            if self.nodes[i].as_ref().unwrap().borrow().data.is_pseudo() {
                 // No need to recurse for pseudo nodes as they do not affect parent status
                 continue;
             }
+
             let parents_ptr = self.nodes[i]
                 .as_ref()
                 .unwrap()
@@ -630,6 +651,7 @@ impl Graph {
                 .metadata
                 .parents
                 .len();
+
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
         Ok(())

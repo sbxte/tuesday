@@ -9,7 +9,7 @@ use errors::AppError;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use tuecore::doc::{self, Doc};
-use tuecore::graph::node::NodeState;
+use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
 
 type AppResult<T> = Result<T, AppError>;
@@ -24,7 +24,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let date = sub_matches.get_flag("date");
             let pseudo = sub_matches.get_flag("pseudo");
             if date && root {
-                return Err(AppError::ConflictingArgs("Node cannot be both date node and root node!".to_string()));
+                return Err(AppError::ConflictingArgs(
+                    "Node cannot be both date node and root node!".to_string(),
+                ));
             }
             if date {
                 if !Graph::is_date(message) {
@@ -34,8 +36,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             } else if root {
                 graph.insert_root(message.to_string(), pseudo);
             } else {
-                let idx = if let Some(i) = sub_matches.get_one::<String>("parent")
-                {
+                let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
                     i
                 } else {
                     return Err(AppError::InvalidArg("Parent ID required!".to_string()));
@@ -108,16 +109,16 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         Some(("set", sub_matches)) => {
             let id = graph.get_index(sub_matches.get_one::<String>("ID").expect("ID required"))?;
             let state = sub_matches
-                .get_one::<NodeState>("state")
+                .get_one::<TaskState>("state")
                 .expect("node state required");
-            graph.set_state(id, *state, true)?;
+            graph.set_task_state(id, *state, true)?;
             Ok(())
         }
         Some(("check", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
                 let id = graph.get_index(id)?;
-                graph.set_state(id, NodeState::Done, true)?;
+                graph.set_task_state(id, TaskState::Done, true)?;
             }
             Ok(())
         }
@@ -125,7 +126,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
                 let id = graph.get_index(id)?;
-                graph.set_state(id, NodeState::None, true)?;
+                graph.set_task_state(id, TaskState::None, true)?;
             }
             Ok(())
         }
@@ -199,20 +200,38 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("rand", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").ok_or(AppError::InvalidArg("ID required".to_string()))?;
+            let id = sub_matches
+                .get_one::<String>("ID")
+                .ok_or(AppError::InvalidArg("ID required".to_string()))?;
             let unchecked = sub_matches.get_one::<bool>("unchecked").unwrap_or(&false);
             let checked = sub_matches.get_one::<bool>("checked").unwrap_or(&false);
             if *unchecked && *checked {
-                return Err(AppError::InvalidArg("--unchecked and --checked cannot be used together!".to_string()));
+                return Err(AppError::InvalidArg(
+                    "--unchecked and --checked cannot be used together!".to_string(),
+                ));
             }
 
             let mut nodes = graph.get_node_children(graph.get_index(id)?).clone();
             let item;
             if *unchecked {
-                nodes.retain(|x| graph.get_node(*x).state != NodeState::Done);
+                nodes.retain(|x| {
+                    graph
+                        .get_node(*x)
+                        .data
+                        .as_task()
+                        .map(|task| task.state != TaskState::Done)
+                        .unwrap_or(true)
+                });
                 item = nodes.choose(&mut thread_rng());
             } else if *checked {
-                nodes.retain(|x| graph.get_node(*x).state == NodeState::Done);
+                nodes.retain(|x| {
+                    graph
+                        .get_node(*x)
+                        .data
+                        .as_task()
+                        .map(|task| task.state == TaskState::Done)
+                        .unwrap_or(true)
+                });
                 item = nodes.choose(&mut thread_rng());
             } else {
                 item = nodes.choose(&mut thread_rng());
@@ -249,9 +268,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             );
             Ok(())
         }
-        _ => {
-            Err(AppError::InvalidSubcommand)
-        }
+        _ => Err(AppError::InvalidSubcommand),
     }
 }
 
@@ -300,7 +317,7 @@ fn cli() -> AppResult<Command> {
         .subcommand(Command::new("set")
             .about("Sets a node's state")
             .arg(arg!(<ID> "Which node to modify"))
-            .arg(arg!(<state> "What state to set the node").value_parser(value_parser!(NodeState)))
+            .arg(arg!(<state> "What state to set the node").value_parser(value_parser!(TaskState)))
         )
         .subcommand(Command::new("check")
             .about("Marks nodes as completed")

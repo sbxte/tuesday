@@ -1,41 +1,26 @@
 use std::fmt;
 
-use clap::ValueEnum;
 use colored::Colorize;
+use date::DateData;
 use serde::{Deserialize, Serialize};
+use task::TaskData;
+
+pub mod date;
+pub mod task;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Node {
     pub title: String,
-    pub r#type: NodeType,
-    pub state: NodeState,
+    pub data: NodeType,
     pub metadata: NodeMetadata,
-}
-
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
-pub enum NodeType {
-    #[default]
-    Normal,
-    Date,
-}
-
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
-pub enum NodeState {
-    #[default]
-    None,
-    Partial,
-    Done,
-    /// Does not count to completion
-    Pseudo,
 }
 
 impl Node {
     /// Creates a new node from a message, an index, and a node type
-    pub fn new(message: String, index: usize, r#type: NodeType) -> Self {
+    pub fn new(message: String, index: usize, data: NodeType) -> Self {
         Self {
             title: message,
-            r#type,
-            state: NodeState::None,
+            data,
             metadata: NodeMetadata::new(index),
         }
     }
@@ -61,18 +46,82 @@ impl fmt::Display for Node {
             format!("({})", self.metadata.index)
         }
         .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
+        let state = format!("{}{}{}", "[".bright_blue(), self.data, "]".bright_blue());
         write!(f, "{} {} {}", state, self.title, index)
     }
 }
 
-impl fmt::Display for NodeState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum NodeType {
+    Task(task::TaskData),
+    Date(date::DateData),
+    /// Does not count to completion
+    Pseudo,
+}
+
+impl NodeType {
+    /// Returns whether this is a task node
+    pub fn is_task(&self) -> bool {
+        matches!(self, NodeType::Task(_))
+    }
+
+    /// Returns this type as a task node. Returns [`None`] if type is not [`NodeType::Task`]
+    pub fn as_task(&self) -> Option<&TaskData> {
         match self {
-            NodeState::None => write!(f, " "),
-            NodeState::Partial => write!(f, "~"),
-            NodeState::Done => write!(f, "x"),
-            NodeState::Pseudo => write!(f, "+"),
+            NodeType::Task(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns this type as a mutable task node. Returns [`None`] if type is not [`NodeType::Task`]
+    pub fn as_task_mut(&mut self) -> Option<&mut TaskData> {
+        match self {
+            NodeType::Task(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns whether this is a date node
+    pub fn is_date(&self) -> bool {
+        matches!(self, NodeType::Date(_))
+    }
+
+    /// Returns this type as a date node. Returns [`None`] if type is not [`NodeType::Date`]
+    pub fn as_date(&self) -> Option<&DateData> {
+        match self {
+            NodeType::Date(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns this type as a mutable date node. Returns [`None`] if type is not [`NodeType::Date`]
+    pub fn as_date_mut(&mut self) -> Option<&mut DateData> {
+        match self {
+            NodeType::Date(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns whether this is a pseudo node
+    pub fn is_pseudo(&self) -> bool {
+        matches!(self, NodeType::Pseudo)
+    }
+}
+
+impl Default for NodeType {
+    fn default() -> Self {
+        Self::Task(Default::default())
+    }
+}
+
+// TODO: Decouple this from core
+impl fmt::Display for NodeType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use NodeType::*;
+        match self {
+            Task(data) => write!(f, "{}", data),
+            Date(_) => write!(f, "#"),
+            Pseudo => write!(f, "*"),
         }
     }
 }
