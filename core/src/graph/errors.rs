@@ -19,4 +19,7 @@ pub enum ErrorType {
 
     #[error("Graph looped back: {0}->...->{1}->{0}")]
     GraphLooped(usize, usize),
+
+    #[error("Pseudo-node {0} cannot have its state mutated")]
+    PseudoStateChange(usize)
 }

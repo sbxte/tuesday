@@ -380,6 +380,10 @@ impl Graph {
         state: NodeState,
         propogate: bool,
     ) -> GraphResult<()> {
+        if self.nodes[index].as_ref().unwrap().borrow_mut().r#type == NodeType::Pseudo {
+            return Err(ErrorType::PseudoStateChange(index))
+        };
+
         self.nodes[index].as_ref().unwrap().borrow_mut().state = state;
         if !propogate {
             return Ok(());
