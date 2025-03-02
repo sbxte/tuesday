@@ -1,5 +1,5 @@
-pub mod errors;
 pub mod compat;
+pub mod errors;
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use errors::ErrorType;
 
 /// Update this whenever the structure of Config or Graph changes
-const VERSION: u32 = 4;
+const VERSION: u32 = 5;
 
 const FILENAME: &str = ".tuesday";
 

@@ -1,56 +1,62 @@
-version: 4
+version: 5
 graph:
   nodes:
-  - message: Due dates
-    type: Normal
-    state: None
-    archived: false
-    index: 0
-    alias: null
-    parents: []
-    children: []
-  - message: Notification system
-    type: Normal
-    state: None
-    archived: false
-    index: 1
-    alias: null
-    parents: []
-    children: []
-  - message: Recurring tasks
-    type: Normal
-    state: None
-    archived: false
-    index: 2
-    alias: null
-    parents: []
-    children: []
-  - message: ZSH integration
-    type: Normal
-    state: None
-    archived: false
-    index: 3
-    alias: null
-    parents: []
-    children: []
-  - message: TUI
-    type: Normal
-    state: None
-    archived: false
-    index: 4
-    alias: null
-    parents: []
-    children:
-    - 5
-  - message: Ratatui perhaps?
-    type: Normal
-    state: None
-    archived: false
-    index: 5
-    alias: null
-    parents:
-    - 4
-    children: []
+  - title: Due dates
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 0
+      alias: null
+      parents: []
+      children: []
+  - title: Notification system
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 1
+      alias: null
+      parents: []
+      children: []
+  - title: Recurring tasks
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 2
+      alias: null
+      parents: []
+      children: []
+  - title: ZSH integration
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 3
+      alias: null
+      parents: []
+      children: []
+  - title: TUI
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 4
+      alias: null
+      parents: []
+      children:
+      - 5
+  - title: Ratatui perhaps?
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 5
+      alias: null
+      parents:
+      - 4
+      children: []
   roots:
   - 0
   - 1
