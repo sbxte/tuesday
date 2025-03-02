@@ -21,6 +21,8 @@ pub enum NodeType {
     #[default]
     Normal,
     Date,
+    /// Does not count to completion
+    Pseudo,
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
@@ -29,8 +31,6 @@ pub enum NodeState {
     None,
     Partial,
     Done,
-    /// Does not count to completion
-    Pseudo,
 }
 
 impl Node {
@@ -69,8 +69,20 @@ impl fmt::Display for Node {
             format!("({})", self.index)
         }
         .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
-        write!(f, "{} {} {}", state, self.message, index)
+        match self.r#type {
+            NodeType::Normal => {
+                let state = format!("{}{}{}", "[".bright_blue(), self.state, "]".bright_blue());
+                write!(f, "{} {} {}", state, self.message, index)
+            }
+            NodeType::Date => {
+                let state = format!("{}{}{}", "(".bright_blue(), self.state, ")".bright_blue());
+                write!(f, "{} {} {}", state, self.message, index)
+            }
+            NodeType::Pseudo => {
+                write!(f, "{} {} {}", "(+>".bright_blue(), self.message, index)
+            }
+
+        }
     }
 }
 
@@ -80,7 +92,6 @@ impl fmt::Display for NodeState {
             NodeState::None => write!(f, " "),
             NodeState::Partial => write!(f, "~"),
             NodeState::Done => write!(f, "x"),
-            NodeState::Pseudo => write!(f, "+"),
         }
     }
 }

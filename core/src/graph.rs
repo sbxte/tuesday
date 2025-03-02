@@ -85,7 +85,7 @@ impl Graph {
         let idx = self.nodes.len();
         let mut node = Node::new(message, idx, NodeType::Normal);
         if pseudo {
-            node.state = NodeState::Pseudo;
+            node.r#type = NodeType::Pseudo;
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.roots.push(idx);
@@ -113,7 +113,7 @@ impl Graph {
         let idx = self.nodes.len();
         let mut node = Node::new(message, idx, NodeType::Normal);
         if pseudo {
-            node.state = NodeState::Pseudo
+            node.r#type = NodeType::Pseudo;
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.link_unchecked(parent, idx);
@@ -413,7 +413,7 @@ impl Graph {
         for i in 0..len {
             let i = unsafe { *indices.add(i) };
 
-            if self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo {
+            if self.nodes[i].as_ref().unwrap().borrow().r#type == NodeType::Pseudo {
                 continue;
             }
             self.nodes[i].as_ref().unwrap().borrow_mut().state = state;
@@ -441,6 +441,9 @@ impl Graph {
             let mut pseudo = 0;
             let mut partial = false;
             for child in self.nodes[i].as_ref().unwrap().borrow().children.iter() {
+                if self.nodes[*child].as_ref().unwrap().borrow().r#type == NodeType::Pseudo {
+                    pseudo += 1;
+                }
                 match self.nodes[*child].as_ref().unwrap().borrow().state {
                     NodeState::None => continue,
                     NodeState::Partial => {
@@ -450,16 +453,13 @@ impl Graph {
                         partial = true;
                         count += 1;
                     }
-                    NodeState::Pseudo => {
-                        pseudo += 1;
-                    }
                 }
             }
-            let is_pseudo = self.nodes[i].as_ref().unwrap().borrow().state == NodeState::Pseudo;
+            let is_pseudo = self.nodes[i].as_ref().unwrap().borrow().r#type == NodeType::Pseudo;
             self.nodes[i].as_ref().unwrap().borrow_mut().state = if is_pseudo {
-                NodeState::Pseudo
-            // Every child task is completed
+                NodeState::None
             } else if count != 0
+            // Every child task is completed
                 && count == (self.nodes[i].as_ref().unwrap().borrow().children.len() - pseudo)
             {
                 NodeState::Done
