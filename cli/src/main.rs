@@ -254,20 +254,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             graph.clean();
             Ok(())
         }
-        Some(("export", _)) => {
-            println!("{}", doc::export_json(graph)?);
-            Ok(())
-        }
-        Some(("import", _)) => {
-            // Import would have finished by this stage so just log received data
-            println!(
-                "Successfully imported json! {} nodes; {} root nodes; {} aliases",
-                graph.node_count(),
-                graph.root_count(),
-                graph.alias_count()
-            );
-            Ok(())
-        }
         _ => Err(AppError::InvalidSubcommand),
     }
 }
@@ -382,12 +368,6 @@ fn cli() -> AppResult<Command> {
         .subcommand(Command::new("clean")
             .about("Compresses and cleans up the graph")
         )
-        .subcommand(Command::new("export")
-            .about("Exports JSON to stdout")
-        )
-        .subcommand(Command::new("import")
-            .about("Imports JSON from stdin")
-        )
     )
 }
 
@@ -400,42 +380,25 @@ fn main() -> AppResult<()> {
         return Ok(());
     }
 
-    let (mut graph, local) = if let Some(("import", _)) = matches.subcommand() {
-        let local = match (
-            matches.get_one::<String>("local").is_some(),
-            matches.get_flag("global"),
-        ) {
-            // -- global --overrdes --local argument
-            (_, true) => false,
-            (false, false) => doc::local_exists(PathBuf::from(
+    let (mut graph, local) = match (
+        matches.get_one::<String>("local").is_some(),
+        matches.get_flag("global"),
+    ) {
+        // --global overrides --local argument
+        (_, true) => (doc::load_global()?, false),
+        (true, _) => (
+            doc::load_local(PathBuf::from(
                 matches
                     .get_one::<String>("local")
                     .expect("--local should provide a path"),
-            )),
-            (l, _) => l,
-        };
-        (doc::import_json_stdin()?.graph, local)
-    } else {
-        match (
-            matches.get_one::<String>("local").is_some(),
-            matches.get_flag("global"),
-        ) {
-            // --global overrides --local argument
-            (_, true) => (doc::load_global()?, false),
-            (true, _) => (
-                doc::load_local(PathBuf::from(
-                    matches
-                        .get_one::<String>("local")
-                        .expect("--local should provide a path"),
-                ))?,
-                true,
-            ),
-            (false, false) => {
-                // Try to load local config otherwise load global
-                match doc::try_load_local(std::env::current_dir()?)? {
-                    None => (doc::load_global()?, false),
-                    Some(g) => (g, true),
-                }
+            ))?,
+            true,
+        ),
+        (false, false) => {
+            // Try to load local config otherwise load global
+            match doc::try_load_local(std::env::current_dir()?)? {
+                None => (doc::load_global()?, false),
+                Some(g) => (g, true),
             }
         }
     };

@@ -2,7 +2,7 @@ pub mod compat;
 pub mod errors;
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use crate::graph::Graph;
@@ -151,17 +151,4 @@ pub fn get_global_save() -> DocResult<File> {
             .read(true)
             .open(path)?)
     }
-}
-
-pub fn export_json(graph: &Graph) -> DocResult<String> {
-    Ok(serde_json::to_string(&Doc::new(graph))?)
-}
-
-/// Imports from stdin
-pub fn import_json_stdin() -> DocResult<Doc> {
-    let mut stdin = io::stdin();
-    let mut bytes = vec![];
-    stdin.read_to_end(&mut bytes)?;
-    let config: Doc = serde_json::from_slice(bytes.as_slice())?;
-    Ok(config)
 }

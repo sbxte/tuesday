@@ -1,4 +1,3 @@
-use serde_json;
 use serde_yaml_ng;
 use thiserror::Error;
 
@@ -11,14 +10,10 @@ pub enum ErrorType {
     #[error("I/O Error: {0}")]
     IO(#[from] std::io::Error),
 
-    // Some annoying person decided to make the error enum private
     #[error("YAML error: {0}")]
     YAMLError(#[from] serde_yaml_ng::Error),
 
-    // Some annoying person decided to make the error enum private
-    #[error("Load/save operation error: {0}")]
-    JSONError(#[from] serde_json::Error),
-
+    // Homeless?? :(
     #[error("No home directory available!")]
     NoHome,
 
