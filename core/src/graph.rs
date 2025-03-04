@@ -604,25 +604,12 @@ impl Graph {
                 }
             }
 
-            if let Some(task) = self.nodes[i]
-                .as_ref()
-                .unwrap()
-                .borrow_mut()
-                .data
-                .as_task_mut()
-            {
+            let mut current = self.nodes[i].as_ref().unwrap().borrow_mut();
+            let completed = count > 0 && count == current.metadata.children.len() - pseudo;
+
+            if let Some(task) = current.data.as_task_mut() {
                 // Every child task is completed
-                task.state = if count > 0
-                    && count
-                        == (self.nodes[i]
-                            .as_ref()
-                            .unwrap()
-                            .borrow()
-                            .metadata
-                            .children
-                            .len()
-                            - pseudo)
-                {
+                task.state = if completed {
                     TaskState::Done
                 // At least one child task is completed or partially completed
                 } else if partial {
@@ -632,25 +619,18 @@ impl Graph {
                 };
             };
 
-            if self.nodes[i].as_ref().unwrap().borrow().data.is_pseudo() {
+            if current.data.is_pseudo() {
                 // No need to recurse for pseudo nodes as they do not affect parent status
                 continue;
             }
 
-            let parents_ptr = self.nodes[i]
-                .as_ref()
-                .unwrap()
-                .borrow()
-                .metadata
-                .parents
-                .as_ptr();
-            let parents_len = self.nodes[i]
-                .as_ref()
-                .unwrap()
-                .borrow()
-                .metadata
-                .parents
-                .len();
+            let parents_ptr = current.metadata.parents.as_ptr();
+            let parents_len = current.metadata.parents.len();
+
+            // Drop now or else the binding gets dropped at the end of the scope.
+            // And as we need to mutably borrow self for updating parent states,
+            // this causes borrowck to cry in agony
+            std::mem::drop(current);
 
             self.update_state_recurse_parents(parents_ptr, parents_len)?;
         }
