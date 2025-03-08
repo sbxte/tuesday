@@ -232,8 +232,12 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         Some(("aliases", _)) => {
             let aliases = graph.get_aliases();
             println!("{}", aliases_title());
-            for (alias, idx) in aliases {
-                println!(" * {}", display_alias(*idx, alias));
+            if aliases.len() > 0 {
+                for (alias, idx) in aliases {
+                    println!(" * {}", display_alias(*idx, alias));
+                }
+            } else {
+                println!("No added alias.");
             }
             Ok(())
         }
