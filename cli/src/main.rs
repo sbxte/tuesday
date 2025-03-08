@@ -126,7 +126,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 *assume_date
             )?;
             graph.link(parent, child)?;
-            print_link(parent, child, true);
+            print_link(child, parent, true);
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
