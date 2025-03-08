@@ -247,7 +247,15 @@ impl Graph {
                 .parents
                 .is_empty()
             {
-                self.roots.push(child); // Since they're now parentless, make them root
+                // Since they're now parentless, make them root.
+                // This is only applicable to non-date nodes.
+                if let NodeType::Task(_) = self.nodes[child].as_ref().unwrap().borrow().data {
+                    self.roots.push(child);
+                    println!("kapoosh");
+                } else if let NodeType::Pseudo = self.nodes[child].as_ref().unwrap().borrow().data {
+                    self.roots.push(child);
+                    println!("kapoosh");
+                }
             }
         }
 
@@ -406,7 +414,12 @@ impl Graph {
             .parents
             .is_empty()
         {
-            self.roots.push(to);
+            // This is only applicable to non-date nodes.
+            if let NodeType::Task(_) = self.nodes[to].as_ref().unwrap().borrow().data {
+                self.roots.push(to);
+            } else if let NodeType::Pseudo = self.nodes[to].as_ref().unwrap().borrow().data {
+                self.roots.push(to);
+            }
         }
     }
 

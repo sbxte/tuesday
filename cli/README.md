@@ -13,6 +13,79 @@ cargo install --path cli
 cd ~
 ```
 
+
+# Flash™ Guide
+
+Let's say you have a research project. We'll add the to-do's under a root node called "College":
+```
+$> tuecli add -r college
+(0) -> (root)
+
+$> tuecli add "big research project" 0
+(1) -> (0)
+
+$> tuecli add "gather sample data" 1
+(2) -> (1)
+
+$> tuecli add "write report" 1
+(3) -> (1)
+```
+
+So now we have something like:
+```
+$> tuecli ls -r
+[ ] college (0)
+ +--[ ] big research project (1)
+ |   +--[ ] gather sample data (2)
+ |   +--[ ] write report (3)
+```
+
+And we can alias the project too for quicker access:
+
+```
+$> tuecli alias 1 "bigproject"
+
+$> tuecli ls bigproject
+[ ] big research project (1:bigproject)
+ +--[ ] gather sample data (2)
+ +--[ ] write report (3)
+```
+
+Now, let's say we'd like to do "gather sample data" today. We can add a new date node:
+
+```
+$> tuecli add -d "today"
+(4) -> (dates)
+```
+
+And link the "gather sample data" node to today's date node:
+```
+$> tuecli link today 2
+(2) -> (4)
+```
+
+So now we can list what we have to do today:
+```
+$> tuecli ls today
+[#] [2025-03-08] (4)
+ +..[ ] gather sample data (2)
+```
+
+<small>Note: the `+..` indicates it has more than one parent, i.e the `bigproject` node.</small>
+
+When we're done with the task, check it:
+```
+$> tuecli check 3
+```
+
+You can see that the current date will be highlighted in yellow now, when you open the calendar:
+
+![Calendar View of Tuesday](doc/cal.png)
+
+
+# Detailed Guide
+
+
 ## Adding a root node
 
 To begin, add your first root node:
@@ -139,25 +212,17 @@ tuecli add -d today "My label"
 
 Tuesday stores its nodes in a multigraph data structure. You can have more than one parents or children for each node.
 
-An example realistic use case for this is to have the complete list of your tasks under a root node that you can link to a date node for day-to-day planning.
-
-For example, let's say you have a research project. We'll add the to-do's under a root node called "College":
+To link node:
 ```
-$> tuecli add -r college
-(2) -> (root)
-
-$> tuecli add -d today
-(3) -> (dates)
-
-$> tuecli add "big research project" 2
-(4) -> (2)
-
-$> tuecli add "gather sample data" 4
-(5) -> (4)
-
-$> tuecli add "write report" 4
-(6) -> (4)
+tuecli link <parent> <child>
 ```
+
+And to unlink:
+```
+tuecli unlink <parent> <child>
+```
+
+Be careful of the arguments order, by the way. The node you want to link to other node is provided last.
 
 
 ## Calendar
@@ -182,6 +247,13 @@ tuecli cal 2025-02-01
 
 Due to limitations, date expressions like "Feb 2025" are not supported yet. We plan to add this in the future, or you can also contribute to the codebase :)
 
-# More Usage
+## Cleaning Nodes
+Because of how Tuesday save files work, unused indices will not be reclaimed unless you clean them. If your indices are getting big, you can run:
+```
+tuecli clean
+```
+
+
+# More Usage Help
 
 Refer to the help message when you type `tuecli --help` for full usage guide.
