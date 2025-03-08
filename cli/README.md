@@ -16,11 +16,16 @@ cd ~
 
 # Flash™ Guide
 
-Let's say you have a research project. We'll add the to-do's under a root node called "College":
+Say you have a research project. We'll add the to-do's under a root pseudo-node called "College":
 ```
-$> tuecli add -r college
+$> tuecli add -r -u college
 (0) -> (root)
+```
 
+We'll use the root nodes as the base parent of other nodes. The `-u` flag makes it a pseudo-node, which doesn't count towards completion—because college will not be finished anytime soon (most likely) :)
+
+Next, we add the rest of the tasks under the "college" node:
+```
 $> tuecli add "big research project" 0
 (1) -> (0)
 
@@ -81,6 +86,14 @@ $> tuecli check 3
 You can see that the current date will be highlighted in yellow now, when you open the calendar:
 
 ![Calendar View of Tuesday](doc/cal.png)
+
+After you're done with your `bigproject`, you can archive it:
+
+```
+tuecli arc bigproject
+```
+
+So now it won't appear when you `ls` nodes, unless you give the `-a` flag—which will make archived nodes appear dimmed.
 
 
 # Detailed Guide
@@ -274,13 +287,29 @@ Archiving a node will hide it when listed (by default).
 tuecli arc <identifier>
 ```
 
+Unarchive it:
+```
+tuecli unarc <identifier>
+```
+
+When you want to view archived nodes, pass the `-a` flag to the `ls` subcommand:
+```
+tuecli ls [parent] -a
+```
+
+List all archived nodes:
+```
+tuecli lsa
+```
+
+Archived nodes will have their messages dimmed.
+
 
 ## Cleaning Nodes
-Because of how Tuesday save files work, unused indices will not be reclaimed unless you clean them. If your indices are getting big, you can run:
+Because of how Tuesday save files work, unused indices will not be reclaimed unless you clean them. If your node indices are getting big, you can run:
 ```
 tuecli clean
 ```
-
 
 # More Usage Help
 
