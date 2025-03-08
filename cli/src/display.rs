@@ -40,6 +40,28 @@ fn display_node(node: &Node) -> String {
     format!("{} {} {}", state, node.title, index)
 }
 
+pub fn print_removal(idx: usize) {
+    println!("Removed node {}.", idx.to_string().bright_blue());
+}
+
+pub fn print_link_dates(from: usize, connect: bool) {
+    let from = format!("({})", from).bright_blue();
+    if connect {
+        println!("{} -> {}", from, "(dates)".bright_blue());
+    } else {
+        println!("{} -x- {}", from, "(dates)".bright_blue());
+    }
+}
+
+pub fn print_link_root(from: usize, connect: bool) {
+    let from = format!("({})", from).bright_blue();
+    if connect {
+        println!("{} -> {}", from, "(root)".bright_blue());
+    } else {
+        println!("{} -x- {}", from, "(root)".bright_blue());
+    }
+}
+
 pub fn print_link(from: usize, to: usize, connect: bool) {
     let from = format!("({})", from).bright_blue();
     let to = format!("({})", to).bright_blue();

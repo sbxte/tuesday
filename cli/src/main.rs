@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::{aliases_title, display_alias, print_link, CLIDisplay};
+use display::{aliases_title, display_alias, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
 use errors::AppError;
 use rand::rng;
 use rand::seq::IndexedRandom as _;
@@ -30,7 +30,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let message = sub_matches
                     .get_one::<String>("message")
                     .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
-                graph.insert_root(message.to_string(), pseudo);
+                let idx = graph.insert_root(message.to_string(), pseudo);
+                print_link_root(idx, true);
                 return Ok(());
             } else if let Some(when) = date {
                 if !Graph::is_date(when) {
@@ -44,7 +45,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .get_one::<String>("message")
                     .unwrap_or(&default_date);
 
-                graph.insert_date(message.clone(), date.date_naive());
+                let idx = graph.insert_date(message.clone(), date.date_naive());
+                print_link_dates(idx, true);
                 return Ok(());
             } 
 
@@ -57,7 +59,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 return Err(AppError::InvalidArg("Parent ID required!".to_string()));
             };
             let parent = graph.get_index(idx)?;
-            graph.insert_child(message.to_string(), parent, pseudo)?;
+            let to = graph.insert_child(message.to_string(), parent, pseudo)?;
+            print_link(to, parent, true);
             Ok(())
         }
         Some(("rm", sub_matches)) => {
@@ -70,6 +73,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 } else {
                     graph.remove(id)?;
                 }
+                print_removal(id);
             }
             Ok(())
         }

@@ -80,8 +80,15 @@ impl Graph {
         &self.archived
     }
 
-    /// Inserts a node into the graph and sets it as a root node
-    pub fn insert_root(&mut self, message: String, pseudo: bool) {
+    /// Inserts a node into the graph and sets it as a root node.
+    ///
+    /// # Arguments
+    /// - message: string containing the node message.
+    /// - pseudo: whether the node is a pseudonode or not.
+    ///
+    /// # Returns
+    /// A usize containing the index of the newly added node.
+    pub fn insert_root(&mut self, message: String, pseudo: bool) -> usize {
         let idx = self.nodes.len();
         let mut node = Node::new(message, idx, Default::default());
         if pseudo {
@@ -89,9 +96,17 @@ impl Graph {
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.roots.push(idx);
+        idx
     }
 
-    /// Inserts a date node into the graph
+    /// Inserts a date node into the graph.
+    ///
+    /// # Arguments
+    /// - message: string containing the node message.
+    /// - date: the date data of the node.
+    ///
+    /// # Returns
+    /// A usize containing the index of the newly added node.
     pub fn insert_date(&mut self, message: String, date: NaiveDate) -> usize {
         let idx = self.nodes.len();
         let node = Node::new(message.clone(), idx, NodeType::Date(DateData { date }));
@@ -101,9 +116,15 @@ impl Graph {
     }
 
     /// Inserts a node into the graph and sets it as a child of a parent node without updating the
-    /// states of its parent
+    /// states of its parent. The parent node is represented using its node index.
     ///
-    /// The parent node is represented using its node index
+    /// # Arguments
+    /// - message: string containing the node message.
+    /// - parent: parent index of the node.
+    /// - pseudo: whether node is a pseudonode or not.
+    ///
+    /// # Returns
+    /// A usize containing the index of the newly added node.
     pub fn insert_child_unchecked(
         &mut self,
         message: String,
@@ -121,20 +142,26 @@ impl Graph {
     }
 
     /// Inserts a node into the graph and sets it as a child of a parent node and updates the
-    /// states of its parent
+    /// states of its parent. The parent node is represented using its node index.
     ///
-    /// The parent node is represented using its node index
+    /// # Arguments
+    /// - message: string containing the node message.
+    /// - parent: parent index of the node.
+    /// - pseudo: whether node is a pseudonode or not.
+    ///
+    /// # Returns
+    /// A usize containing the index of the newly added node.
     pub fn insert_child(
         &mut self,
         message: String,
         parent: usize,
         pseudo: bool,
-    ) -> GraphResult<()> {
-        self.insert_child_unchecked(message, parent, pseudo);
+    ) -> GraphResult<usize> {
+        let idx = self.insert_child_unchecked(message, parent, pseudo);
         if !pseudo {
             self.update_state_recurse_parents(&[parent] as *const _, 1)?;
         }
-        Ok(())
+        Ok(idx)
     }
 
     /// Removes a node by `index`
