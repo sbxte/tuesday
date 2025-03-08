@@ -6,12 +6,11 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use chrono::{Days, Local, NaiveDate};
-use colored::Colorize;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
-use node::{date::DateData, task, Node, NodeType};
+use node::{date::DateData, date::HashMapFormatter, task, Node, NodeType};
 
 /// Result of graph operation.
 type GraphResult<T> = Result<T, ErrorType>;
@@ -109,9 +108,10 @@ impl Graph {
     /// A usize containing the index of the newly added node.
     pub fn insert_date(&mut self, message: String, date: NaiveDate) -> usize {
         let idx = self.nodes.len();
-        let node = Node::new(message.clone(), idx, NodeType::Date(DateData { date }));
+        let date_data = DateData { date };
+        let node = Node::new(message.clone(), idx, NodeType::Date(date_data.clone()));
         self.nodes.push(Some(RefCell::new(node)));
-        self.dates.insert(date.format("%Y-%m-%d").to_string(), idx);
+        self.dates.insert(date_data.format_for_hashmap(), idx);
         idx
     }
 
@@ -705,9 +705,10 @@ impl Graph {
                     rnode.metadata.index,
                 );
             }
-            if Self::is_date(&rnode.title) {
-                self.dates.insert(rnode.title.clone(), rnode.metadata.index);
+            if let NodeType::Date(data) = &rnode.data {
+                self.dates.insert(data.format_for_hashmap(), rnode.metadata.index);
             }
+
             if rnode.metadata.archived {
                 self.archived.push(rnode.metadata.index);
             }
@@ -842,22 +843,11 @@ impl Graph {
         Ok(())
     }
 
+    // TODO: returning an Option may make more sense?
     /// Returns the node index based on a identifier string.
-    /// The identifier string may be an a date, an alias, or an index
+    /// The identifier string may be an an alias, or an index. For dates node accessing, use the
+    /// `get_date_index` method.
     pub fn get_index(&self, id: &str) -> GraphResult<usize> {
-        // Check if it is a date
-        if Self::is_date(id) {
-            return match self.dates.get(id) {
-                Some(x) => Ok(*x),
-                None => Err(ErrorType::InvalidDate(id.to_owned()))?,
-            };
-        }
-        if Self::is_relative_date(id) {
-            let date = Self::parse_relative_date(id)?;
-            if self.dates.contains_key(&date) {
-                return Ok(*self.dates.get(&date).unwrap());
-            }
-        }
         // Check if it is an alias and if so return its corresponding index
         if let Some(x) = self.aliases.get(id) {
             return Ok(*x);
@@ -873,13 +863,9 @@ impl Graph {
         Ok(index)
     }
 
-    /// Format
-    /// YYYY-MM-DD
-    pub fn is_date(s: &str) -> bool {
-        match Self::_parse_date(s) {
-            Ok((_, (y, m, d))) => NaiveDate::from_ymd_opt(y as i32, m, d).is_some(),
-            Err(_) => false,
-        }
+    pub fn get_date_index(&self, date: NaiveDate) -> GraphResult<usize> {
+        let key = date.hashmap_format();
+        self.dates.get(&key).ok_or(ErrorType::DateNodeIndexRetrievalError(key)).copied()
     }
 
     fn _parse_date(s: &str) -> IResult<&str, (u32, u32, u32)> {

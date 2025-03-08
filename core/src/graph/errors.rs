@@ -24,5 +24,8 @@ pub enum ErrorType {
     NotTaskNode(usize),
 
     #[error("Datetime parse error: {0}")]
-    ChronoError(#[from] chrono::ParseError)
+    ChronoError(#[from] chrono::ParseError),
+
+    #[error("Failed to retrieve index of date node {0}")]
+    DateNodeIndexRetrievalError(String)
 }

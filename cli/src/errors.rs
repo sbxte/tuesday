@@ -35,7 +35,10 @@ pub(crate) enum AppError {
     MissingArgument(String),
 
     #[error("Error parsing specified date: {0}")]
-    DateParseError(#[from] ParseDateTimeError)
+    DateParseError(#[from] ParseDateTimeError),
+
+    #[error("Failed to get node index: {0}")]
+    IndexRetrievalError(String)
 }
 
 // The default Debug implementation displays the enum like so:

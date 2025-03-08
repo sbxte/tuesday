@@ -89,9 +89,9 @@ pub trait CLIDisplay {
 
     fn list_dates(&self) -> AppResult<()>;
 
-    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> AppResult<()>;
+    fn list_children(&self, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()>;
 
-    fn print_stats(&self, target: Option<String>) -> AppResult<()>;
+    fn print_stats(&self, target: Option<usize>) -> AppResult<()>;
 }
 
 impl CLIDisplay for Graph {
@@ -147,29 +147,26 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn list_children(&self, target: String, max_depth: u32, show_archived: bool) -> AppResult<()> {
-        let index = self.get_index(&target)?;
-
+    fn list_children(&self, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()> {
         // Display self as well
-        self.with_node(index, &mut |node| Self::display_node(node, 0));
+        self.with_node(target, &mut |node| Self::display_node(node, 0));
 
         self.traverse_recurse(
-            self.get_node_children(index).as_slice(),
+            self.get_node_children(target).as_slice(),
             show_archived,
             max_depth,
             1,
-            Some(index),
+            Some(target),
             &mut |node, depth| Self::display_node(node, depth),
         )?;
         Ok(())
     }
 
-    fn print_stats(&self, target: Option<String>) -> AppResult<()> {
+    fn print_stats(&self, target: Option<usize>) -> AppResult<()> {
         // If a specific node is specified
         if let Some(target) = target {
-            let index = self.get_index(&target)?;
-            let node = self.get_nodes()[index].as_ref().unwrap().borrow();
-            println!("ID      : {}", index);
+            let node = self.get_nodes()[target].as_ref().unwrap().borrow();
+            println!("ID      : {}", target);
             println!("Message : {}", &node.title);
             println!("Parents :");
             for i in &node.metadata.parents {
