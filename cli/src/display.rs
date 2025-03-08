@@ -1,7 +1,45 @@
-use tuecore::graph::node::Node;
+use colored::Colorize;
+use tuecore::graph::node::task::{TaskData, TaskState};
+use tuecore::graph::node::{Node, NodeType};
 use tuecore::graph::{Graph, GraphGetters};
 
 use crate::AppResult;
+
+pub fn aliases_title() -> String {
+    format!("{}", "Aliases:".bold())
+}
+
+pub fn display_alias(idx: usize, alias: &str) -> String {
+    format!("{}:{}", idx.to_string().bright_green(), alias.bright_blue())
+}
+
+fn display_task_data(task_data: &TaskData) -> String {
+        match task_data.state {
+            TaskState::None => return " ".to_string(),
+            TaskState::Partial => return "~".to_string(),
+            TaskState::Done => return "x".to_string()
+        }
+}
+
+fn display_nodetype(node_type: &NodeType) -> String {
+    match node_type {
+        NodeType::Task(data) => display_task_data(data),
+        NodeType::Date(_) => return "#".to_string(),
+        NodeType::Pseudo => return "*".to_string(),
+    }
+}
+
+fn display_node(node: &Node) -> String {
+    let index = if let Some(ref alias) = node.metadata.alias {
+        format!("({}:{})", node.metadata.index, alias)
+    } else {
+            format!("({})", node.metadata.index)
+        }
+        .bright_blue();
+    let state = format!("{}{}{}", "[".bright_blue(), display_nodetype(&node.data), "]".bright_blue());
+    format!("{} {} {}", state, node.title, index)
+}
+
 
 /// CLI display methods.
 pub trait CLIDisplay {
@@ -23,7 +61,7 @@ pub trait CLIDisplay {
 impl CLIDisplay for Graph {
     fn display_node(node: &Node, depth: u32) {
         Graph::print_tree_indent(depth, node.metadata.parents.len() > 1);
-        println!("{}", node);
+        println!("{}", display_node(node));
     }
 
     fn print_tree_indent(depth: u32, dots: bool) {
@@ -102,7 +140,7 @@ impl CLIDisplay for Graph {
                 let parent = self.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    parent.metadata.index, parent.title, parent.data
+                    parent.metadata.index, parent.title, display_nodetype(&parent.data)
                 );
             }
             println!("Children:");
@@ -110,14 +148,14 @@ impl CLIDisplay for Graph {
                 let child = self.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    child.metadata.index, child.title, child.data
+                    child.metadata.index, child.title, display_nodetype(&child.data)
                 );
             }
             if let Some(ref alias) = node.metadata.alias {
                 println!("Alias   : {}", alias);
             }
             println!("Archived: {}", node.metadata.archived);
-            println!("Status  : [{}]", node.data);
+            println!("Status  : [{}]", display_nodetype(&node.data));
 
         // Else, list out stats for the whole graph
         } else {

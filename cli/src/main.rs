@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::CLIDisplay;
+use display::{aliases_title, display_alias, CLIDisplay};
 use errors::AppError;
 use rand::rng;
 use rand::seq::IndexedRandom as _;
@@ -177,7 +177,11 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("aliases", _)) => {
-            graph.list_aliases()?;
+            let aliases = graph.get_aliases();
+            println!("{}", aliases_title());
+            for (alias, idx) in aliases {
+                println!(" * {}", display_alias(*idx, alias));
+            }
             Ok(())
         }
         Some(("rename", sub_matches)) => {

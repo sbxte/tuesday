@@ -941,13 +941,6 @@ impl Graph {
         self.aliases.remove(alias.as_str());
         Ok(())
     }
-
-    pub fn list_aliases(&self) -> GraphResult<()> {
-        for i in self.aliases.values() {
-            println!("{}", self.nodes[*i].as_ref().unwrap().borrow());
-        }
-        Ok(())
-    }
 }
 
 /// Getters for external crates to obtain indices from private fields under `Graph`.

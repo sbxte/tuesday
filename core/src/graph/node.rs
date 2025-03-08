@@ -38,19 +38,6 @@ impl Node {
     }
 }
 
-impl fmt::Display for Node {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let index = if let Some(ref alias) = self.metadata.alias {
-            format!("({}:{})", self.metadata.index, alias)
-        } else {
-            format!("({})", self.metadata.index)
-        }
-        .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.data, "]".bright_blue());
-        write!(f, "{} {} {}", state, self.title, index)
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeType {
     Task(task::TaskData),
@@ -111,18 +98,6 @@ impl NodeType {
 impl Default for NodeType {
     fn default() -> Self {
         Self::Task(Default::default())
-    }
-}
-
-// TODO: Decouple this from core
-impl fmt::Display for NodeType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use NodeType::*;
-        match self {
-            Task(data) => write!(f, "{}", data),
-            Date(_) => write!(f, "#"),
-            Pseudo => write!(f, "*"),
-        }
     }
 }
 
