@@ -67,11 +67,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             } else if let Some(when) = date {
                 let date = parse_datetime(when)?;
 
-                // TODO: make this default configurabe
-                let default_date = format!("{}", date.format("%Y-%m-%d"));
+                let empty = String::new();
                 let message = sub_matches
                     .get_one::<String>("message")
-                    .unwrap_or(&default_date);
+                    .unwrap_or(&empty);
 
                 let idx = graph.insert_date(message.clone(), date.date_naive());
                 print_link_dates(idx, true);

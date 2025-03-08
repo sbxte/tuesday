@@ -37,7 +37,18 @@ fn display_node(node: &Node) -> String {
         }
         .bright_blue();
     let state = format!("{}{}{}", "[".bright_blue(), display_nodetype(&node.data), "]".bright_blue());
-    format!("{} {} {}", state, node.title, index)
+
+    if let NodeType::Date(data) = &node.data {
+        let title = if node.title.is_empty() {
+        " ".to_string()
+        } else {
+            format!(" {} ", node.title.clone())
+        };
+
+        format!("{} {}{}{}", state, format!("[{}]", data.date.format("%Y-%m-%d")).dimmed(), title, index)
+    } else {
+        format!("{} {} {}", state, node.title, index)
+    }
 }
 
 pub fn print_removal(idx: usize, recursive: bool) {
