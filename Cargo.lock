@@ -941,6 +941,7 @@ version = "0.1.5"
 dependencies = [
  "anyhow",
  "bincode",
+ "chrono",
  "clap",
  "colored",
  "home",
