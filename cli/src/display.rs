@@ -40,6 +40,15 @@ fn display_node(node: &Node) -> String {
     format!("{} {} {}", state, node.title, index)
 }
 
+pub fn print_link(from: usize, to: usize, connect: bool) {
+    let from = format!("({})", from).bright_blue();
+    let to = format!("({})", to).bright_blue();
+    if connect {
+        println!("{} -> {}", from, to);
+    } else {
+        println!("{} -x- {}", from, to);
+    }
+}
 
 /// CLI display methods.
 pub trait CLIDisplay {

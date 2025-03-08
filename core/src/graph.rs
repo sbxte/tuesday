@@ -352,16 +352,6 @@ impl Graph {
         Ok(())
     }
 
-    pub fn print_link(from: usize, to: usize, connect: bool) {
-        let from = format!("({})", from).bright_blue();
-        let to = format!("({})", to).bright_blue();
-        if connect {
-            println!("{} -> {}", from, to);
-        } else {
-            println!("{} -x- {}", from, to);
-        }
-    }
-
     /// Unlinks two nodes on the graph without updating parent states
     fn unlink_unchecked(&mut self, from: usize, to: usize) {
         self.nodes[from]

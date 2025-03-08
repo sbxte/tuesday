@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::{aliases_title, display_alias, CLIDisplay};
+use display::{aliases_title, display_alias, print_link, CLIDisplay};
 use errors::AppError;
 use rand::rng;
 use rand::seq::IndexedRandom as _;
@@ -85,7 +85,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .expect("child ID required"),
             )?;
             graph.link(parent, child)?;
-            Graph::print_link(parent, child, true);
+            print_link(parent, child, true);
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
@@ -100,7 +100,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .expect("child ID required"),
             )?;
             graph.unlink(parent, child)?;
-            Graph::print_link(parent, child, false);
+            print_link(parent, child, false);
             Ok(())
         }
         Some(("mv", sub_matches)) => {
