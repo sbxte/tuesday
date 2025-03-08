@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use chrono::{DateTime, Datelike, Local, NaiveDate};
+use chrono::{Datelike, NaiveDate};
 use colored::Colorize;
 use tuecore::graph::node::task::{TaskData, TaskState};
 use tuecore::graph::node::{Node, NodeType};
@@ -133,7 +131,7 @@ pub fn print_calendar(graph: &Graph, date: &NaiveDate) -> AppResult<()> {
 
     let days_in_month = days_in_month(date.year(), date.month()) as u32;
 
-    // HACK: i don't know why datetime is so unecessarily hard here?!??!! please fix below
+    // HACK: i don't know why datetime is so unnecessarily hard here?!??!! please fix below
     let nd = NaiveDate::from_ymd_opt(date.year(), date.month(), 1).unwrap();
     let first_day = nd.format("%u").to_string().parse::<u32>().unwrap() % 7;
 

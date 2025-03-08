@@ -1,5 +1,3 @@
-
-use colored::Colorize;
 use date::DateData;
 use serde::{Deserialize, Serialize};
 use task::TaskData;
