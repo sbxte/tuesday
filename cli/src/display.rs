@@ -164,11 +164,19 @@ pub fn print_calendar(graph: &Graph, date: &NaiveDate) -> AppResult<()> {
                         false
                     }
                 }).count();
+                let total_nodes = node.metadata.children.iter().filter(|idx| {
+                    let node = graph.get_node(**idx);
+                    if let NodeType::Task(_) = node.data {
+                        true
+                    } else {
+                        false
+                    }
+                }).count();
 
-                let range_finished = if node.metadata.children.len() == 0 {
+                let range_finished = if total_nodes == 0 {
                     0
                 } else {
-                    finished * 4 / node.metadata.children.len()
+                    finished * 4 / total_nodes
                 };
 
                 let color = HEATMAP_PALLETE[range_finished];
