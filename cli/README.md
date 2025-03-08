@@ -85,6 +85,10 @@ $> tuecli check 3
 
 You can see that the current date will be highlighted in yellow now, when you open the calendar:
 
+```
+$> tuecli cal
+```
+
 ![Calendar View of Tuesday](doc/cal.png)
 
 After you're done with your `bigproject`, you can archive it:
