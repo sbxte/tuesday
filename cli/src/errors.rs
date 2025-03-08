@@ -25,9 +25,6 @@ pub(crate) enum AppError {
     #[error("Invalid argument(s): {0}")]
     InvalidArg(String),
 
-    #[error("Malformed date argument: {0}")]
-    MalformedDate(String),
-
     #[error("I/O error: {0}")]
     IOError(#[from] std::io::Error),
 
