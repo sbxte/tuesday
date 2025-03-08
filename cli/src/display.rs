@@ -91,7 +91,11 @@ pub fn print_link(from: usize, to: usize, connect: bool) {
 
 pub fn days_in_month(year: i32, month: u32) -> i64 {
     NaiveDate::from_ymd_opt(
-        year,
+        match month {
+            12 => year + 1,
+            _ => year
+
+        },
         match month {
             12 => 1,
             _ => month + 1,
