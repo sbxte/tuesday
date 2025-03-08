@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use anyhow::Result;
-use chrono::{Days, Local, NaiveDate};
+use chrono::NaiveDate;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
@@ -183,8 +183,10 @@ impl Graph {
 
         // Delete from date hashmap first if node is a date root node
         if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
-            let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
-            self.dates.remove(node_date);
+            let data = &self.nodes[index].as_ref().unwrap().borrow().data;
+            if let NodeType::Date(data) = data {
+                self.dates.remove(&data.date.hashmap_format());
+            }
         }
 
         // Unlink node from parents and children
@@ -845,7 +847,7 @@ impl Graph {
 
     // TODO: returning an Option may make more sense?
     /// Returns the node index based on a identifier string.
-    /// The identifier string may be an an alias, or an index. For dates node accessing, use the
+    /// The identifier string may be an alias, or an index. For dates node accessing, use the
     /// `get_date_index` method.
     pub fn get_index(&self, id: &str) -> GraphResult<usize> {
         // Check if it is an alias and if so return its corresponding index
@@ -863,7 +865,7 @@ impl Graph {
         Ok(index)
     }
 
-    pub fn get_date_index(&self, date: NaiveDate) -> GraphResult<usize> {
+    pub fn get_date_index(&self, date: &NaiveDate) -> GraphResult<usize> {
         let key = date.hashmap_format();
         self.dates.get(&key).ok_or(ErrorType::DateNodeIndexRetrievalError(key)).copied()
     }
