@@ -333,8 +333,10 @@ impl Graph {
 
         // Delete from date hashmap first if node is a date root node
         if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
-            let node_date = &self.nodes[index].as_ref().unwrap().borrow().title;
-            self.dates.remove(node_date);
+            let data = &self.nodes[index].as_ref().unwrap().borrow().data;
+            if let NodeType::Date(data) = data {
+                self.dates.remove(&data.date.hashmap_format());
+            }
         }
 
         self.nodes[index] = None;
