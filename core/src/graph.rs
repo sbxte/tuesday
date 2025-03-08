@@ -833,7 +833,7 @@ impl Graph {
             }
 
             // If theres no need to show archived nodes then ignore it and its children
-            if !skip_archived && self.nodes[*i].as_ref().unwrap().borrow().metadata.archived {
+            if skip_archived && self.nodes[*i].as_ref().unwrap().borrow().metadata.archived {
                 continue;
             }
             if let Some(node) = &self.nodes[*i] {
