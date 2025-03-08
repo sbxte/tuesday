@@ -14,7 +14,7 @@ pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
     // String form
     if let Ok(input) = str::from_utf8(input) {
         return match serde_yaml_ng::from_str::<Value>(input) {
-            Ok(docs) => parse_yaml(&docs),
+            Ok(docs) => parse_yaml(docs),
             Err(err) => Err(ErrorType::YAMLError(err)),
         };
     }
@@ -24,18 +24,19 @@ pub fn compat_parse(input: &[u8]) -> DocResult<Doc> {
 }
 
 /// Manually parse yaml instead of using serde_derive
-pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
+pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
+    let mut doc_use = doc;
     // Version mismatch
-    let doc_ver = doc["version"].as_i64();
+    let doc_ver = doc_use["version"].as_u64();
     if doc_ver.is_none() {
         return Err(ErrorType::ParseError(
             "Version field not found!".to_string(),
         ));
     } else if let Some(version) = doc_ver {
-        if version != VERSION as i64 {
-            return match parse_old_yaml(doc) {
-                Ok(result) => Ok(result),
-                Err(err) => Err(ErrorType::ParseError(format!(
+        if version != VERSION as u64 {
+            doc_use = match parse_old_yaml(&doc_use) {
+                Ok(result) => result,
+                Err(err) => return Err(ErrorType::ParseError(format!(
                     "Compatibility parsers failed parsing old version: {}",
                     err
                 ))),
@@ -43,7 +44,7 @@ pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
         }
     }
 
-    let graph_doc = &doc["graph"];
+    let graph_doc = &doc_use["graph"];
 
     // Roots, archived, and dates
     let roots = graph_doc["roots"]
@@ -143,7 +144,7 @@ pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
 
     // Unify everything
     let result_doc = Doc {
-        version: doc["version"].as_i64().expect("Version should be integer") as u32,
+        version: doc_use["version"].as_i64().expect("Version should be integer") as u32,
         graph: Graph {
             nodes,
             roots,
@@ -155,13 +156,14 @@ pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
     Ok(result_doc)
 }
 
-fn parse_old_yaml(doc: &Value) -> DocResult<Doc> {
-    let mut doc = old_yaml::v4_to_v5(doc)?;
+fn parse_old_yaml(doc: &Value) -> DocResult<Value> {
+    let mut doc_modified: Value = doc.clone();
     loop {
-        let current_ver = doc["version"].as_u64().ok_or(ErrorType::ParseError("Failed to parse version field from save file".into()))?;
+        let current_ver = doc_modified["version"].as_u64().ok_or(ErrorType::ParseError("Failed to parse version field from save file".into()))?;
         if current_ver < VERSION as u64 {
             match current_ver {
-                4 => doc = old_yaml::v4_to_v5(&doc)?,
+                4 => doc_modified = old_yaml::v4_to_v5(&doc)?,
+                5 => doc_modified = old_yaml::v5_to_v6(&doc)?,
                 _ => return Err(ErrorType::ParseError(format!(
                     "Oops, no available parsers to parse this document version: {}",
                     current_ver
@@ -172,14 +174,28 @@ fn parse_old_yaml(doc: &Value) -> DocResult<Doc> {
             break
         }
     }
-    Ok(parse_yaml(&doc)?)
+    Ok(doc_modified)
 }
 
 /// Docs-parser for older version of the save file. This is done incrementally (e.g v4 -> v5, v5 ->
 /// v6, etc up until the current version).
 mod old_yaml {
+    #[derive(PartialEq, Eq, Deserialize, Debug)]
+    struct Empty;
+
+    #[derive(PartialEq, Eq, Deserialize, Debug)]
+    enum V5nodeType {
+        Date(Empty),
+        Task(TaskData),
+        Pseudo
+    }
+
+    use chrono::NaiveDate;
+    use serde::Deserialize;
     use serde_yaml_ng::value::{Tag, TaggedValue};
     use serde_yaml_ng::Mapping;
+
+    use crate::graph::node::task::TaskData;
 
     use super::*;
 
@@ -257,6 +273,37 @@ mod old_yaml {
             }
         }
 
+        Ok(cloned_doc)
+    }
+
+    /// The change from v5 to v6 only introduced a slight change: Date nodes have its actual date
+    /// now stored inside the data field and allows for a different message to be used.
+    pub fn v5_to_v6(doc: &Value) -> DocResult<Value> {
+        let mut cloned_doc = doc.clone();
+        let version = &mut cloned_doc["version"];
+        *version = Value::Number(6.into());
+
+        let graph_doc = &mut cloned_doc["graph"];
+        let nodes = graph_doc["nodes"].as_sequence_mut().unwrap();
+
+        for node_doc in nodes {
+            if node_doc.is_null() {
+                continue;
+            }
+            if let Value::Mapping(node) = node_doc {
+                // TODO: if there's a way to parse tagged value without giving it a struct, use that.
+                if let Value::Tagged(val) = &node["data"].clone() {
+                    if val.tag == "!Date" {
+                        let mut new_map = Mapping::new();
+                        new_map.insert("date".into(), Value::String(
+                            format!("{}", NaiveDate::parse_from_str(node["title"].as_str().unwrap(), "%Y-%m-%d")?
+                            )));
+                        node.remove("data");
+                        node.insert("data".into(), Value::Tagged(Box::new(TaggedValue { tag: Tag::new("Date"), value: Value::Mapping(new_map)})));
+                    }
+                }
+            }
+        }
         Ok(cloned_doc)
     }
 }
@@ -344,5 +391,89 @@ graph:
 ");
         let new = old_yaml::v4_to_v5(&old.unwrap()).unwrap();
         assert_eq!(serde_yaml_ng::to_string(&new).unwrap(), serde_yaml_ng::to_string(&new_should_be.unwrap()).unwrap());
+    }
+
+    #[test]
+    fn test_v5_v6() {
+
+        let old = serde_yaml_ng::from_str::<Value>("
+version: 5
+graph:
+  nodes:
+  - title: root
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 0
+      alias: null
+      children: []
+      parents: []
+  - title: 2025-01-01
+    data: !Date {}
+    metadata:
+      archived: false
+      index: 1
+      alias: null
+      children: []
+      parents: []
+  - title: pseudo
+    data: !Pseudo
+    metadata:
+      archived: false
+      index: 2
+      alias: null
+      children: []
+      parents: []
+  roots:
+  - 0
+  - 2
+  archived: []
+  dates:
+    2025-01-01: 1
+  aliases: {}
+");
+
+        let new = old_yaml::v5_to_v6(&old.unwrap()).unwrap();
+        let new_should_be = serde_yaml_ng::from_str::<Value>("
+version: 6
+graph:
+  nodes:
+  - title: root
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 0
+      alias: null
+      children: []
+      parents: []
+  - title: 2025-01-01
+    metadata:
+      archived: false
+      index: 1
+      alias: null
+      children: []
+      parents: []
+    data: !Date
+      date: 2025-01-01
+  - title: pseudo
+    data: !Pseudo
+    metadata:
+      archived: false
+      index: 2
+      alias: null
+      children: []
+      parents: []
+  roots:
+  - 0
+  - 2
+  archived: []
+  dates:
+    2025-01-01: 1
+  aliases: {}
+").unwrap();
+
+        assert_eq!(serde_yaml_ng::to_string(&new).unwrap(), serde_yaml_ng::to_string(&new_should_be).unwrap());
     }
 }

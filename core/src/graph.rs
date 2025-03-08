@@ -11,7 +11,7 @@ use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
-use node::{task, Node, NodeType};
+use node::{date::DateData, task, Node, NodeType};
 
 /// Result of graph operation.
 type GraphResult<T> = Result<T, ErrorType>;
@@ -92,11 +92,11 @@ impl Graph {
     }
 
     /// Inserts a date node into the graph
-    pub fn insert_date(&mut self, date: String) -> usize {
+    pub fn insert_date(&mut self, message: String, date: NaiveDate) -> usize {
         let idx = self.nodes.len();
-        let node = Node::new(date.clone(), idx, NodeType::Date(Default::default()));
+        let node = Node::new(message.clone(), idx, NodeType::Date(DateData { date }));
         self.nodes.push(Some(RefCell::new(node)));
-        self.dates.insert(date, idx);
+        self.dates.insert(date.format("%Y-%m-%d").to_string(), idx);
         idx
     }
 
@@ -854,29 +854,6 @@ impl Graph {
             return Err(ErrorType::InvalidIndex(index));
         }
         Ok(index)
-    }
-
-    // TODO: Is this needed? Should link use this instead?
-    pub fn get_or_insert_index(&mut self, target: &str) -> GraphResult<usize> {
-        if Self::is_date(target) {
-            return match self.dates.get(target) {
-                Some(x) => Ok(*x),
-                None => Err(ErrorType::InvalidDate(target.to_owned()))?,
-            };
-        }
-        if Self::is_relative_date(target) {
-            let date = Self::parse_relative_date(target)?;
-            return if self.dates.contains_key(&date) {
-                Ok(*self.dates.get(&date).unwrap())
-            } else {
-                Ok(self.insert_date(date))
-            };
-        }
-        self.aliases
-            .get(target)
-            .copied()
-            .or(target.parse::<usize>().ok())
-            .ok_or(Err(ErrorType::InvalidAlias(target.to_owned()))?)
     }
 
     /// Format

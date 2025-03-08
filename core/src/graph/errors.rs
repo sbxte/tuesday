@@ -22,4 +22,7 @@ pub enum ErrorType {
 
     #[error("Node is not a Task node: {0}")]
     NotTaskNode(usize),
+
+    #[error("Datetime parse error: {0}")]
+    ChronoError(#[from] chrono::ParseError)
 }

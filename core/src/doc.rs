@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use errors::ErrorType;
 
 /// Update this whenever the structure of Config or Graph changes
-const VERSION: u32 = 5;
+const VERSION: u32 = 6;
 
 const FILENAME: &str = ".tuesday";
 

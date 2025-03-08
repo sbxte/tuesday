@@ -20,4 +20,7 @@ pub enum ErrorType {
     // TODO: Split this into more sub types
     #[error("Parse error: {0}")]
     ParseError(String),
+
+    #[error("Datetime parse error: {0}")]
+    ChronoError(#[from] chrono::ParseError)
 }
