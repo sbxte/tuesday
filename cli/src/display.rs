@@ -157,7 +157,7 @@ pub fn print_calendar(graph: &Graph, date: &NaiveDate) -> AppResult<()> {
                 let range_finished = if node.metadata.children.len() == 0 {
                     0
                 } else {
-                    finished * 5 / node.metadata.children.len()
+                    finished * 4 / node.metadata.children.len()
                 };
 
                 let color = HEATMAP_PALLETE[range_finished];
