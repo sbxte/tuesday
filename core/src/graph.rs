@@ -890,35 +890,6 @@ impl Graph {
         s == "today" || s == "tomorrow" || s == "yesterday"
     }
 
-    /// Parses relative dates into NaiveDate format
-    /// See [is_relative_date](Self::is_relative_date) for available relative dates
-    /// See also [format_naivedate](Self::format_naivedate)
-    pub fn parse_relative_date(s: &str) -> GraphResult<String> {
-        match s {
-            "today" => Ok(Self::format_naivedate(Local::now().date_naive())),
-            "tomorrow" => Ok(Self::format_naivedate(
-                Local::now()
-                    .checked_add_days(Days::new(1))
-                    .unwrap()
-                    .date_naive(),
-            )),
-            "yesterday" => Ok(Self::format_naivedate(
-                Local::now()
-                    .checked_sub_days(Days::new(1))
-                    .unwrap()
-                    .date_naive(),
-            )),
-            _ => panic!("Invalid branch on parse_relative_date!"),
-        }
-    }
-
-    /// Formats a [NaiveDate] into a [String]
-    /// The format goes %Y-%m-%d
-    /// See also [NaiveDate::format]
-    pub fn format_naivedate(date: NaiveDate) -> String {
-        date.format("%Y-%m-%d").to_string()
-    }
-
     /// Sets an alias for node at `index`
     pub fn set_alias(&mut self, index: usize, alias: String) -> GraphResult<()> {
         self.aliases.insert(alias.clone(), index);
