@@ -247,6 +247,34 @@ tuecli cal 2025-02-01
 
 Due to limitations, date expressions like "Feb 2025" are not supported yet. We plan to add this in the future, or you can also contribute to the codebase :)
 
+# Raffling Node
+Overwhelmed and don't know what to do at the moment? We've all been there, so that's why we created node raffles!
+
+```
+tuecli rand <parent id>
+```
+
+This will select a random child from the parent node.
+
+If you only want to select unchecked nodes:
+```
+tuecli rand <parent id> -u
+```
+
+Or, for some reason, only checked nodes:
+```
+tuecli rand <parent id> -c
+```
+
+# Archiving Nodes
+
+Archiving a node will hide it when listed (by default).
+
+```
+tuecli arc <identifier>
+```
+
+
 ## Cleaning Nodes
 Because of how Tuesday save files work, unused indices will not be reclaimed unless you clean them. If your indices are getting big, you can run:
 ```

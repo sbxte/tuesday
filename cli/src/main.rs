@@ -265,7 +265,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .expect("depth should exist")
             };
 
-            let show_archived = *sub_matches.get_one::<bool>("archived").unwrap();
+            let show_archived = *sub_matches.get_one::<bool>("archived").unwrap_or(&false);
             match sub_matches.get_one::<String>("ID") {
                 None => graph.list_roots(depth, show_archived)?,
                 Some(id) => graph.list_children(get_index(graph, &id, *assume_date)?, depth, show_archived)?,
@@ -453,7 +453,7 @@ fn cli() -> AppResult<Command> {
         .subcommand(Command::new("ls")
             .about("Lists root nodes or children nodes")
             .arg(arg!([ID] "Which node's children to display"))
-            .arg(arg!(-a --archived "Display archived nodes"))
+            .arg(arg!(-a --archived "Display archived nodes").action(clap::ArgAction::SetTrue).default_value("false"))
             .arg(arg!(-d --depth <depth> "What depth to recursively display children")
                 .default_value("1")
                 .value_parser(value_parser!(u32))
