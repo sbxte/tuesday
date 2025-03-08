@@ -1,17 +1,19 @@
 mod display;
 mod errors;
+mod dates;
+
 use std::path::PathBuf;
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::{aliases_title, display_alias, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
+use display::{aliases_title, display_alias, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
 use errors::AppError;
 use rand::rng;
 use rand::seq::IndexedRandom as _;
 use tuecore::doc::{self, Doc};
 use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
-use parse_datetime::parse_datetime;
+use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
@@ -19,8 +21,8 @@ type AppResult<T> = Result<T, AppError>;
 fn get_index(graph: &Graph, id: &str, assume_date: bool) -> AppResult<usize> {
     // When user forces the ID to be interpreted as a date, just search through the dates hashmap.
     if assume_date {
-        let date = parse_datetime(id)?.date_naive();
-        return Ok(graph.get_date_index(date)?);
+        let date = parse_datetime_extended(id)?.date_naive();
+        return Ok(graph.get_date_index(&date)?);
     }
 
     // Normally, any number below the amount of dates from the current month can also be
@@ -39,8 +41,8 @@ fn get_index(graph: &Graph, id: &str, assume_date: bool) -> AppResult<usize> {
     }
 
     // If none of those worked, then interpret the ID as a date.
-    if let Ok(date) = parse_datetime(id)  {
-        let idx = graph.get_date_index(date.date_naive())?;
+    if let Ok(date) = parse_datetime_extended(id)  {
+        let idx = graph.get_date_index(&date.date_naive())?;
         return Ok(idx);
     }
 
@@ -67,7 +69,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 print_link_root(idx, true);
                 return Ok(());
             } else if let Some(when) = date {
-                let date = parse_datetime(when)?;
+                let date = parse_datetime_extended(when)?;
 
                 let empty = String::new();
                 let message = sub_matches
@@ -337,6 +339,16 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             graph.clean();
             Ok(())
         }
+        Some(("cal", sub_matches)) => {
+            let date_str = sub_matches.get_one::<String>("date");
+            if let Some(date) = date_str {
+                let date = parse_datetime_extended(date)?;
+                return print_calendar(graph, &date.date_naive());
+            } else {
+                let today = parse_datetime_extended("today")?;
+                return print_calendar(graph, &today.date_naive());
+            }
+        }
         _ => Err(AppError::InvalidSubcommand),
     }
 }
@@ -469,6 +481,10 @@ fn cli() -> AppResult<Command> {
         )
         .subcommand(Command::new("clean")
             .about("Compresses and cleans up the graph")
+        )
+        .subcommand(Command::new("cal")
+            .about("Print calendar to display date nodes")
+            .arg(arg!(date: [date] "Date to use (only the month will be considered)").value_parser(value_parser!(String)).default_value("today"))
         )
     )
 }

@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use chrono::{DateTime, Datelike, Local, NaiveDate};
 use colored::Colorize;
 use tuecore::graph::node::task::{TaskData, TaskState};
 use tuecore::graph::node::{Node, NodeType};
@@ -86,6 +89,95 @@ pub fn print_link(from: usize, to: usize, connect: bool) {
     } else {
         println!("{} -x- {}", from, to);
     }
+}
+
+pub fn days_in_month(year: i32, month: u32) -> i64 {
+    NaiveDate::from_ymd_opt(
+        year,
+        match month {
+            12 => 1,
+            _ => month + 1,
+        },
+        1,
+    ).unwrap()
+    .signed_duration_since(NaiveDate::from_ymd_opt(year, month, 1).unwrap())
+    .num_days()
+}
+
+// TODO: make this configurable
+const HEATMAP_PALLETE: [(u8, u8, u8); 5] = [(58, 80, 162), (120, 94, 240), (220, 38, 127), (254, 97, 0), (255, 176, 0)];
+
+fn print_heatmap() {
+    print!("     ");
+    for i in 0..5 {
+        print!("{}", "  ".on_custom_color(HEATMAP_PALLETE[i]));
+    }
+    println!("\n    less     more");
+    println!("      finished");
+
+}
+
+pub fn print_calendar(graph: &Graph, date: &NaiveDate) -> AppResult<()> {
+    println!("Calendar: {} {}", date.format("%B").to_string().bold(), date.format("%Y").to_string().green());
+
+    for i in ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] {
+        print!("{}", i.yellow());
+        print!(" ");
+    }
+
+    let days_in_month = days_in_month(date.year(), date.month()) as u32;
+
+    // HACK: i don't know why datetime is so unecessarily hard here?!??!! please fix below
+    let nd = NaiveDate::from_ymd_opt(date.year(), date.month(), 1).unwrap();
+    let first_day = nd.format("%u").to_string().parse::<u32>().unwrap() % 7;
+
+    print!("\n");
+
+    let days: Vec<u32> = (1..=days_in_month+first_day).into_iter().collect();
+    for i in days {
+        if i > first_day {
+            let curr_date = i - first_day;
+            if let Ok(idx) = graph.get_date_index(&NaiveDate::from_ymd_opt(date.year(), date.month(), curr_date).unwrap()) {
+                let node = graph.get_node(idx);
+                let finished = node.metadata.children.iter().filter(|idx| {
+                    let node = graph.get_node(**idx);
+                    if let NodeType::Task(data) = node.data {
+                        data.state == TaskState::Done
+                    } else {
+                        false
+                    }
+                }).count();
+
+                let range_finished = if node.metadata.children.len() == 0 {
+                    0
+                } else {
+                    finished / node.metadata.children.len() * 5
+                };
+
+                let color = HEATMAP_PALLETE[range_finished];
+
+                if curr_date == date.day() {
+                    print!("{} ", format!("{:02}", curr_date).bold().on_custom_color(color));
+                } else {
+                    print!("{} ", format!("{:02}", curr_date).on_custom_color(color));
+
+                }
+            } else {
+                    print!("{} ", format!("{:02}", curr_date).dimmed());
+            }
+        } else {
+            print!("   ");
+        }
+        if i % 7 == 0 {
+            print!("\n");
+        }
+    }
+
+    print!("\n");
+
+    print_heatmap();
+    Ok(())
+
 }
 
 /// CLI display methods.
