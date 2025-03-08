@@ -2,7 +2,7 @@ mod display;
 mod errors;
 use std::path::PathBuf;
 
-use clap::{arg, value_parser, ArgMatches, Command};
+use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
 use display::CLIDisplay;
 use errors::AppError;
@@ -11,39 +11,53 @@ use rand::seq::IndexedRandom as _;
 use tuecore::doc::{self, Doc};
 use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
+use parse_datetime::parse_datetime;
 
 type AppResult<T> = Result<T, AppError>;
 
 fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
-            let message = sub_matches
-                .get_one::<String>("message")
-                .expect("message required");
             let root = sub_matches.get_flag("root");
-            let date = sub_matches.get_flag("date");
+            let date = sub_matches.get_one::<String>("date");
             let pseudo = sub_matches.get_flag("pseudo");
-            if date && root {
+            if date.is_some() && root {
                 return Err(AppError::ConflictingArgs(
                     "Node cannot be both date node and root node!".to_string(),
                 ));
             }
-            if date {
-                if !Graph::is_date(message) {
-                    return Err(AppError::MalformedDate(message.to_string()));
-                }
-                graph.insert_date(message.to_string());
-            } else if root {
+            if root {
+                let message = sub_matches
+                    .get_one::<String>("message")
+                    .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
                 graph.insert_root(message.to_string(), pseudo);
+                return Ok(());
+            } else if let Some(when) = date {
+                if !Graph::is_date(when) {
+                    return Err(AppError::MalformedDate(when.to_string()));
+                }
+                let date = parse_datetime(when)?;
+
+                // TODO: make this default configurabe
+                let default_date = format!("{}", date.format("%Y-%m-%d"));
+                let message = sub_matches
+                    .get_one::<String>("message")
+                    .unwrap_or(&default_date);
+
+                graph.insert_date(message.clone(), date.date_naive());
+                return Ok(());
+            } 
+
+            let message = sub_matches
+                .get_one::<String>("message")
+                .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
+            let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
+                i
             } else {
-                let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
-                    i
-                } else {
-                    return Err(AppError::InvalidArg("Parent ID required!".to_string()));
-                };
-                let parent = graph.get_index(idx)?;
-                graph.insert_child(message.to_string(), parent, pseudo)?;
-            }
+                return Err(AppError::InvalidArg("Parent ID required!".to_string()));
+            };
+            let parent = graph.get_index(idx)?;
+            graph.insert_child(message.to_string(), parent, pseudo)?;
             Ok(())
         }
         Some(("rm", sub_matches)) => {
@@ -271,13 +285,14 @@ fn cli() -> AppResult<Command> {
         .arg(arg!(-g --global).required(false))
         .subcommand(Command::new("add")
             .about("Adds a node to the graph")
-            .arg(arg!(<message> "This node's message"))
+            .arg(Arg::new("message").help("This node's message").required(false).index(1))
             .arg(arg!(parent: [ID] "Assigns this node to a parent").required(false))
             .arg(arg!(-u --pseudo "Makes this a pseudo node (does not count towards parent completion)")
                 .required(false))
             .arg(arg!(-r --root "Makes this a root node")
                 .conflicts_with_all(["parent", "date"]))
-            .arg(arg!(-d --date "Makes this a date node")
+            .arg(arg!(-d --date <date> "Makes this a date node")
+                .value_parser(value_parser!(String))
                 .conflicts_with_all(["parent", "root"]))
         )
         .subcommand(Command::new("rm")

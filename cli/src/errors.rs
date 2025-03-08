@@ -1,5 +1,6 @@
 use std::fmt;
 
+use parse_datetime::ParseDateTimeError;
 use thiserror::Error;
 use tuecore::graph;
 use tuecore::doc;
@@ -28,7 +29,13 @@ pub(crate) enum AppError {
     MalformedDate(String),
 
     #[error("I/O error: {0}")]
-    IOError(#[from] std::io::Error)
+    IOError(#[from] std::io::Error),
+
+    #[error("Missing argument: {0}")]
+    MissingArgument(String),
+
+    #[error("Error parsing specified date: {0}")]
+    DateParseError(#[from] ParseDateTimeError)
 }
 
 // The default Debug implementation displays the enum like so:
