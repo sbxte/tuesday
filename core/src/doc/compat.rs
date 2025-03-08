@@ -33,7 +33,7 @@ pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
         ));
     } else if let Some(version) = doc_ver {
         if version != VERSION as i64 {
-            return match parse_old_yaml(doc, version) {
+            return match parse_old_yaml(doc) {
                 Ok(result) => Ok(result),
                 Err(err) => Err(ErrorType::ParseError(format!(
                     "Compatibility parsers failed parsing old version: {}",
@@ -155,149 +155,194 @@ pub fn parse_yaml(doc: &Value) -> DocResult<Doc> {
     Ok(result_doc)
 }
 
-fn parse_old_yaml(doc: &Value, doc_ver: i64) -> DocResult<Doc> {
-    match doc_ver {
-        4 => old_yaml::v4(doc),
-        v => Err(ErrorType::ParseError(format!(
-            "No available parsers to parse this document version: {}",
-            v
-        ))),
+fn parse_old_yaml(doc: &Value) -> DocResult<Doc> {
+    let mut doc = old_yaml::v4_to_v5(doc)?;
+    loop {
+        let current_ver = doc["version"].as_u64().ok_or(ErrorType::ParseError("Failed to parse version field from save file".into()))?;
+        if current_ver < VERSION as u64 {
+            match current_ver {
+                4 => doc = old_yaml::v4_to_v5(&doc)?,
+                _ => return Err(ErrorType::ParseError(format!(
+                    "Oops, no available parsers to parse this document version: {}",
+                    current_ver
+                ))),
+
+            }
+        } else {
+            break
+        }
     }
+    Ok(parse_yaml(&doc)?)
 }
 
+/// Docs-parser for older version of the save file. This is done incrementally (e.g v4 -> v5, v5 ->
+/// v6, etc up until the current version).
 mod old_yaml {
-    use crate::graph::node::task::{TaskData, TaskState};
-    use crate::graph::node::NodeType;
+    use serde_yaml_ng::value::{Tag, TaggedValue};
+    use serde_yaml_ng::Mapping;
 
     use super::*;
 
-    pub fn v4(doc: &Value) -> DocResult<Doc> {
-        let graph_doc = &doc["graph"];
+    /// The v4 to v5 update introduced some major breaking structure changes:
+    /// - `message` is renamed to `title`.
+    /// - `type` & `state` are merged into the `data` field which is now tagged based on the node
+    /// type.
+    /// - `archived`, `index`, `alias`, `parents`, and `children` fields are now moved under
+    /// `metadata`.
+    pub fn v4_to_v5(doc: &Value) -> DocResult<Value> {
+        let mut cloned_doc = doc.clone();
+        let version = &mut cloned_doc["version"];
+        *version = Value::Number(5.into());
 
-        // Roots, archived, and dates
-        let roots = graph_doc["roots"]
-            .as_sequence()
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|i| i.as_i64().expect("Root index must be an integer") as usize)
-            .collect::<Vec<_>>();
-        let archived = graph_doc["archived"]
-            .as_sequence()
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|i| i.as_i64().expect("Archived index must be an integer") as usize)
-            .collect::<Vec<_>>();
-        let dates = graph_doc["dates"]
-            .as_mapping()
-            .unwrap_or(&Mapping::new())
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.as_str().expect("Date key must be a string").to_string(),
-                    v.as_i64().expect("Date node index must be an integer") as usize,
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        let mut aliases = graph_doc["aliases"]
-            .as_mapping()
-            .unwrap_or(&Mapping::new())
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.as_str().expect("Alias key must be a string").to_string(),
-                    v.as_i64().expect("Alias node index must be an integer") as usize,
-                )
-            })
-            .collect::<HashMap<_, _>>();
+        let graph_doc = &mut cloned_doc["graph"];
+        let nodes = graph_doc["nodes"].as_sequence_mut().unwrap();
 
-        // Parse nodes
-        // Provide default values if any are missing
-        // ~ Maps are funky, functional programming go brrrr
-        let mut nodes = vec![];
-        for node_doc in graph_doc["nodes"].as_sequence().unwrap_or(&vec![]) {
+        for node_doc in nodes {
             if node_doc.is_null() {
-                nodes.push(None);
                 continue;
             }
 
-            // Index
-            let index = node_doc["index"]
-                .as_i64()
-                .expect("Node index must be an integer") as usize;
+            if let Value::Mapping(node) = node_doc {
+                node.insert("title".into(), node["message"].clone());
+                node.remove("message");
 
-            // Update parent and children
-            let mut parents = vec![];
-            for parent_doc in node_doc["parents"].as_sequence().unwrap_or(&vec![]) {
-                parents.push(
-                    parent_doc
-                        .as_i64()
-                        .expect("Parent index must be an integer") as usize,
-                );
-            }
-            let mut children = vec![];
-            for child_doc in node_doc["children"].as_sequence().unwrap_or(&vec![]) {
-                children
-                    .push(child_doc.as_i64().expect("Parent index must be an integer") as usize);
-            }
+                let mut metadata = Mapping::new();
+                let archived = node["archived"].clone();
+                let index = node["index"].clone();
+                let alias = node["alias"].clone();
+                let children = node["children"].clone();
+                let parents = node["parents"].clone();
+                metadata.insert("archived".into(), archived);
+                metadata.insert("index".into(), index);
+                metadata.insert("alias".into(), alias);
+                metadata.insert("children".into(), children);
+                metadata.insert("parents".into(), parents);
+                node.insert("metadata".into(), Value::Mapping(metadata));
 
-            // Add local node alias to root doc aliases if not already added
-            let alias = node_doc["alias"].as_str();
-            if let Some(ref alias) = alias {
-                aliases.insert(alias.to_string(), index);
-            }
+                node.remove("archived");
+                node.remove("index");
+                node.remove("alias");
+                node.remove("children");
+                node.remove("parents");
 
-            // Node data
-            let node_type = node_doc["type"].as_str().ok_or(ErrorType::ParseError(
-                "Node type must be string".to_string(),
-            ))?;
-            let node_state = node_doc["state"].as_str().ok_or(ErrorType::ParseError(
-                "Node state must be string".to_string(),
-            ))?;
-            let data = match node_type {
-                "Normal" => NodeType::Task(TaskData {
-                    state: match node_state {
-                        "Partial" => TaskState::Partial,
-                        "Done" => TaskState::Done,
-                        _ => TaskState::None,
+
+                let data = match node["type"].as_str() {
+                    Some("Normal") => {
+                        let mut map = Mapping::new();
+                        map.insert("state".into(), node["state"].clone());
+                        TaggedValue {
+                            value: Value::Mapping(map),
+                            tag: Tag::new("Task")
+                        }
                     },
-                }),
-                "Date" => NodeType::Date(Default::default()),
-                "Pseudo" => NodeType::Pseudo,
-                _ => Default::default(),
-            };
+                    Some("Date") => {
+                        TaggedValue {
+                            value: Value::Mapping(Mapping::new()),
+                            tag: Tag::new("Date")
+                        }
+                    }
+                    Some("Pseudo") => {
+                        TaggedValue {
+                            value: Value::Null,
+                            tag: Tag::new("Pseudo")
+                        }
+                    }
+                    _ => return Err(ErrorType::ParseError("Failed to determine node's type".to_string()))
+                };
 
-            nodes.push(Some(RefCell::new(Node {
-                title: node_doc["message"].as_str().unwrap_or("").to_string(),
-                data,
-                metadata: NodeMetadata {
-                    archived: node_doc["archived"].as_bool().unwrap_or(false),
-                    index,
-                    alias: alias.map(|s| s.to_string()),
-                    parents,
-                    children,
-                },
-            })));
+                node.insert("data".into(), Value::Tagged(data.into()));
+                node.remove("type");
+                node.remove("state");
+
+            }
         }
 
-        // Remove aliases pointing to invalid nodes
-        aliases.retain(|_, v| nodes[*v].is_some());
+        Ok(cloned_doc)
+    }
+}
 
-        // Fix any node aliases that may be desynchronized with the root doc's aliases
-        for (k, v) in aliases.iter() {
-            nodes[*v].as_ref().unwrap().borrow_mut().metadata.alias = Some(k.clone());
-        }
+#[cfg(test)]
+mod tests {
+    use serde_yaml_ng::Value;
 
-        // Unify everything
-        let result_doc = Doc {
-            version: doc["version"].as_i64().expect("Version should be integer") as u32,
-            graph: Graph {
-                nodes,
-                roots,
-                archived,
-                dates,
-                aliases,
-            },
-        };
-        Ok(result_doc)
+    use super::old_yaml;
+
+    #[test]
+    fn test_v4_v5() {
+        let old = serde_yaml_ng::from_str::<Value>("
+version: 4
+graph:
+  nodes:
+  - message: root
+    type: Normal
+    state: None
+    archived: false
+    index: 0
+    alias: null
+    parents: []
+    children: []
+  - message: 2025-01-01
+    type: Date
+    state: None
+    archived: false
+    index: 1
+    alias: null
+    parents: []
+    children: []
+  - message: pseudo
+    type: Pseudo
+    state: None
+    archived: false
+    index: 2
+    alias: null
+    parents: []
+    children: []
+  roots:
+  - 0
+  - 2
+  archived: []
+  dates:
+    2025-01-01: 1
+  aliases: {}");
+
+        let new_should_be = serde_yaml_ng::from_str::<Value>("
+version: 5
+graph:
+  nodes:
+  - title: root
+    data: !Task
+      state: None
+    metadata:
+      archived: false
+      index: 0
+      alias: null
+      children: []
+      parents: []
+  - title: 2025-01-01
+    data: !Date {}
+    metadata:
+      archived: false
+      index: 1
+      alias: null
+      children: []
+      parents: []
+  - title: pseudo
+    data: !Pseudo
+    metadata:
+      archived: false
+      index: 2
+      alias: null
+      children: []
+      parents: []
+  roots:
+  - 0
+  - 2
+  archived: []
+  dates:
+    2025-01-01: 1
+  aliases: {}
+");
+        let new = old_yaml::v4_to_v5(&old.unwrap()).unwrap();
+        assert_eq!(serde_yaml_ng::to_string(&new).unwrap(), serde_yaml_ng::to_string(&new_should_be.unwrap()).unwrap());
     }
 }
