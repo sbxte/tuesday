@@ -251,10 +251,8 @@ impl Graph {
                 // This is only applicable to non-date nodes.
                 if let NodeType::Task(_) = self.nodes[child].as_ref().unwrap().borrow().data {
                     self.roots.push(child);
-                    println!("kapoosh");
                 } else if let NodeType::Pseudo = self.nodes[child].as_ref().unwrap().borrow().data {
                     self.roots.push(child);
-                    println!("kapoosh");
                 }
             }
         }
