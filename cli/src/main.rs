@@ -73,7 +73,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 } else {
                     graph.remove(id)?;
                 }
-                print_removal(id);
+                print_removal(id, recursive);
             }
             Ok(())
         }

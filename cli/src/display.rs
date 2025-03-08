@@ -40,8 +40,13 @@ fn display_node(node: &Node) -> String {
     format!("{} {} {}", state, node.title, index)
 }
 
-pub fn print_removal(idx: usize) {
-    println!("Removed node {}.", idx.to_string().bright_blue());
+pub fn print_removal(idx: usize, recursive: bool) {
+    if recursive {
+        println!("Removed node {} and its children.", idx.to_string().bright_blue());
+
+        } else {
+        println!("Removed node {}.", idx.to_string().bright_blue());
+    }
 }
 
 pub fn print_link_dates(from: usize, connect: bool) {
