@@ -119,18 +119,18 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
 const HEATMAP_PALLETE: [(u8, u8, u8); 5] = [(58, 80, 162), (120, 94, 240), (220, 38, 127), (254, 97, 0), (255, 176, 0)];
 
 fn print_heatmap() {
-    print!("\x1B[5A"); // Move cursor up 4 lines
-    print!("\x1B[25C"); // Move cursor 25 columns right
+    print!("\x1B[6A"); // up
+    print!("\x1B[24C"); // right
+    print!("finished");
+    print!("\x1B[9D"); // left
+    print!("\x1B[1B"); // down
     for i in 0..5 {
         print!("{}", "  ".on_custom_color(HEATMAP_PALLETE[i]));
     }
-    print!("\x1B[1B"); // Move cursor 1 line down
-    print!("\x1B[11D"); // Move cursor 5 columns left
+    print!("\x1B[11D"); // left
+    print!("\x1B[1B"); // down
     print!("less    more");
-    print!("\x1B[1B"); // Move cursor 1 line down
-    print!("\x1B[16D"); // Move cursor 4 columns left
-    print!("      finished");
-    print!("\x1B[3B\r"); // Move cursor 1 line down
+    print!("\x1B[4B\r"); // down
 
 }
 

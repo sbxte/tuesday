@@ -459,7 +459,7 @@ fn cli() -> AppResult<Command> {
                 .value_parser(value_parser!(u32))
             )
             .arg(arg!(-r --recurse "Whether to recursively display at infinite depth"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
         )
         .subcommand(Command::new("lsd")
             .about("Lists all date nodes")
