@@ -96,10 +96,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("rm", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             for id in ids {
                 let recursive = sub_matches.get_flag("recursive");
-                let node_id = get_index(graph, id, *assume_date)?;
+                let node_id = get_index(graph, id, assume_date)?;
                 if recursive {
                     graph.remove_children_recursive(node_id)?;
                 } else {
@@ -110,48 +110,48 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("link", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let parent = get_index(
                 graph,
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                *assume_date
+                assume_date
             )?;
             let child = get_index(
                 graph,
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                *assume_date
+                assume_date
             )?;
             graph.link(parent, child)?;
             print_link(child, parent, true);
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let parent = get_index(
                 graph,
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                *assume_date
+                assume_date
             )?;
             let child = get_index(
                 graph,
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                *assume_date
+                assume_date
             )?;
             graph.unlink(parent, child)?;
             print_link(parent, child, false);
             Ok(())
         }
         Some(("mv", sub_matches)) => {
-            let assume_date_1 = sub_matches.get_one::<bool>("assumedate1").unwrap_or(&false);
-            let assume_date_2 = sub_matches.get_one::<bool>("assumedate2").unwrap_or(&false);
+            let assume_date_1 = sub_matches.get_flag("assumedate1");
+            let assume_date_2 = sub_matches.get_flag("assumedate2");
             let nodes = sub_matches
                 .get_many::<String>("node")
                 .expect("node ID required");
@@ -160,19 +160,19 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                *assume_date_2
+                assume_date_2
             )?;
 
             for node in nodes {
-                let node = get_index(graph, node, *assume_date_1)?;
+                let node = get_index(graph, node, assume_date_1)?;
                 graph.clean_parents(node)?;
                 graph.link(parent, node)?;
             }
             Ok(())
         }
         Some(("set", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), *assume_date)?;
+            let assume_date = sub_matches.get_flag("assumedate");
+            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let state = sub_matches
                 .get_one::<TaskState>("state")
                 .expect("node state required");
@@ -180,44 +180,44 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("check", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, *assume_date)?;
+                let id = get_index(graph, id, assume_date)?;
                 graph.set_task_state(id, TaskState::Done, true)?;
             }
             Ok(())
         }
         Some(("uncheck", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, *assume_date)?;
+                let id = get_index(graph, id, assume_date)?;
                 graph.set_task_state(id, TaskState::None, true)?;
             }
             Ok(())
         }
         Some(("arc", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, *assume_date)?;
+                let id = get_index(graph, id, assume_date)?;
                 graph.set_archived(id, true)?;
             }
             Ok(())
         }
         Some(("unarc", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, *assume_date)?;
+                let id = get_index(graph, id, assume_date)?;
                 graph.set_archived(id, false)?;
             }
             Ok(())
         }
         Some(("alias", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), *assume_date)?;
+            let assume_date = sub_matches.get_flag("assumedate");
+            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let alias = sub_matches
                 .get_one::<String>("alias")
                 .expect("alias required");
@@ -225,10 +225,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("unalias", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, *assume_date)?;
+                let id = get_index(graph, id, assume_date)?;
                 graph.unset_alias(id)?;
             }
             Ok(())
@@ -246,8 +246,8 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("rename", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), *assume_date)?;
+            let assume_date = sub_matches.get_flag("assumedate");
+            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let message = sub_matches
                 .get_one::<String>("message")
                 .expect("ID required");
@@ -255,7 +255,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("ls", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let depth = if sub_matches.get_flag("recurse") {
                 // Override with infinite depth
                 0
@@ -265,10 +265,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .expect("depth should exist")
             };
 
-            let show_archived = *sub_matches.get_one::<bool>("archived").unwrap_or(&false);
+            let show_archived = sub_matches.get_flag("archived");
             match sub_matches.get_one::<String>("ID") {
                 None => graph.list_roots(depth, show_archived)?,
-                Some(id) => graph.list_children(get_index(graph, &id, *assume_date)?, depth, show_archived)?,
+                Some(id) => graph.list_children(get_index(graph, &id, assume_date)?, depth, show_archived)?,
             }
             Ok(())
         }
@@ -281,21 +281,21 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("rand", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             let id = sub_matches
                 .get_one::<String>("ID")
                 .ok_or(AppError::InvalidArg("ID required".to_string()))?;
-            let unchecked = sub_matches.get_one::<bool>("unchecked").unwrap_or(&false);
-            let checked = sub_matches.get_one::<bool>("checked").unwrap_or(&false);
-            if *unchecked && *checked {
+            let unchecked = sub_matches.get_flag("unchecked");
+            let checked = sub_matches.get_flag("checked");
+            if unchecked && checked {
                 return Err(AppError::InvalidArg(
                     "--unchecked and --checked cannot be used together!".to_string(),
                 ));
             }
 
-            let mut nodes = graph.get_node_children(get_index(graph, id, *assume_date)?).clone();
+            let mut nodes = graph.get_node_children(get_index(graph, id, assume_date)?).clone();
             let item;
-            if *unchecked {
+            if unchecked {
                 nodes.retain(|x| {
                     graph
                         .get_node(*x)
@@ -305,7 +305,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                         .unwrap_or(true)
                 });
                 item = nodes.choose(&mut rng());
-            } else if *checked {
+            } else if checked {
                 nodes.retain(|x| {
                     graph
                         .get_node(*x)
@@ -328,9 +328,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("stats", sub_matches)) => {
-            let assume_date = sub_matches.get_one::<bool>("assumedate").unwrap_or(&false);
+            let assume_date = sub_matches.get_flag("assumedate");
             if let Some(id) = sub_matches.get_one::<String>("ID") {
-                graph.print_stats(Some(get_index(graph, id, *assume_date)?))
+                graph.print_stats(Some(get_index(graph, id, assume_date)?))
             } else {
                 graph.print_stats(None)
             }
@@ -379,67 +379,67 @@ fn cli() -> AppResult<Command> {
         .subcommand(Command::new("rm")
             .about("Removes nodes from the graph")
             .arg(arg!(<ID>... "Which nodes to remove"))
-            .arg(arg!(-r --recursive "Whether to remove child nodes recursively").required(false))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-r --recursive "Whether to remove child nodes recursively"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("link")
             .about("Creates a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
             .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date"))
+            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("unlink")
             .about("Removes a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
             .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date"))
+            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("mv")
             .about("Unlink nodes from all current parents, then link to a new parent")
             .arg(arg!(node: <ID1>... "Which nodes to unlink"))
             .arg(arg!(parent: <ID2> "New parent for node"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 (all when provided more than one) to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D1 --assumedate1 "Force ID1 (all when provided more than one) to be interpreted as a date"))
+            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("set")
             .about("Sets a node's state")
             .arg(arg!(<ID> "Which node to modify"))
             .arg(arg!(<state> "What state to set the node").value_parser(value_parser!(TaskState)))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("check")
             .about("Marks nodes as completed")
             .arg(arg!(<ID>... "Which node(s) to mark as completed"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("uncheck")
             .about("Marks nodes as incomplete")
             .arg(arg!(<ID>... "Which node(s) to mark as incomplete"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("arc")
             .about("Archives (hides) nodes from view")
             .arg(arg!(<ID>... "Which node(s) to archive"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("unarc")
             .about("Unarchives (unhides) nodes from view")
             .arg(arg!(<ID>... "Which node(s) to archive"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("alias")
             .about("Adds an alias for a node")
             .arg(arg!(<ID> "Which node to alias"))
             .arg(arg!(<alias> "What alias to give this node"))
-            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
         )
         .subcommand(Command::new("unalias")
             .about("Removes nodes' alias")
             .long_about("Removes all aliases of nodes")
             .arg(arg!(<ID>... "Which node(s) to remove aliases"))
-            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("aliases")
             .about("Lists all aliases")
@@ -448,18 +448,18 @@ fn cli() -> AppResult<Command> {
             .about("Edit a node's message")
             .arg(arg!(<ID> "Which node to edit"))
             .arg(arg!(<message> "What new message to give it"))
-            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
         )
         .subcommand(Command::new("ls")
             .about("Lists root nodes or children nodes")
             .arg(arg!([ID] "Which node's children to display"))
-            .arg(arg!(-a --archived "Display archived nodes").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-a --archived "Display archived nodes"))
             .arg(arg!(-d --depth <depth> "What depth to recursively display children")
                 .default_value("1")
                 .value_parser(value_parser!(u32))
             )
             .arg(arg!(-r --recurse "Whether to recursively display at infinite depth"))
-            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
         )
         .subcommand(Command::new("lsd")
             .about("Lists all date nodes")
@@ -472,12 +472,12 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(<ID> "Which parent node to randomly pick a child from"))
             .arg(arg!(-u --unchecked "Only pick among unchecked tasks"))
             .arg(arg!(-c --checked "Only pick among checked tasks"))
-            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
         )
         .subcommand(Command::new("stats")
             .about("Displays statistics of a node")
             .arg(arg!([ID] "Which node to display stats"))
-            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date").action(clap::ArgAction::SetTrue).default_value("false"))
+            .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
         )
         .subcommand(Command::new("clean")
             .about("Compresses and cleans up the graph")
