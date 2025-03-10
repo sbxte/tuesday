@@ -2,6 +2,7 @@ mod display;
 mod errors;
 mod dates;
 mod graph;
+mod config;
 
 use std::path::PathBuf;
 

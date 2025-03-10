@@ -89,6 +89,7 @@ impl CLIGraphOps for Graph {
 
         Ok(())
     }
+
     fn mv(&mut self, from: usize, to: usize) -> AppResult<()> {
         self.clean_parents(from)?;
         self.link(to, from)?;

@@ -64,10 +64,9 @@ pub enum ReadError {
 
 /// Parses core configurations from a toml table
 /// Any missing or malformed values will be replaced with defaults
-/// See
 #[allow(unused_mut, unused_variables)]
-pub fn parse_config(toml: &toml::Table) -> CoreConfig {
-    let mut conf = CoreConfig::new();
+pub fn parse_config(toml: &toml::Table) -> CliConfig {
+    let mut conf = CliConfig::new();
 
     // Core configurations here
     // TODO: Populate this and remove the warning allowance
@@ -75,22 +74,22 @@ pub fn parse_config(toml: &toml::Table) -> CoreConfig {
     conf
 }
 
-pub fn try_parse_config(toml: &toml::Table) -> Result<CoreConfig, ParseError> {
+pub fn try_parse_config(toml: &toml::Table) -> Result<CliConfig, ParseError> {
     todo!("try_parse_config is unimplemented!");
 }
 
 #[derive(Debug, Error)]
 pub enum ParseError {}
 
-pub struct CoreConfig {}
+pub struct CliConfig {}
 
-impl CoreConfig {
+impl CliConfig {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl Default for CoreConfig {
+impl Default for CliConfig {
     fn default() -> Self {
         Self::new()
     }
