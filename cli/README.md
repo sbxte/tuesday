@@ -6,7 +6,7 @@ CLI front-end for Tuesday.
 
 ![Date node](doc/date.png)
 
-![Calendar](doc/cal.png)
+![Calendar](doc/cal2.png)
 
 
 # Usage
