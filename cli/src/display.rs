@@ -4,7 +4,7 @@ use tuecore::graph::node::task::{TaskData, TaskState};
 use tuecore::graph::node::{Node, NodeType};
 use tuecore::graph::{Graph, GraphGetters};
 
-use crate::config::CliConfig;
+use crate::config::{CliConfig, DEFAULT_CONFIG};
 use crate::{AppError, AppResult};
 
 /// A struct representing 24-bit color.
@@ -460,6 +460,10 @@ impl<'a> Displayer<'a> {
         ).unwrap()
             .signed_duration_since(NaiveDate::from_ymd_opt(year, month, 1).unwrap())
             .num_days()
+    }
+
+    pub fn template_cfg(&self) -> &'static str {
+        DEFAULT_CONFIG
     }
 
 }

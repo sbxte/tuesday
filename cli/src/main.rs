@@ -419,6 +419,10 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             };
 
         }
+        Some(("dump-cfg", _)) => {
+            println!("{}", displayer.template_cfg());
+
+        }
         _ => return Err(AppError::InvalidSubcommand),
     };
 
@@ -589,6 +593,9 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(date: [date] "Date to use (only the month will be considered)")
                 .value_parser(value_parser!(String))
                 .default_value("today"))
+        )
+        .subcommand(Command::new("new-cfg")
+            .about("Dump a default configuration file. Recommended: run then redirect and save to ~/.tueconf.toml")
         )
     )
 }
