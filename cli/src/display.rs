@@ -10,8 +10,15 @@ pub fn aliases_title() -> String {
     format!("{}", "Aliases:".bold())
 }
 
-pub fn display_alias(idx: usize, alias: &str) -> String {
-    format!("{}:{}", idx.to_string().bright_green(), alias.bright_blue())
+pub fn parents_title() -> String {
+    format!("Node has more than one parents, please specify the parent!\n{}", "List of parents:".bold())
+}
+pub fn display_id(idx: usize, alias: Option<&str>) -> String {
+    if let Some(alias) = alias {
+        format!("{}:{}", idx.to_string().bright_green(), alias.bright_blue())
+    } else {
+        format!("{}", idx.to_string().bright_green())
+    }
 }
 
 fn display_task_data(task_data: &TaskData) -> String {

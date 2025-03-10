@@ -27,5 +27,8 @@ pub enum ErrorType {
     ChronoError(#[from] chrono::ParseError),
 
     #[error("Failed to retrieve index of date node {0}")]
-    DateNodeIndexRetrievalError(String)
+    DateNodeIndexRetrievalError(String),
+
+    #[error("Index out of range error: {0}")]
+    IndexOutOfRange(String),
 }

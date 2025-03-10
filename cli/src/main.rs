@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::{aliases_title, display_alias, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
+use display::{aliases_title, display_id, parents_title, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
 use errors::AppError;
 use graph::CLIGraphOps;
 use rand::rng;
@@ -206,7 +206,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             println!("{}", aliases_title());
             if aliases.len() > 0 {
                 for (alias, idx) in aliases {
-                    println!(" * {}", display_alias(*idx, alias));
+                    println!(" * {}", display_id(*idx, Some(alias)));
                 }
             } else {
                 println!("No added alias.");
@@ -370,8 +370,67 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
 
             Ok(())
         }
+        Some(("ord", sub_matches)) => {
+            let assume_date_1 = sub_matches.get_flag("assumedate1");
+            let assume_date_2 = sub_matches.get_flag("assumedate2");
+
+            let direction = sub_matches
+                .get_one::<OrderingDirection>("order")
+                .ok_or(AppError::InvalidArg("Reordering direction required!".to_string()))?;
+
+            let count = sub_matches
+                .get_one::<u32>("count")
+                .unwrap_or(&1);
+
+            let node = sub_matches.get_one::<String>("node")
+                .ok_or(AppError::InvalidArg("Node ID required!".to_string()))?;
+
+            let parent = sub_matches.get_one::<String>("parent");
+                
+
+            let node_idx = graph.get_index_cli(node, assume_date_1)?;
+            let parents = graph.get_node(node_idx).metadata.parents;
+
+            let parent_idx;
+            if let Some(id) = parent {
+                parent_idx = graph.get_index_cli(id, assume_date_2)?;
+                if !parents.contains(&parent_idx) {
+                    return Err(AppError::InvalidArg(format!("Index {} is not parent of {}!", parent_idx, node_idx)));
+                }
+
+            } else {
+                if parents.len() > 1 {
+                    println!("{}", parents_title());
+
+                    for id in parents {
+                        if let Some(alias) = graph.get_node(id).metadata.alias {
+                            println!("* {}", display_id(id, Some(&alias)))
+                        } else {
+                            println!("* {}", display_id(id, None))
+
+                        }
+                    }
+                    return Ok(())
+                }
+                parent_idx = parents[0];
+            }
+
+            match *direction {
+                OrderingDirection::Up => graph.reorder_node_delta(node_idx, parent_idx, -(*count as i32))?,
+                OrderingDirection::Down => graph.reorder_node_delta(node_idx, parent_idx, *count as i32)?,
+            }
+
+            Ok(())
+        }
         _ => Err(AppError::InvalidSubcommand),
     }
+}
+
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, clap::ValueEnum)]
+enum OrderingDirection {
+    #[default]
+    Down,
+    Up
 }
 
 fn cli() -> AppResult<Command> {
@@ -516,6 +575,15 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(-r --recursive "Whether to copy nodes recursively"))
             .arg(arg!(--assumedate1 "Force IDs 1 to be interpreted as dates"))
             .arg(arg!(--assumedate2 "Force ID 2 to be interpreted as a date"))
+        )
+        .subcommand(Command::new("ord")
+            .about("Reorder a node")
+            .arg(arg!(node: <ID1> "Node to reorder"))
+            .arg(arg!(<order> "Which direction to reorder node").value_parser(value_parser!(OrderingDirection)))
+            .arg(arg!([count] "How many times to move up/down").value_parser(value_parser!(u32)).default_value("1"))
+            .arg(arg!(parent: -p --parent <ID2> "Parent of node (can be omitted when there's only one parent)").required(false))
+            .arg(arg!(--assumedate1 "Force ID1 to be interpreted as a date"))
+            .arg(arg!(--assumedate2 "Force ID2 to be interpreted as a date"))
         )
     )
 }

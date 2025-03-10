@@ -923,6 +923,45 @@ impl Graph {
         self.aliases.remove(alias.as_str());
         Ok(())
     }
+
+    /// Reorders node.
+    ///
+    /// # Arguments:
+    /// - `node_idx`: node to rearrange
+    /// - `parent_idx`: which node's parent to rearrange
+    pub fn reorder_node_delta(&mut self, node_idx: usize, parent_idx: usize, delta_target_location: i32) -> GraphResult<()> {
+        if delta_target_location == 0 {
+            return Ok(());
+        }
+        let parents_vec = &mut self.nodes[parent_idx]
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .metadata
+            .children;
+        if let Some(pos) = parents_vec.iter().position(|&x| x == node_idx) {
+            let pos_fix;
+            // FIXME: uhm..
+
+            if delta_target_location < 0 && pos as i32 >= delta_target_location {
+                if pos as i32 + delta_target_location < 0 {
+                    return Err(ErrorType::IndexOutOfRange(format!("Index is out of range from parents when reordering. Max move count: {}", pos)));
+                }
+                pos_fix = pos - delta_target_location.abs() as usize;
+            } else {
+                if pos + delta_target_location as usize > parents_vec.len() - 1 {
+                    return Err(ErrorType::IndexOutOfRange(format!("Index is out of range from parents when reordering. Max move count: {}", parents_vec.len() - 1 - pos)));
+
+                }
+                pos_fix = pos + delta_target_location as usize;
+            }
+            parents_vec.remove(pos);
+            parents_vec.insert(pos_fix, node_idx);
+        } else {
+            return Err(ErrorType::MalformedIndex(format!("Index {} not found in {} when reordering", node_idx, parent_idx)))
+        }
+        Ok(())
+    }
 }
 
 /// Getters for external crates to obtain indices from private fields under `Graph`.

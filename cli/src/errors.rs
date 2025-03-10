@@ -7,7 +7,7 @@ use tuecore::doc;
 
 #[derive(Error)]
 pub(crate) enum AppError {
-    #[error("Graph error: {0}\n")]
+    #[error("Graph error: {0}")]
     GraphError(#[from] graph::errors::ErrorType),
 
     #[error("Load/save operation error: {0}")]
