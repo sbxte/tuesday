@@ -402,10 +402,11 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     println!("{}", parents_title());
 
                     for id in parents {
-                        if let Some(alias) = graph.get_node(id).metadata.alias {
-                            println!("* {}", display_id(id, Some(&alias)))
+                        let node = graph.get_node(id);
+                        if let Some(alias) = node.metadata.alias {
+                            println!("* {} ({})", display_id(id, Some(&alias)), node.title);
                         } else {
-                            println!("* {}", display_id(id, None))
+                            println!("* {} ({})", display_id(id, None), node.title);
 
                         }
                     }
