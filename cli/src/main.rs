@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
+use config::{get_config, CliConfig};
 use display::{aliases_title, display_id, parents_title, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
 use errors::AppError;
 use graph::CLIGraphOps;
@@ -21,8 +22,7 @@ use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
-
-fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
+fn handle_command(matches: &ArgMatches, graph: &mut Graph, config: &CliConfig) -> AppResult<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
             let root = sub_matches.get_flag("root");
@@ -38,7 +38,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .get_one::<String>("message")
                     .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
                 let idx = graph.insert_root(message.to_string(), pseudo);
-                print_link_root(idx, true);
+
+                if config.display.show_connections {
+                    print_link_root(idx, true);
+                }
                 return Ok(());
             } else if let Some(when) = date {
                 let date = parse_datetime_extended(when)?;
@@ -49,7 +52,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .unwrap_or(&empty);
 
                 let idx = graph.insert_date(message.clone(), date.date_naive());
-                print_link_dates(idx, true);
+                if config.display.show_connections {
+                    print_link_dates(idx, true);
+                }
                 return Ok(());
             } 
 
@@ -63,7 +68,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             };
             let parent = graph.get_index_cli(idx, false)?;
             let to = graph.insert_child(message.to_string(), parent, pseudo)?;
-            print_link(to, parent, true);
+
+            if config.display.show_connections {
+                print_link(to, parent, true);
+            }
             Ok(())
         }
         Some(("rm", sub_matches)) => {
@@ -77,7 +85,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 } else {
                     graph.remove(node_id)?;
                 }
-                print_removal(node_id, recursive);
+                if config.display.show_connections {
+                    print_removal(node_id, recursive);
+                }
             }
             Ok(())
         }
@@ -97,7 +107,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 assume_date_2
             )?;
             graph.link(parent, child)?;
-            print_link(child, parent, true);
+
+            if config.display.show_connections {
+                print_link(child, parent, true);
+            }
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
@@ -116,7 +129,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 assume_date_2
             )?;
             graph.unlink(parent, child)?;
-            print_link(parent, child, false);
+
+            if config.display.show_connections {
+                print_link(parent, child, false);
+            }
             Ok(())
         }
         Some(("mv", sub_matches)) => {
@@ -135,6 +151,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             for node in nodes {
                 let node = graph.get_index_cli(node, assume_date_1)?;
                 graph.mv(node, parent)?;
+                if config.display.show_connections {
+                    print_link(node, parent, true);
+                }
             }
             Ok(())
         }
@@ -599,6 +618,8 @@ fn main() -> AppResult<()> {
         println!("Version {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    
+    let config = get_config()?;
 
     let (mut graph, local) = match (
         matches.get_one::<String>("local").is_some(),
@@ -623,7 +644,7 @@ fn main() -> AppResult<()> {
         }
     };
 
-    handle_command(&matches, &mut graph)?;
+    handle_command(&matches, &mut graph, &config)?;
 
     if local {
         doc::save_local(

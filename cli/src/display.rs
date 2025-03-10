@@ -1,10 +1,97 @@
+
 use chrono::{Datelike, NaiveDate};
 use colored::Colorize;
 use tuecore::graph::node::task::{TaskData, TaskState};
 use tuecore::graph::node::{Node, NodeType};
 use tuecore::graph::{Graph, GraphGetters};
 
-use crate::AppResult;
+use crate::config::CliConfig;
+use crate::{AppError, AppResult};
+
+/// A struct representing 24-bit color.
+#[derive(Copy, Clone)]
+pub struct Color {
+    r: u8,
+    g: u8,
+    b: u8
+}
+
+impl Color {
+    pub(crate) const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+
+    pub(crate) fn from_hex(hex: &str) -> AppResult<Self> {
+        if hex.len() != 6 {
+            return Err(crate::AppError::ParseError("Error parsing color: hex color must be 6 digits".into()));
+        }
+
+        let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| AppError::ParseError("Invalid red component from color".to_string()))?;
+        let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| AppError::ParseError("Invalid green component from color".to_string()))?;
+        let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| AppError::ParseError("Invalid blue component from color".to_string()))?;
+
+        Ok(Color { r, g, b })
+    }
+
+    fn tup(&self) -> (u8, u8, u8) {
+        (self.r, self.g, self.b)
+    }
+}
+
+impl From<Color> for (u8, u8, u8) {
+    fn from(value: Color) -> Self {
+        (value.r, value.g, value.b)
+    }
+
+}
+
+#[derive(Copy, Clone)]
+pub enum ColorEnum {
+    Red,
+    Cyan,
+    Blue,
+    Green,
+    Orange,
+    Yellow,
+    Purple,
+    Magenta,
+    Grey,
+    DarkGrey,
+    White
+}
+
+impl From<ColorEnum> for Color {
+    fn from(value: ColorEnum) -> Self {
+        match value {
+            ColorEnum::Red => Color::new(200, 0, 0),
+            ColorEnum::Cyan => Color::new(0, 200, 200),
+            ColorEnum::Blue => Color::new(0, 0, 200),
+            ColorEnum::Green => Color::new(0, 200, 0),
+            ColorEnum::Orange => Color::new(255, 140, 0),
+            ColorEnum::Yellow => Color::new(255, 255, 100),
+            ColorEnum::Purple => Color::new(150, 0, 150),
+            ColorEnum::Magenta => Color::new(255, 100, 255),
+            ColorEnum::Grey => Color::new(150, 150, 150),
+            ColorEnum::DarkGrey => Color::new(90, 90, 90),
+            ColorEnum::White => Color::new(255, 255, 255),
+        }
+    }
+
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self {
+            r: 255,
+            g: 255,
+            b: 255
+        }
+    }
+}
+
+struct Displayer<'a> {
+    config: &'a CliConfig
+}
 
 pub fn aliases_title() -> String {
     format!("{}", "Aliases:".bold())
@@ -122,7 +209,6 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
     .num_days()
 }
 
-// TODO: make this configurable
 const HEATMAP_PALLETE: [(u8, u8, u8); 5] = [(58, 80, 162), (120, 94, 240), (220, 38, 127), (254, 97, 0), (255, 176, 0)];
 
 fn print_heatmap() {
