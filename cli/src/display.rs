@@ -141,17 +141,22 @@ impl<'a> Displayer<'a> {
 
     fn display_task_data(&self, task_data: &TaskData) -> String {
         match task_data.state {
-            TaskState::None => return self.config.display.icons.node_none.to_string(),
-            TaskState::Partial => return self.config.display.icons.node_partial.to_string(),
+            TaskState::None => return self.config.display.icons.node_none.to_string()
+                .custom_color(self.config.display.icons.node_none.color.tup()).to_string(),
+            TaskState::Partial => return self.config.display.icons.node_partial.to_string()
+                .custom_color(self.config.display.icons.node_partial.color.tup()).to_string(),
             TaskState::Done => return self.config.display.icons.node_checked.to_string()
+                .custom_color(self.config.display.icons.node_checked.color.tup()).to_string()
         }
     }
 
     fn display_nodetype(&self, node_type: &NodeType) -> String {
         match node_type {
             NodeType::Task(data) => self.display_task_data(data),
-            NodeType::Date(_) => return self.config.display.icons.node_date.to_string(),
-            NodeType::Pseudo => return self.config.display.icons.node_pseudo.to_string(),
+            NodeType::Date(_) => return self.config.display.icons.node_date.to_string()
+            .custom_color(self.config.display.icons.node_date.color.tup()).to_string(),
+            NodeType::Pseudo => return self.config.display.icons.node_pseudo.to_string()
+            .custom_color(self.config.display.icons.node_pseudo.color.tup()).to_string(),
         }
     }
 
@@ -197,20 +202,30 @@ impl<'a> Displayer<'a> {
         }
 
         for _ in 0..(depth - 1) {
-            print!(" {}  ", self.config.display.icons.arm_bar);
+            print!(" {}  ", self.config.display.icons.arm_bar.to_string()
+                .custom_color(self.config.display.icons.arm_bar.color.tup())
+            );
         }
 
         if dots {
             if last {
-                print!(" {}", self.config.display.icons.arm_multiparent_last);
+                print!(" {}", self.config.display.icons.arm_multiparent_last.to_string()
+                .custom_color(self.config.display.icons.arm_multiparent_last.color.tup())
+                );
             } else {
-                print!(" {}", self.config.display.icons.arm_multiparent);
+                print!(" {}", self.config.display.icons.arm_multiparent.to_string()
+                .custom_color(self.config.display.icons.arm_multiparent.color.tup())
+                );
             }
         } else {
             if last {
-                print!(" {}", self.config.display.icons.arm_last);
+                print!(" {}", self.config.display.icons.arm_last.to_string()
+                .custom_color(self.config.display.icons.arm_last.color.tup())
+                );
             } else {
-                print!(" {}", self.config.display.icons.arm);
+                print!(" {}", self.config.display.icons.arm.to_string()
+                .custom_color(self.config.display.icons.arm.color.tup())
+                );
 
             }
         }

@@ -11,9 +11,6 @@ date_fmt = "%Y-%m-%d"
 # Print info when a node is added/removed/linked/unlinked.
 show_connections = true
 
-# Unplanned
-# show_completion_status = true
-
 [display.icons]
 
 [display.icons.arm]
@@ -58,9 +55,6 @@ color = "purple"
 
 [[display.calendar]]
 
-# Unplanned
-# start_of_week: sun   # only sun or mon is supported
-
 [display.calendar.heatmap]
 
 # Heatmap for the calendar.
@@ -71,7 +65,3 @@ palette = [
   "FE6100",
   "E0A729" # Most amount of finished tasks
 ]
-
-# Unplanned
-# [defaults]
-# parent = "today"
