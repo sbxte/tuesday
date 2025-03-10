@@ -1,7 +1,7 @@
 //! This module contains graph operations that are only used by the CLI front-end.
 
 use tuecore::graph::{node::NodeType, Graph, GraphGetters};
-use crate::{dates::parse_datetime_extended, display::print_link, AppError, AppResult};
+use crate::{dates::parse_datetime_extended, AppError, AppResult};
 
 pub trait CLIGraphOps {
     fn get_index_cli(&self, id: &str, assume_date: bool) -> AppResult<usize>;
@@ -74,8 +74,6 @@ impl CLIGraphOps for Graph {
             self.set_task_state(new_node, data.state, true)?;
         };
 
-        print_link(from, to, true);
-
         Ok(new_node)
     }
 
@@ -89,6 +87,7 @@ impl CLIGraphOps for Graph {
 
         Ok(())
     }
+
     fn mv(&mut self, from: usize, to: usize) -> AppResult<()> {
         self.clean_parents(from)?;
         self.link(to, from)?;

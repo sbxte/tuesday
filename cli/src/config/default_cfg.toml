@@ -1,0 +1,77 @@
+# Default Configuration for tuecli
+
+[graph]
+# Automatically trim unused indices after each graph-related operations.
+auto_clean = false
+
+[display]
+# Date format used for date nodes
+date_fmt = "%Y-%m-%d"
+
+# Print info when a node is added/removed/linked/unlinked.
+show_connections = true
+
+# Unplanned
+# show_completion_status = true
+
+[display.icons]
+
+[display.icons.arm]
+icon = "+--"
+color = "FFFFFF"
+
+[display.icons.arm_last]
+icon = "+--"
+color = "FFFFFF"
+
+[display.icons.arm_multiparent]
+icon = "+.."
+color = "FFFFFF"
+
+[display.icons.arm_multiparent_last]
+icon = "+.."
+color = "FFFFFF"
+
+[display.icons.arm_bar]
+icon = "|"
+color = "FFFFFF"
+
+[display.icons.node_none]
+icon = "[ ]"
+color = "cyan"
+
+[display.icons.node_checked]
+icon = "[x]"
+color = "green"
+
+[display.icons.node_partial]
+icon = "[~]"
+color = "orange"
+
+[display.icons.node_pseudo]
+icon = "[*]"
+color = "yellow"
+
+[display.icons.node_date]
+icon = "[#]"
+color = "purple"
+
+[[display.calendar]]
+
+# Unplanned
+# start_of_week: sun   # only sun or mon is supported
+
+[display.calendar.heatmap]
+
+# Heatmap for the calendar.
+palette = [
+  "5A7EDE", # Least amount of finished tasks
+  "785EF0",
+  "DC267F",
+  "FE6100",
+  "E0A729" # Most amount of finished tasks
+]
+
+# Unplanned
+# [defaults]
+# parent = "today"

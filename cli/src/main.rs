@@ -2,13 +2,15 @@ mod display;
 mod errors;
 mod dates;
 mod graph;
+mod config;
 
 use std::path::PathBuf;
 
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use display::{aliases_title, display_id, parents_title, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
+use config::{get_config, CliConfig};
+use display::Displayer;
 use errors::AppError;
 use graph::CLIGraphOps;
 use rand::rng;
@@ -20,8 +22,7 @@ use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
-
-fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
+fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
     match matches.subcommand() {
         Some(("add", sub_matches)) => {
             let root = sub_matches.get_flag("root");
@@ -37,8 +38,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .get_one::<String>("message")
                     .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
                 let idx = graph.insert_root(message.to_string(), pseudo);
-                print_link_root(idx, true);
-                return Ok(());
+
+                if config.display.show_connections {
+                    displayer.print_link_root(idx, true);
+                }
             } else if let Some(when) = date {
                 let date = parse_datetime_extended(when)?;
 
@@ -48,8 +51,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                     .unwrap_or(&empty);
 
                 let idx = graph.insert_date(message.clone(), date.date_naive());
-                print_link_dates(idx, true);
-                return Ok(());
+                if config.display.show_connections {
+                    displayer.print_link_dates(idx, true);
+                }
             } 
 
             let message = sub_matches
@@ -62,8 +66,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             };
             let parent = graph.get_index_cli(idx, false)?;
             let to = graph.insert_child(message.to_string(), parent, pseudo)?;
-            print_link(to, parent, true);
-            Ok(())
+
+            if config.display.show_connections {
+                displayer.print_link(to, parent, true);
+            }
         }
         Some(("rm", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
@@ -76,9 +82,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 } else {
                     graph.remove(node_id)?;
                 }
-                print_removal(node_id, recursive);
+                if config.display.show_connections {
+                    displayer.print_removal(node_id, recursive);
+                }
             }
-            Ok(())
         }
         Some(("link", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -96,8 +103,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 assume_date_2
             )?;
             graph.link(parent, child)?;
-            print_link(child, parent, true);
-            Ok(())
+
+            if config.display.show_connections {
+                displayer.print_link(child, parent, true);
+            }
         }
         Some(("unlink", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -115,8 +124,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 assume_date_2
             )?;
             graph.unlink(parent, child)?;
-            print_link(parent, child, false);
-            Ok(())
+
+            if config.display.show_connections {
+                displayer.print_link(parent, child, false);
+            }
         }
         Some(("mv", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -134,8 +145,10 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             for node in nodes {
                 let node = graph.get_index_cli(node, assume_date_1)?;
                 graph.mv(node, parent)?;
+                if config.display.show_connections {
+                    displayer.print_link(node, parent, true);
+                }
             }
-            Ok(())
         }
         Some(("set", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -144,7 +157,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 .get_one::<TaskState>("state")
                 .expect("node state required");
             graph.set_task_state(id, *state, true)?;
-            Ok(())
         }
         Some(("check", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -153,7 +165,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::Done, true)?;
             }
-            Ok(())
         }
         Some(("uncheck", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -162,7 +173,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::None, true)?;
             }
-            Ok(())
         }
         Some(("arc", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -171,7 +181,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, true)?;
             }
-            Ok(())
         }
         Some(("unarc", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -180,7 +189,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, false)?;
             }
-            Ok(())
         }
         Some(("alias", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -189,7 +197,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 .get_one::<String>("alias")
                 .expect("alias required");
             graph.set_alias(id, alias.clone())?;
-            Ok(())
         }
         Some(("unalias", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -198,19 +205,17 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.unset_alias(id)?;
             }
-            Ok(())
         }
         Some(("aliases", _)) => {
             let aliases = graph.get_aliases();
-            println!("{}", aliases_title());
+            println!("{}", displayer.aliases_title());
             if aliases.len() > 0 {
                 for (alias, idx) in aliases {
-                    println!(" * {}", display_id(*idx, Some(alias)));
+                    println!(" * {}", displayer.display_id(*idx, Some(alias)));
                 }
             } else {
                 println!("No added alias.");
             }
-            Ok(())
         }
         Some(("rename", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -219,7 +224,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 .get_one::<String>("message")
                 .expect("ID required");
             graph.rename_node(id, message.to_string())?;
-            Ok(())
         }
         Some(("ls", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -234,19 +238,16 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
 
             let show_archived = sub_matches.get_flag("archived");
             match sub_matches.get_one::<String>("ID") {
-                None => graph.list_roots(depth, show_archived)?,
-                Some(id) => graph.list_children(graph.get_index_cli(&id, assume_date)?, depth, show_archived)?,
+                None => displayer.list_roots(graph, depth, show_archived)?,
+                Some(id) => displayer.list_children(graph, graph.get_index_cli(&id, assume_date)?, depth, show_archived)?,
             }
-            Ok(())
         }
         Some(("lsd", sub_matches)) => {
             let show_archived = sub_matches.get_flag("archived");
-            graph.list_dates(show_archived)?;
-            Ok(())
+            displayer.list_dates(graph, show_archived)?;
         }
         Some(("lsa", _)) => {
-            graph.list_archived()?;
-            Ok(())
+            displayer.list_archived(graph)?;
         }
         Some(("rand", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -290,31 +291,29 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 None => return Err(AppError::NodeNoChildren),
                 Some(child) => {
                     // TODO: Don't use stat
-                    graph.print_stats(Some(*child))?;
+                    displayer.print_stats(graph, Some(*child))?;
                 }
             };
-            Ok(())
         }
         Some(("stats", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
             if let Some(id) = sub_matches.get_one::<String>("ID") {
-                graph.print_stats(Some(graph.get_index_cli( id, assume_date)?))
+                displayer.print_stats(graph, Some(graph.get_index_cli( id, assume_date)?))?;
             } else {
-                graph.print_stats(None)
-            }
+                displayer.print_stats(graph, None)?;
+            };
         }
         Some(("clean", _)) => {
             graph.clean();
-            Ok(())
         }
         Some(("cal", sub_matches)) => {
             let date_str = sub_matches.get_one::<String>("date");
             if let Some(date) = date_str {
                 let date = parse_datetime_extended(date)?;
-                return print_calendar(graph, &date.date_naive());
+                return displayer.print_calendar(graph, &date.date_naive());
             } else {
                 let today = Local::now();
-                return print_calendar(graph, &today.date_naive());
+                return displayer.print_calendar(graph, &today.date_naive());
             }
         }
         Some(("cp", sub_matches)) => {
@@ -368,7 +367,6 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 }
             }
 
-            Ok(())
         }
         Some(("ord", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -400,18 +398,17 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
 
             } else {
                 if parents.len() > 1 {
-                    println!("{}", parents_title());
+                    println!("{}", displayer.parents_title());
 
-                    for id in parents {
-                        let node = graph.get_node(id);
+                    for id in &parents {
+                        let node = graph.get_node(*id);
                         if let Some(alias) = node.metadata.alias {
-                            println!("* {} ({})", display_id(id, Some(&alias)), node.title);
+                            println!("* {} ({})", displayer.display_id(*id, Some(&alias)), node.title);
                         } else {
-                            println!("* {} ({})", display_id(id, None), node.title);
+                            println!("* {} ({})", displayer.display_id(*id, None), node.title);
 
                         }
                     }
-                    return Ok(())
                 }
                 parent_idx = parents[0];
             }
@@ -419,12 +416,22 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             match *direction {
                 OrderingDirection::Up => graph.reorder_node_delta(node_idx, parent_idx, -(*count as i32))?,
                 OrderingDirection::Down => graph.reorder_node_delta(node_idx, parent_idx, *count as i32)?,
-            }
+            };
 
-            Ok(())
         }
-        _ => Err(AppError::InvalidSubcommand),
+        Some(("dump-cfg", _)) => {
+            println!("{}", displayer.template_cfg());
+
+        }
+        _ => return Err(AppError::InvalidSubcommand),
+    };
+
+    // TODO: maybe dont run this every time?
+    if config.graph.auto_clean {
+        graph.clean();
     }
+
+    Ok(())
 }
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, clap::ValueEnum)]
@@ -587,6 +594,9 @@ fn cli() -> AppResult<Command> {
                 .value_parser(value_parser!(String))
                 .default_value("today"))
         )
+        .subcommand(Command::new("new-cfg")
+            .about("Dump a default configuration file. Recommended: run then redirect and save to ~/.tueconf.toml")
+        )
     )
 }
 
@@ -598,6 +608,8 @@ fn main() -> AppResult<()> {
         println!("Version {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    
+    let config = get_config()?;
 
     let (mut graph, local) = match (
         matches.get_one::<String>("local").is_some(),
@@ -622,7 +634,9 @@ fn main() -> AppResult<()> {
         }
     };
 
-    handle_command(&matches, &mut graph)?;
+    let displayer = Displayer::new(&config);
+
+    handle_command(&matches, &mut graph, &config, &displayer)?;
 
     if local {
         doc::save_local(

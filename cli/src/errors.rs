@@ -5,6 +5,8 @@ use thiserror::Error;
 use tuecore::graph;
 use tuecore::doc;
 
+use crate::config::ConfigReadError;
+
 #[derive(Error)]
 pub(crate) enum AppError {
     #[error("Graph error: {0}")]
@@ -35,7 +37,13 @@ pub(crate) enum AppError {
     DateParseError(#[from] ParseDateTimeError),
 
     #[error("Failed to get node index: {0}")]
-    IndexRetrievalError(String)
+    IndexRetrievalError(String),
+
+    #[error("Parse error: {0}")]
+    ParseError(String),
+
+    #[error("Configuration error: {0}")]
+    ConfigError(#[from] ConfigReadError),
 }
 
 // The default Debug implementation displays the enum like so:

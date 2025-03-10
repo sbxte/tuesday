@@ -950,6 +950,7 @@ dependencies = [
  "serde",
  "serde_yaml_ng",
  "thiserror",
+ "toml",
  "tuesday_core",
  "yaml-rust2",
 ]
