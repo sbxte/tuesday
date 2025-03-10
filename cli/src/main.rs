@@ -42,7 +42,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 if config.display.show_connections {
                     displayer.print_link_root(idx, true);
                 }
-                return Ok(());
             } else if let Some(when) = date {
                 let date = parse_datetime_extended(when)?;
 
@@ -55,7 +54,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 if config.display.show_connections {
                     displayer.print_link_dates(idx, true);
                 }
-                return Ok(());
             } 
 
             let message = sub_matches
@@ -72,7 +70,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             if config.display.show_connections {
                 displayer.print_link(to, parent, true);
             }
-            Ok(())
         }
         Some(("rm", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
@@ -89,7 +86,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                     displayer.print_removal(node_id, recursive);
                 }
             }
-            Ok(())
         }
         Some(("link", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -111,7 +107,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             if config.display.show_connections {
                 displayer.print_link(child, parent, true);
             }
-            Ok(())
         }
         Some(("unlink", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -133,7 +128,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             if config.display.show_connections {
                 displayer.print_link(parent, child, false);
             }
-            Ok(())
         }
         Some(("mv", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -155,7 +149,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                     displayer.print_link(node, parent, true);
                 }
             }
-            Ok(())
         }
         Some(("set", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -164,7 +157,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 .get_one::<TaskState>("state")
                 .expect("node state required");
             graph.set_task_state(id, *state, true)?;
-            Ok(())
         }
         Some(("check", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -173,7 +165,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::Done, true)?;
             }
-            Ok(())
         }
         Some(("uncheck", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -182,7 +173,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::None, true)?;
             }
-            Ok(())
         }
         Some(("arc", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -191,7 +181,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, true)?;
             }
-            Ok(())
         }
         Some(("unarc", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -200,7 +189,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, false)?;
             }
-            Ok(())
         }
         Some(("alias", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -209,7 +197,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 .get_one::<String>("alias")
                 .expect("alias required");
             graph.set_alias(id, alias.clone())?;
-            Ok(())
         }
         Some(("unalias", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -218,7 +205,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 let id = graph.get_index_cli(id, assume_date)?;
                 graph.unset_alias(id)?;
             }
-            Ok(())
         }
         Some(("aliases", _)) => {
             let aliases = graph.get_aliases();
@@ -230,7 +216,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             } else {
                 println!("No added alias.");
             }
-            Ok(())
         }
         Some(("rename", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -239,7 +224,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 .get_one::<String>("message")
                 .expect("ID required");
             graph.rename_node(id, message.to_string())?;
-            Ok(())
         }
         Some(("ls", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -257,16 +241,13 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 None => displayer.list_roots(graph, depth, show_archived)?,
                 Some(id) => displayer.list_children(graph, graph.get_index_cli(&id, assume_date)?, depth, show_archived)?,
             }
-            Ok(())
         }
         Some(("lsd", sub_matches)) => {
             let show_archived = sub_matches.get_flag("archived");
             displayer.list_dates(graph, show_archived)?;
-            Ok(())
         }
         Some(("lsa", _)) => {
             displayer.list_archived(graph)?;
-            Ok(())
         }
         Some(("rand", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
@@ -313,19 +294,17 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                     displayer.print_stats(graph, Some(*child))?;
                 }
             };
-            Ok(())
         }
         Some(("stats", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
             if let Some(id) = sub_matches.get_one::<String>("ID") {
-                displayer.print_stats(graph, Some(graph.get_index_cli( id, assume_date)?))
+                displayer.print_stats(graph, Some(graph.get_index_cli( id, assume_date)?))?;
             } else {
-                displayer.print_stats(graph, None)
-            }
+                displayer.print_stats(graph, None)?;
+            };
         }
         Some(("clean", _)) => {
             graph.clean();
-            Ok(())
         }
         Some(("cal", sub_matches)) => {
             let date_str = sub_matches.get_one::<String>("date");
@@ -388,7 +367,6 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 }
             }
 
-            Ok(())
         }
         Some(("ord", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
@@ -422,16 +400,15 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 if parents.len() > 1 {
                     println!("{}", displayer.parents_title());
 
-                    for id in parents {
-                        let node = graph.get_node(id);
+                    for id in &parents {
+                        let node = graph.get_node(*id);
                         if let Some(alias) = node.metadata.alias {
-                            println!("* {} ({})", displayer.display_id(id, Some(&alias)), node.title);
+                            println!("* {} ({})", displayer.display_id(*id, Some(&alias)), node.title);
                         } else {
-                            println!("* {} ({})", displayer.display_id(id, None), node.title);
+                            println!("* {} ({})", displayer.display_id(*id, None), node.title);
 
                         }
                     }
-                    return Ok(())
                 }
                 parent_idx = parents[0];
             }
@@ -439,12 +416,18 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             match *direction {
                 OrderingDirection::Up => graph.reorder_node_delta(node_idx, parent_idx, -(*count as i32))?,
                 OrderingDirection::Down => graph.reorder_node_delta(node_idx, parent_idx, *count as i32)?,
-            }
+            };
 
-            Ok(())
         }
-        _ => Err(AppError::InvalidSubcommand),
+        _ => return Err(AppError::InvalidSubcommand),
+    };
+
+    // TODO: maybe dont run this every time?
+    if config.graph.auto_clean {
+        graph.clean();
     }
+
+    Ok(())
 }
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, clap::ValueEnum)]

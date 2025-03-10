@@ -16,43 +16,43 @@ show_connections = true
 
 [display.icons]
 
-[[display.icons.arm]]
+[display.icons.arm]
 icon = "+--"
 color = "FFFFFF"
 
-[[display.icons.arm_last]]
+[display.icons.arm_last]
 icon = "+--"
 color = "FFFFFF"
 
-[[display.icons.arm_multiparent]]
+[display.icons.arm_multiparent]
 icon = "+.."
 color = "FFFFFF"
 
-[[display.icons.arm_multiparent_last]]
+[display.icons.arm_multiparent_last]
 icon = "+.."
 color = "FFFFFF"
 
-[[display.icons.arm_bar]]
+[display.icons.arm_bar]
 icon = "|"
 color = "FFFFFF"
 
-[[display.icons.node_none]]
+[display.icons.node_none]
 icon = "[ ]"
 color = "cyan"
 
-[[display.icons.node_checked]]
+[display.icons.node_checked]
 icon = "[x]"
 color = "green"
 
-[[display.icons.node_partial]]
+[display.icons.node_partial]
 icon = "[~]"
 color = "orange"
 
-[[display.icons.node_pseudo]]
+[display.icons.node_pseudo]
 icon = "[*]"
 color = "yellow"
 
-[[display.icons.node_date]]
+[display.icons.node_date]
 icon = "[#]"
 color = "purple"
 
@@ -61,7 +61,7 @@ color = "purple"
 # Unplanned
 # start_of_week: sun   # only sun or mon is supported
 
-[[display.calendar.heatmap]]
+[display.calendar.heatmap]
 
 # Heatmap for the calendar.
 palette = [

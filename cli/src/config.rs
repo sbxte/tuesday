@@ -3,6 +3,7 @@ mod defaults;
 use chrono::{Local, NaiveDate};
 use defaults::*;
 
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -54,6 +55,12 @@ impl Icon {
     pub fn colorize<T: Into<Color>>(mut self, color: T) -> Self {
         self.color = color.into();
         self
+    }
+}
+
+impl Display for Icon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -239,7 +246,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = arm.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.arm.color = Color::from_hex(val)
+                    conf.display.icons.arm.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_ARM, val
@@ -253,7 +260,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = arm_last.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.arm_last.color = Color::from_hex(val)
+                    conf.display.icons.arm_last.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_ARM_LAST, val
@@ -267,7 +274,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = arm_multiparent.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.arm_multiparent.color = Color::from_hex(val)
+                    conf.display.icons.arm_multiparent.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_ARM_MULTIPARENT, val
@@ -281,7 +288,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = arm_multiparent_last.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.arm_multiparent_last.color = Color::from_hex(val)
+                    conf.display.icons.arm_multiparent_last.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_ARM_MULTIPARENT_LAST, val
@@ -295,7 +302,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = arm_bar.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.arm_bar.color = Color::from_hex(val)
+                    conf.display.icons.arm_bar.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_ARM_BAR, val
@@ -309,7 +316,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = node_none.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.node_none.color = Color::from_hex(val)
+                    conf.display.icons.node_none.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_NODE_NONE, val
@@ -323,7 +330,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = node_checked.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.node_checked.color = Color::from_hex(val)
+                    conf.display.icons.node_checked.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_NODE_CHECKED, val
@@ -337,7 +344,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = node_partial.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.node_partial.color = Color::from_hex(val)
+                    conf.display.icons.node_partial.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_NODE_PARTIAL, val
@@ -351,7 +358,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = node_pseudo.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.node_pseudo.color = Color::from_hex(val)
+                    conf.display.icons.node_pseudo.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_NODE_PSEUDO, val
@@ -365,7 +372,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
 
                 if let Some(val) = node_date.get(KEY_DISPLAY_COLOR).and_then(toml::Value::as_str) {
-                    conf.display.icons.node_date.color = Color::from_hex(val)
+                    conf.display.icons.node_date.color = Color::from_str(val)
                         .map_err(|_| ConfigReadError::ColorParseErr(format!(
                             "Invalid color for {}{}{}: {}",
                             KEY_DISPLAY, KEY_DISPLAY_ICONS, KEY_DISPLAY_ICONS_NODE_DATE, val
@@ -380,7 +387,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 if let Some(val) = heatmap.get(KEY_DISPLAY_CALENDAR_HEATMAP_PALETTE).and_then(toml::Value::as_array) {
                     for (i, color_str) in val.iter().enumerate() {
                         if let Some(color) = color_str.as_str() {
-                            if let Ok(parsed_color) = Color::from_hex(color) {
+                            if let Ok(parsed_color) = Color::from_str(color) {
                                 conf.display.calendar_config.heatmap_palette[i] = parsed_color;
                             } else {
                                 return Err(ConfigReadError::ColorParseErr(format!(
@@ -393,7 +400,6 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
             }
         }
     }
-
     Ok(conf)
 }
 

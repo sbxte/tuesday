@@ -22,14 +22,17 @@ impl Color {
     }
 
     /// Convert from hex code formatted color to `Color`.
-    pub(crate) fn from_hex(hex: &str) -> AppResult<Self> {
-        if hex.len() != 6 {
+    pub(crate) fn from_str(input: &str) -> AppResult<Self> {
+        if let Some(col) = str_to_color_enum(input) {
+            return Ok(col.into())
+        }
+        if input.len() != 6 {
             return Err(crate::AppError::ParseError("Error parsing color: hex color must be 6 digits".into()));
         }
 
-        let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| AppError::ParseError("Invalid red component from color".to_string()))?;
-        let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| AppError::ParseError("Invalid green component from color".to_string()))?;
-        let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| AppError::ParseError("Invalid blue component from color".to_string()))?;
+        let r = u8::from_str_radix(&input[0..2], 16).map_err(|_| AppError::ParseError("Invalid red component from color".to_string()))?;
+        let g = u8::from_str_radix(&input[2..4], 16).map_err(|_| AppError::ParseError("Invalid green component from color".to_string()))?;
+        let b = u8::from_str_radix(&input[4..6], 16).map_err(|_| AppError::ParseError("Invalid blue component from color".to_string()))?;
 
         Ok(Color { r, g, b })
     }
@@ -60,6 +63,23 @@ pub enum ColorEnum {
     Grey,
     DarkGrey,
     White
+}
+
+fn str_to_color_enum(input: &str) -> Option<ColorEnum> {
+    match input {
+        "red" => Some(ColorEnum::Red),
+        "cyan" => Some(ColorEnum::Cyan),
+        "blue" => Some(ColorEnum::Blue),
+        "green" => Some(ColorEnum::Green),
+        "orange" => Some(ColorEnum::Orange),
+        "yellow" => Some(ColorEnum::Yellow),
+        "purple" => Some(ColorEnum::Purple),
+        "magenta" => Some(ColorEnum::Magenta),
+        "grey" => Some(ColorEnum::Grey),
+        "darkgrey" => Some(ColorEnum::DarkGrey),
+        "white" => Some(ColorEnum::White),
+        _ => None
+    }
 }
 
 impl From<ColorEnum> for Color {
@@ -121,17 +141,17 @@ impl<'a> Displayer<'a> {
 
     fn display_task_data(&self, task_data: &TaskData) -> String {
         match task_data.state {
-            TaskState::None => return " ".to_string(),
-            TaskState::Partial => return "~".to_string(),
-            TaskState::Done => return "x".to_string()
+            TaskState::None => return self.config.display.icons.node_none.to_string(),
+            TaskState::Partial => return self.config.display.icons.node_partial.to_string(),
+            TaskState::Done => return self.config.display.icons.node_checked.to_string()
         }
     }
 
     fn display_nodetype(&self, node_type: &NodeType) -> String {
         match node_type {
             NodeType::Task(data) => self.display_task_data(data),
-            NodeType::Date(_) => return "#".to_string(),
-            NodeType::Pseudo => return "*".to_string(),
+            NodeType::Date(_) => return self.config.display.icons.node_date.to_string(),
+            NodeType::Pseudo => return self.config.display.icons.node_pseudo.to_string(),
         }
     }
 
@@ -142,7 +162,7 @@ impl<'a> Displayer<'a> {
                 format!("({})", node.metadata.index)
             }
             .bright_blue();
-        let state = format!("{}{}{}", "[".bright_blue(), self.display_nodetype(&node.data), "]".bright_blue());
+        let state = self.display_nodetype(&node.data);
 
         let dim = node.metadata.archived;
 
@@ -153,9 +173,9 @@ impl<'a> Displayer<'a> {
                 format!(" {} ", node.title.clone())
             };
             if dim {
-                format!("{} {}{}{}", state, format!("[{}]", data.date.format("%Y-%m-%d")).dimmed(), title.dimmed(), index)
+                format!("{} {}{}{}", state, format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(), title.dimmed(), index)
             } else {
-                format!("{} {}{}{}", state, format!("[{}]", data.date.format("%Y-%m-%d")).dimmed(), title, index)
+                format!("{} {}{}{}", state, format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(), title, index)
             }
         } else {
             if dim {
@@ -167,22 +187,32 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn display_node(&self, node: &Node, depth: u32, last: bool) {
-        self.print_tree_indent(depth, node.metadata.parents.len() > 1);
+        self.print_tree_indent(depth, node.metadata.parents.len() > 1, last);
         println!("{}", self.fmt_node(node));
     }
 
-    pub fn print_tree_indent(&self, depth: u32, dots: bool) {
+    pub fn print_tree_indent(&self, depth: u32, dots: bool, last: bool) {
         if depth == 0 {
             return;
         }
 
         for _ in 0..(depth - 1) {
-            print!(" |  ");
+            print!(" {}  ", self.config.display.icons.arm_bar);
         }
+
         if dots {
-            print!(" +..");
+            if last {
+                print!(" {}", self.config.display.icons.arm_multiparent_last);
+            } else {
+                print!(" {}", self.config.display.icons.arm_multiparent);
+            }
         } else {
-            print!(" +--");
+            if last {
+                print!(" {}", self.config.display.icons.arm_last);
+            } else {
+                print!(" {}", self.config.display.icons.arm);
+
+            }
         }
     }
 
