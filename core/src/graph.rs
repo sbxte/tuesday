@@ -876,28 +876,6 @@ impl Graph {
         self.dates.get(&key).ok_or(ErrorType::DateNodeIndexRetrievalError(key)).copied()
     }
 
-    fn _parse_date(s: &str) -> IResult<&str, (u32, u32, u32)> {
-        use nom::bytes::complete::tag;
-        use nom::character::complete::digit1;
-        use nom::combinator::map_res;
-        let (s, year): (&str, u32) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
-        let (s, _) = tag("-")(s)?;
-        let (s, month) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
-        let (s, _) = tag("-")(s)?;
-        let (_, day) = map_res(digit1, |s: &str| s.parse::<u32>()).parse(s)?;
-        Ok(("", (year, month, day)))
-    }
-
-    /// Returns whether the provided string is a relative date
-    ///
-    /// The currently available relative dates are
-    /// - today
-    /// - tomorrow
-    /// - yesterday
-    pub fn is_relative_date(s: &str) -> bool {
-        s == "today" || s == "tomorrow" || s == "yesterday"
-    }
-
     /// Sets an alias for node at `index`
     pub fn set_alias(&mut self, index: usize, alias: String) -> GraphResult<()> {
         self.aliases.insert(alias.clone(), index);
