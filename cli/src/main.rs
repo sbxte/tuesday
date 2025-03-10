@@ -419,7 +419,7 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             };
 
         }
-        Some(("dump-cfg", _)) => {
+        Some(("new-cfg", _)) => {
             println!("{}", displayer.template_cfg());
 
         }
