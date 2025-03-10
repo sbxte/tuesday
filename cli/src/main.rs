@@ -1,6 +1,7 @@
 mod display;
 mod errors;
 mod dates;
+mod graph;
 
 use std::path::PathBuf;
 
@@ -8,6 +9,7 @@ use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
 use display::{aliases_title, display_alias, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
 use errors::AppError;
+use graph::CLIGraphOps;
 use rand::rng;
 use rand::seq::IndexedRandom as _;
 use tuecore::doc::{self, Doc};
@@ -17,38 +19,6 @@ use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
-/// Wrapper for the `get_index` method under `Graph` that also takes care of retrieving indices of date nodes.
-fn get_index(graph: &Graph, id: &str, assume_date: bool) -> AppResult<usize> {
-    // When user forces the ID to be interpreted as a date, just search through the dates hashmap.
-    if assume_date {
-        let date = parse_datetime_extended(id)?.date_naive();
-        return Ok(graph.get_date_index(&date)?);
-    }
-
-    // Normally, any number below the amount of dates from the current month can also be
-    // interpreted as a date. However, when the user is just writing arbitrary number, it's most
-    // likely that they're working with node indices. With this assumption, we parse any valid
-    // usize as a node index.
-    // edit: I may be wrong about this; maybe the implementation of parse_datetime is different
-    // than how GNU's date does it. uhh, we'll just leave it as is.
-    if let Ok(_) = id.parse::<u64>() {
-        return Ok(graph.get_index(id)?)
-    }
-
-    // The second priority to our ID matching are aliases.
-    if let Ok(idx) = graph.get_index(id) {
-        return Ok(idx)
-    }
-
-    // If none of those worked, then interpret the ID as a date.
-    if let Ok(date) = parse_datetime_extended(id)  {
-        let idx = graph.get_date_index(&date.date_naive())?;
-        return Ok(idx);
-    }
-
-    // If that didn't work as well then the ID is invalid.
-    Err(AppError::IndexRetrievalError("Failed to match index with node".to_string()))
-}
 
 fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
     match matches.subcommand() {
@@ -89,7 +59,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             } else {
                 return Err(AppError::InvalidArg("Parent ID required!".to_string()));
             };
-            let parent = get_index(graph, idx, false)?;
+            let parent = graph.get_index_cli(idx, false)?;
             let to = graph.insert_child(message.to_string(), parent, pseudo)?;
             print_link(to, parent, true);
             Ok(())
@@ -99,7 +69,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             for id in ids {
                 let recursive = sub_matches.get_flag("recursive");
-                let node_id = get_index(graph, id, assume_date)?;
+                let node_id = graph.get_index_cli(id, assume_date)?;
                 if recursive {
                     graph.remove_children_recursive(node_id)?;
                 } else {
@@ -111,15 +81,13 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("link", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let parent = get_index(
-                graph,
+            let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
                 assume_date
             )?;
-            let child = get_index(
-                graph,
+            let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
@@ -131,15 +99,13 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("unlink", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let parent = get_index(
-                graph,
+            let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
                 assume_date
             )?;
-            let child = get_index(
-                graph,
+            let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
@@ -155,16 +121,15 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let nodes = sub_matches
                 .get_many::<String>("node")
                 .expect("node ID required");
-            let parent = get_index(
-                graph,
-                sub_matches
+            let parent = graph.get_index_cli(
+            sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
                 assume_date_2
             )?;
 
             for node in nodes {
-                let node = get_index(graph, node, assume_date_1)?;
+                let node = graph.get_index_cli(node, assume_date_1)?;
                 graph.clean_parents(node)?;
                 graph.link(parent, node)?;
             }
@@ -172,7 +137,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("set", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let state = sub_matches
                 .get_one::<TaskState>("state")
                 .expect("node state required");
@@ -183,7 +148,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, assume_date)?;
+                let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::Done, true)?;
             }
             Ok(())
@@ -192,7 +157,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, assume_date)?;
+                let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_task_state(id, TaskState::None, true)?;
             }
             Ok(())
@@ -201,7 +166,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, assume_date)?;
+                let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, true)?;
             }
             Ok(())
@@ -210,14 +175,14 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, assume_date)?;
+                let id = graph.get_index_cli(id, assume_date)?;
                 graph.set_archived(id, false)?;
             }
             Ok(())
         }
         Some(("alias", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let alias = sub_matches
                 .get_one::<String>("alias")
                 .expect("alias required");
@@ -228,7 +193,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
-                let id = get_index(graph, id, assume_date)?;
+                let id = graph.get_index_cli(id, assume_date)?;
                 graph.unset_alias(id)?;
             }
             Ok(())
@@ -247,7 +212,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         }
         Some(("rename", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = get_index(graph, sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let message = sub_matches
                 .get_one::<String>("message")
                 .expect("ID required");
@@ -268,7 +233,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             let show_archived = sub_matches.get_flag("archived");
             match sub_matches.get_one::<String>("ID") {
                 None => graph.list_roots(depth, show_archived)?,
-                Some(id) => graph.list_children(get_index(graph, &id, assume_date)?, depth, show_archived)?,
+                Some(id) => graph.list_children(graph.get_index_cli(&id, assume_date)?, depth, show_archived)?,
             }
             Ok(())
         }
@@ -293,7 +258,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 ));
             }
 
-            let mut nodes = graph.get_node_children(get_index(graph, id, assume_date)?).clone();
+            let mut nodes = graph.get_node_children(graph.get_index_cli(id, assume_date)?).clone();
             let item;
             if unchecked {
                 nodes.retain(|x| {
@@ -330,7 +295,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
         Some(("stats", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
             if let Some(id) = sub_matches.get_one::<String>("ID") {
-                graph.print_stats(Some(get_index(graph, id, assume_date)?))
+                graph.print_stats(Some(graph.get_index_cli( id, assume_date)?))
             } else {
                 graph.print_stats(None)
             }
