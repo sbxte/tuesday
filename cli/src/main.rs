@@ -239,8 +239,9 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             }
             Ok(())
         }
-        Some(("lsd", _)) => {
-            graph.list_dates()?;
+        Some(("lsd", sub_matches)) => {
+            let show_archived = sub_matches.get_flag("archived");
+            graph.list_dates(show_archived)?;
             Ok(())
         }
         Some(("lsa", _)) => {
@@ -543,6 +544,7 @@ fn cli() -> AppResult<Command> {
         )
         .subcommand(Command::new("lsd")
             .about("Lists all date nodes")
+            .arg(arg!(-a --archived "Display archived nodes"))
         )
         .subcommand(Command::new("lsa")
             .about("Lists all archived nodes")

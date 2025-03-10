@@ -222,7 +222,7 @@ pub trait CLIDisplay {
 
     fn list_archived(&self) -> AppResult<()>;
 
-    fn list_dates(&self) -> AppResult<()>;
+    fn list_dates(&self, skip_archived: bool) -> AppResult<()>;
 
     fn list_children(&self, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()>;
 
@@ -274,8 +274,10 @@ impl CLIDisplay for Graph {
         Ok(())
     }
 
-    fn list_dates(&self) -> AppResult<()> {
-        let dates = self.get_date_nodes_indices();
+    fn list_dates(&self, skip_archived: bool) -> AppResult<()> {
+        let dates: Vec<usize> = self.get_date_nodes_indices().iter()
+            .filter(|idx| !self.get_node(**idx).metadata.archived || skip_archived)
+            .map(|x| *x).collect();
         self.traverse_recurse(dates.as_slice(), false, 1, 1, None, &mut |node, depth| {
             Self::display_node(node, depth-1)
         })?;
