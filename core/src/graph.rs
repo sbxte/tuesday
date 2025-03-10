@@ -182,11 +182,8 @@ impl Graph {
         }
 
         // Delete from date hashmap first if node is a date root node
-        if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
-            let data = &self.nodes[index].as_ref().unwrap().borrow().data;
-            if let NodeType::Date(data) = data {
-                self.dates.remove(&data.date.hashmap_format());
-            }
+        if let NodeType::Date(data) = &self.nodes[index].as_ref().unwrap().borrow().data {
+            self.dates.remove(&data.date.hashmap_format());
         }
 
         // Unlink node from parents and children
@@ -249,9 +246,8 @@ impl Graph {
             {
                 // Since they're now parentless, make them root.
                 // This is only applicable to non-date nodes.
-                if let NodeType::Task(_) = self.nodes[child].as_ref().unwrap().borrow().data {
-                    self.roots.push(child);
-                } else if let NodeType::Pseudo = self.nodes[child].as_ref().unwrap().borrow().data {
+                // Delete from date hashmap first if node is a date root node
+                if !&self.nodes[child].as_ref().unwrap().borrow().data.is_date() {
                     self.roots.push(child);
                 }
             }
@@ -332,11 +328,8 @@ impl Graph {
         }
 
         // Delete from date hashmap first if node is a date root node
-        if self.nodes[index].as_ref().unwrap().borrow().data.is_date() {
-            let data = &self.nodes[index].as_ref().unwrap().borrow().data;
-            if let NodeType::Date(data) = data {
-                self.dates.remove(&data.date.hashmap_format());
-            }
+        if let NodeType::Date(data) = &self.nodes[index].as_ref().unwrap().borrow().data {
+            self.dates.remove(&data.date.hashmap_format());
         }
 
         self.nodes[index] = None;
@@ -945,6 +938,13 @@ pub trait GraphGetters {
 
 impl GraphGetters for Graph {
     /// Get a node of an index from graph. Note that the returned node is cloned from the original.
+    /// *Warning: panics if index is invalid.*
+    ///
+    /// # Arguments
+    /// - `index`: index of node
+    ///
+    /// # Returns
+    /// A `Node`.
     fn get_node(&self, index: usize) -> Node {
         self.nodes[index].as_ref().unwrap().borrow().clone()
     }
