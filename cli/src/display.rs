@@ -214,7 +214,7 @@ pub fn print_calendar(graph: &Graph, date: &NaiveDate) -> AppResult<()> {
 
 /// CLI display methods.
 pub trait CLIDisplay {
-    fn display_node(node: &Node, depth: u32);
+    fn display_node(node: &Node, depth: u32, last: bool);
 
     fn print_tree_indent(depth: u32, dots: bool);
 
@@ -230,7 +230,7 @@ pub trait CLIDisplay {
 }
 
 impl CLIDisplay for Graph {
-    fn display_node(node: &Node, depth: u32) {
+    fn display_node(node: &Node, depth: u32, last: bool) {
         Graph::print_tree_indent(depth, node.metadata.parents.len() > 1);
         println!("{}", display_node(node));
     }
@@ -257,7 +257,7 @@ impl CLIDisplay for Graph {
             max_depth,
             1,
             None,
-            &mut |node, depth| Self::display_node(node, depth-1),
+            &mut |node, depth, last| Self::display_node(node, depth-1, last),
         )?;
         Ok(())
     }
@@ -269,7 +269,7 @@ impl CLIDisplay for Graph {
             1,
             1,
             None,
-            &mut |node, depth| Self::display_node(node, depth-1),
+            &mut |node, depth, last| Self::display_node(node, depth-1, last),
         )?;
         Ok(())
     }
@@ -278,15 +278,14 @@ impl CLIDisplay for Graph {
         let dates: Vec<usize> = self.get_date_nodes_indices().iter()
             .filter(|idx| !self.get_node(**idx).metadata.archived || skip_archived)
             .map(|x| *x).collect();
-        self.traverse_recurse(dates.as_slice(), false, 1, 1, None, &mut |node, depth| {
-            Self::display_node(node, depth-1)
-        })?;
+        self.traverse_recurse(dates.as_slice(), false, 1, 1, None,
+            &mut |node, depth, last| { Self::display_node(node, depth-1, last) })?;
         Ok(())
     }
 
     fn list_children(&self, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()> {
         // Display self as well
-        self.with_node(target, &mut |node| Self::display_node(node, 0));
+        self.with_node(target, &mut |node| Self::display_node(node, 0, false));
 
         self.traverse_recurse(
             self.get_node_children(target).as_slice(),
@@ -294,7 +293,7 @@ impl CLIDisplay for Graph {
             max_depth,
             1,
             Some(target),
-            &mut |node, depth| Self::display_node(node, depth),
+            &mut |node, depth, last| Self::display_node(node, depth, last),
         )?;
         Ok(())
     }

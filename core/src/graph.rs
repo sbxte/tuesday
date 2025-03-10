@@ -803,7 +803,9 @@ impl Graph {
         f(&node);
     }
 
-    /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to the current node and its nesting depth.
+    /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to
+    /// the current node (`&Node`), its depth (`usize`), and whether it's the last entry or not of
+    /// the parent (`bool`).
     pub fn traverse_recurse(
         &self,
         indices: &[usize],
@@ -811,30 +813,30 @@ impl Graph {
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &mut impl FnMut(&Node, u32),
+        f: &mut impl FnMut(&Node, u32, bool),
     ) -> GraphResult<()> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
             return Ok(());
         }
 
-        for i in indices {
+        for (i, idx) in indices.iter().enumerate() {
             if let Some(start) = start {
-                if *i == start {
-                    return Err(ErrorType::GraphLooped(start, *i));
+                if *idx == start {
+                    return Err(ErrorType::GraphLooped(start, *idx));
                 }
             }
 
             // If theres no need to show archived nodes then ignore it and its children
-            if skip_archived && self.nodes[*i].as_ref().unwrap().borrow().metadata.archived {
+            if skip_archived && self.nodes[*idx].as_ref().unwrap().borrow().metadata.archived {
                 continue;
             }
-            if let Some(node) = &self.nodes[*i] {
-                f(&node.borrow(), depth);
+            if let Some(node) = &self.nodes[*idx] {
+                f(&node.borrow(), depth, i == indices.len() - 1);
             }
 
             self.traverse_recurse(
-                self.nodes[*i]
+                self.nodes[*idx]
                     .as_ref()
                     .unwrap()
                     .borrow()
