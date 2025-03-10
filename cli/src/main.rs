@@ -42,6 +42,7 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 if config.display.show_connections {
                     displayer.print_link_root(idx, true);
                 }
+                
             } else if let Some(when) = date {
                 let date = parse_datetime_extended(when)?;
 
@@ -54,22 +55,23 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
                 if config.display.show_connections {
                     displayer.print_link_dates(idx, true);
                 }
-            } 
+            }  else {
+                let message = sub_matches
+                    .get_one::<String>("message")
+                    .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
+                let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
+                    i
+                } else {
+                    return Err(AppError::InvalidArg("Parent ID required!".to_string()));
+                };
+                let parent = graph.get_index_cli(idx, false)?;
+                let to = graph.insert_child(message.to_string(), parent, pseudo)?;
 
-            let message = sub_matches
-                .get_one::<String>("message")
-                .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
-            let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
-                i
-            } else {
-                return Err(AppError::InvalidArg("Parent ID required!".to_string()));
-            };
-            let parent = graph.get_index_cli(idx, false)?;
-            let to = graph.insert_child(message.to_string(), parent, pseudo)?;
-
-            if config.display.show_connections {
-                displayer.print_link(to, parent, true);
+                if config.display.show_connections {
+                    displayer.print_link(to, parent, true);
+                }
             }
+
         }
         Some(("rm", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
