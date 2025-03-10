@@ -109,7 +109,7 @@ impl Graph {
     pub fn insert_date(&mut self, message: String, date: NaiveDate) -> usize {
         let idx = self.nodes.len();
         let date_data = DateData { date };
-        let node = Node::new(message.clone(), idx, NodeType::Date(date_data.clone()));
+        let node = Node::new(message, idx, NodeType::Date(date_data.clone()));
         self.nodes.push(Some(RefCell::new(node)));
         self.dates.insert(date_data.format_for_hashmap(), idx);
         idx

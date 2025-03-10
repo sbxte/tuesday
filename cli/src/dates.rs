@@ -1,7 +1,7 @@
 use chrono::{DateTime, Datelike, FixedOffset, Local};
 use parse_datetime::{parse_datetime, ParseDateTimeError};
 
-// Wrapper that allows you to parse months.
+/// Wrapper for parse_datetime that also allows parses months.
 pub fn parse_datetime_extended(input: &str) -> Result<DateTime<FixedOffset>, ParseDateTimeError> {
     let now = Local::now();
     let extended_result = match input.to_lowercase().as_str() {

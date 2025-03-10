@@ -5,6 +5,7 @@ mod graph;
 
 use std::path::PathBuf;
 
+use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
 use display::{aliases_title, display_alias, print_calendar, print_link, print_link_dates, print_link_root, print_removal, CLIDisplay};
@@ -310,9 +311,62 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
                 let date = parse_datetime_extended(date)?;
                 return print_calendar(graph, &date.date_naive());
             } else {
-                let today = parse_datetime_extended("today")?;
+                let today = Local::now();
                 return print_calendar(graph, &today.date_naive());
             }
+        }
+        Some(("cp", sub_matches)) => {
+            // FIXME: weird logic idk?
+            let assume_date_1 = sub_matches.get_flag("assumedate1");
+            let assume_date_2 = sub_matches.get_flag("assumedate2");
+            let recursive = sub_matches.get_flag("recursive");
+
+            let parent_id = sub_matches
+                .get_one::<String>("parent")
+                .ok_or(AppError::InvalidArg("parent node ID is required!".to_string()))?;
+
+            let target_exists;
+
+            // if user gives a nonexistent date as a target, make a new date node.
+            let parent_idx = if let Ok(idx) = graph.get_index_cli(parent_id, assume_date_2) {
+                target_exists = true;
+                idx
+            } else if let Ok(date) = parse_datetime_extended(parent_id) {
+                if !recursive {
+                    return Err(AppError::InvalidArg("Copying a date node to a nonexistent date requires --recursive".to_string()))
+                }
+                target_exists = false;
+                graph.insert_date("".to_string(), date.date_naive())
+            } else {
+                return Err(AppError::IndexRetrievalError("Target node not found!".to_string()));
+            };
+
+            let from_ids = sub_matches.get_many::<String>("source")
+                .ok_or(AppError::InvalidArg("source node ID(s) is required!".to_string()))?;
+
+            for id in from_ids {
+                let from = graph.get_index_cli(id, assume_date_1)?;
+
+                // we make special treatment for date -> date copying, where the target date used
+                // to not exist. because the graph.copy method doesn't really care about the type
+                // of the node it's copying (everything will turn into normal nodes), we make the
+                // target manually then copy the children from the date node.
+                // also, recursion is guaranteed because of the logic above.
+                if !target_exists {
+                    let node = graph.get_node(from);
+                    for idx in node.metadata.children {
+                        graph.copy_recurse(idx, parent_idx)?;
+                    }
+                } else {
+                    if recursive {
+                        graph.copy_recurse(from, parent_idx)?;
+                    } else {
+                        graph.copy(from, parent_idx)?;
+                    }
+                }
+            }
+
+            Ok(())
         }
         _ => Err(AppError::InvalidSubcommand),
     }
@@ -351,22 +405,22 @@ fn cli() -> AppResult<Command> {
             .about("Creates a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
             .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
+            .arg(arg!(--assumedate1 "Force ID1 to be interpreted as a date"))
+            .arg(arg!(--assumedate2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("unlink")
             .about("Removes a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
             .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 to be interpreted as a date"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
+            .arg(arg!(--assumedate_1 "Force ID1 to be interpreted as a date"))
+            .arg(arg!(--assumedate_2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("mv")
             .about("Unlink nodes from all current parents, then link to a new parent")
             .arg(arg!(node: <ID1>... "Which nodes to unlink"))
             .arg(arg!(parent: <ID2> "New parent for node"))
-            .arg(arg!(-D1 --assumedate1 "Force ID1 (all when provided more than one) to be interpreted as a date"))
-            .arg(arg!(-D2 --assumedate2 "Force ID2 to be interpreted as a date"))
+            .arg(arg!(--assumedate1 "Force ID1 (all when provided more than one) to be interpreted as a date"))
+            .arg(arg!(--assumedate2 "Force ID2 to be interpreted as a date"))
         )
         .subcommand(Command::new("set")
             .about("Sets a node's state")
@@ -449,7 +503,17 @@ fn cli() -> AppResult<Command> {
         )
         .subcommand(Command::new("cal")
             .about("Print calendar to display date nodes")
-            .arg(arg!(date: [date] "Date to use (only the month will be considered)").value_parser(value_parser!(String)).default_value("today"))
+            .arg(arg!(date: [date] "Date to use (only the month will be considered)")
+                .value_parser(value_parser!(String))
+                .default_value("today"))
+        )
+        .subcommand(Command::new("cp")
+            .about("Copy a node to a parent")
+            .arg(arg!(source: <ID1>... "Which node to copy from"))
+            .arg(arg!(parent: <ID2> "Which node to copy to"))
+            .arg(arg!(-r --recursive "Whether to copy nodes recursively"))
+            .arg(arg!(-D1 --assumedate1 "Force IDs 1 to be interpreted as dates"))
+            .arg(arg!(-D2 --assumedate2 "Force ID 2 to be interpreted as a date"))
         )
     )
 }
