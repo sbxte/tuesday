@@ -25,6 +25,8 @@ pub trait CLIGraphOps {
     /// # Returns
     /// The index of the newly created node.
     fn copy_recurse(&mut self, from: usize, to: usize) -> AppResult<()>;
+
+    fn mv(&mut self, from: usize, to: usize) -> AppResult<()>;
 }
 
 impl CLIGraphOps for Graph {
@@ -85,6 +87,11 @@ impl CLIGraphOps for Graph {
             self.copy_recurse(child, new)?
         }
 
+        Ok(())
+    }
+    fn mv(&mut self, from: usize, to: usize) -> AppResult<()> {
+        self.clean_parents(from)?;
+        self.link(to, from)?;
         Ok(())
     }
 }

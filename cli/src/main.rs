@@ -133,8 +133,7 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
 
             for node in nodes {
                 let node = graph.get_index_cli(node, assume_date_1)?;
-                graph.clean_parents(node)?;
-                graph.link(parent, node)?;
+                graph.mv(node, parent)?;
             }
             Ok(())
         }
