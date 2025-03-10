@@ -514,8 +514,8 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(source: <ID1>... "Which node to copy from"))
             .arg(arg!(parent: <ID2> "Which node to copy to"))
             .arg(arg!(-r --recursive "Whether to copy nodes recursively"))
-            .arg(arg!(-D1 --assumedate1 "Force IDs 1 to be interpreted as dates"))
-            .arg(arg!(-D2 --assumedate2 "Force ID 2 to be interpreted as a date"))
+            .arg(arg!(--assumedate1 "Force IDs 1 to be interpreted as dates"))
+            .arg(arg!(--assumedate2 "Force ID 2 to be interpreted as a date"))
         )
     )
 }
