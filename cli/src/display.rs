@@ -85,16 +85,16 @@ fn str_to_color_enum(input: &str) -> Option<ColorEnum> {
 impl From<ColorEnum> for Color {
     fn from(value: ColorEnum) -> Self {
         match value {
-            ColorEnum::Red => Color::new(200, 0, 0),
-            ColorEnum::Cyan => Color::new(0, 200, 200),
-            ColorEnum::Blue => Color::new(0, 0, 200),
-            ColorEnum::Green => Color::new(0, 200, 0),
-            ColorEnum::Orange => Color::new(255, 140, 0),
-            ColorEnum::Yellow => Color::new(255, 255, 100),
-            ColorEnum::Purple => Color::new(150, 0, 150),
-            ColorEnum::Magenta => Color::new(255, 100, 255),
-            ColorEnum::Grey => Color::new(150, 150, 150),
-            ColorEnum::DarkGrey => Color::new(90, 90, 90),
+            ColorEnum::Red => Color::new(122, 20, 20),
+            ColorEnum::Cyan => Color::new(42, 112, 135),
+            ColorEnum::Blue => Color::new(52, 57, 158),
+            ColorEnum::Green => Color::new(60, 135, 45),
+            ColorEnum::Orange => Color::new(156, 80, 42),
+            ColorEnum::Yellow => Color::new(156, 132, 17),
+            ColorEnum::Purple => Color::new(107, 57, 145),
+            ColorEnum::Magenta => Color::new(117, 41, 113),
+            ColorEnum::Grey => Color::new(117, 117, 117),
+            ColorEnum::DarkGrey => Color::new(64, 64, 64),
             ColorEnum::White => Color::new(255, 255, 255),
         }
     }
