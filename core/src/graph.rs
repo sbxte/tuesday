@@ -6,7 +6,6 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
