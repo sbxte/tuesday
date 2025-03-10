@@ -81,36 +81,38 @@ fn handle_command(matches: &ArgMatches, graph: &mut Graph) -> AppResult<()> {
             Ok(())
         }
         Some(("link", sub_matches)) => {
-            let assume_date = sub_matches.get_flag("assumedate");
+            let assume_date_1 = sub_matches.get_flag("assumedate1");
+            let assume_date_2 = sub_matches.get_flag("assumedate2");
             let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date
+                assume_date_1
             )?;
             let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                assume_date
+                assume_date_2
             )?;
             graph.link(parent, child)?;
             print_link(child, parent, true);
             Ok(())
         }
         Some(("unlink", sub_matches)) => {
-            let assume_date = sub_matches.get_flag("assumedate");
+            let assume_date_1 = sub_matches.get_flag("assumedate1");
+            let assume_date_2 = sub_matches.get_flag("assumedate2");
             let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date
+                assume_date_1
             )?;
             let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                assume_date
+                assume_date_2
             )?;
             graph.unlink(parent, child)?;
             print_link(parent, child, false);
