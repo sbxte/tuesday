@@ -384,7 +384,7 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
         if let Some(calendar_cfg) = display_cfg.get(KEY_DISPLAY_CALENDAR) {
             if let Some(heatmap) = calendar_cfg.get(KEY_DISPLAY_CALENDAR_HEATMAP) {
                 if let Some(val) = heatmap.get(KEY_DISPLAY_CALENDAR_HEATMAP_PALETTE).and_then(toml::Value::as_array) {
-                    for (i, color_str) in val.iter().enumerate() {
+                    for (i, color_str) in val.iter().enumerate().take(5) {
                         if let Some(color) = color_str.as_str() {
                             if let Ok(parsed_color) = Color::from_str(color) {
                                 conf.display.calendar_config.heatmap_palette[i] = parsed_color;
