@@ -245,9 +245,16 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn list_roots(&self, graph: &Graph, max_depth: u32, show_archived: bool) -> AppResult<()> {
+        // TODO: wonky
         let indices = graph.get_root_nodes_indices();
-        for i in indices {
-            self.list_children(graph, *i, max_depth, show_archived)?
+        if max_depth == 1 {
+            for i in indices {
+                graph.with_node(*i, &mut |node| self.display_node(node, 0, false, &[]));
+            }
+        } else {
+            for i in indices {
+                self.list_children(graph, *i, max_depth - 1, show_archived)?
+            }
         }
         Ok(())
     }
