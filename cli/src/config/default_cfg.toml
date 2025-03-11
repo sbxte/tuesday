@@ -5,11 +5,15 @@
 auto_clean = false
 
 [display]
-# Date format used for date nodes
+# Date format used for date nodes.
 date_fmt = "%Y-%m-%d"
 
 # Print info when a node is added/removed/linked/unlinked.
 show_connections = true
+
+# Always print a trailing indentation bar.
+# Useful for showing levels of indentation.
+bar_indent = false
 
 [display.icons]
 

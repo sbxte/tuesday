@@ -191,20 +191,33 @@ impl<'a> Displayer<'a> {
         }
     }
 
-    pub fn display_node(&self, node: &Node, depth: u32, last: bool) {
-        self.print_tree_indent(depth, node.metadata.parents.len() > 1, last);
+    pub fn display_node(&self, node: &Node, depth: u32, last: bool, skipped_depths: &[u32]) {
+        self.print_tree_indent(depth, node.metadata.parents.len() > 1, last, skipped_depths);
         println!("{}", self.fmt_node(node));
     }
 
-    pub fn print_tree_indent(&self, depth: u32, dots: bool, last: bool) {
+    pub fn print_tree_indent(&self, depth: u32, dots: bool, last: bool, skipped_depths: &[u32]) {
         if depth == 0 {
             return;
         }
 
-        for _ in 0..(depth - 1) {
-            print!(" {}  ", self.config.display.icons.arm_bar.to_string()
-                .custom_color(self.config.display.icons.arm_bar.color.tup())
-            );
+        if !self.config.display.bar_indent {
+            for i in 0..depth - 1 {
+                if skipped_depths.iter().find(|j| **j == i).is_some() {
+                    print!("    ");
+                } else {
+                    print!(" {}  ", self.config.display.icons.arm_bar.to_string()
+                        .custom_color(self.config.display.icons.arm_bar.color.tup())
+                    );
+                }
+            }
+        } else {
+            for _ in 0..(depth - 1) {
+                print!(" {}  ", self.config.display.icons.arm_bar.to_string()
+                    .custom_color(self.config.display.icons.arm_bar.color.tup())
+                );
+            }
+
         }
 
         if dots {
@@ -232,14 +245,10 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn list_roots(&self, graph: &Graph, max_depth: u32, show_archived: bool) -> AppResult<()> {
-        graph.traverse_recurse(
-            graph.get_root_nodes_indices(),
-            show_archived,
-            max_depth,
-            1,
-            None,
-            &mut |node, depth, last| self.display_node(node, depth-1, last),
-        )?;
+        let indices = graph.get_root_nodes_indices();
+        for i in indices {
+            self.list_children(graph, *i, max_depth, show_archived)?
+        }
         Ok(())
     }
 
@@ -248,9 +257,7 @@ impl<'a> Displayer<'a> {
             graph.get_archived_node_indices(),
             true,
             1,
-            1,
-            None,
-            &mut |node, depth, last| self.display_node(node, depth-1, last),
+            &mut |node, depth, last, depth_of_last| self.display_node(node, depth-1, last, depth_of_last),
         )?;
         Ok(())
     }
@@ -259,22 +266,19 @@ impl<'a> Displayer<'a> {
         let dates: Vec<usize> = graph.get_date_nodes_indices().iter()
             .filter(|idx| !graph.get_node(**idx).metadata.archived || skip_archived)
             .map(|x| *x).collect();
-        graph.traverse_recurse(dates.as_slice(), false, 1, 1, None,
-            &mut |node, depth, last| { self.display_node(node, depth-1, last) })?;
+        graph.traverse_recurse(dates.as_slice(), false, 1, &mut |node, depth, last, depth_of_last| { self.display_node(node, depth-1, last,  depth_of_last) })?;
         Ok(())
     }
 
     pub fn list_children(&self, graph: &Graph, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()> {
         // Display self as well
-        graph.with_node(target, &mut |node| self.display_node(node, 0, false));
+        graph.with_node(target, &mut |node| self.display_node(node, 0, false, &[]));
 
         graph.traverse_recurse(
             graph.get_node_children(target).as_slice(),
             show_archived,
             max_depth,
-            1,
-            Some(target),
-            &mut |node, depth, last| self.display_node(node, depth, last),
+            &mut |node, depth, last, depth_of_last| self.display_node(node, depth, last, depth_of_last),
         )?;
         Ok(())
     }

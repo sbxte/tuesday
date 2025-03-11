@@ -121,13 +121,15 @@ pub struct DisplayConfig {
     pub(crate) date_fmt: String,
     pub(crate) show_connections: bool,
     pub(crate) icons: DisplayIconConfig,
-    pub(crate) calendar_config: CalendarConfig
+    pub(crate) calendar_config: CalendarConfig,
+    pub(crate) bar_indent: bool,
 }
 
 impl Default for DisplayConfig {
     fn default() -> Self {
         Self {
             show_connections: DEFAULT_SHOW_CONNECTIONS,
+            bar_indent: DEFAULT_BAR_INDENT,
             date_fmt: DEFAULT_DATE_FORMAT.to_string(),
             calendar_config: CalendarConfig::default(),
             icons: DisplayIconConfig::default()
@@ -194,6 +196,7 @@ pub fn read_file(path: &Path) -> ConfigParseResult<toml::Table> {
 const KEY_GRAPH: &str = "graph";
 const KEY_DISPLAY: &str = "display";
 const KEY_AUTO_CLEAN: &str = "auto_clean";
+const KEY_BAR_INDENT: &str = "bar_indent";
 const KEY_DATE_FMT: &str = "date_fmt";
 const KEY_SHOW_CONNECTIONS: &str = "show_connections";
 const KEY_DISPLAY_ICONS: &str = "icons";
@@ -231,6 +234,10 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
     if let Some(display_cfg) = toml.get(KEY_DISPLAY) {
         if let Some(val) = display_cfg.get(KEY_DATE_FMT).and_then(toml::Value::as_str) {
             conf.display.date_fmt = val.to_string();
+        }
+
+        if let Some(val) = display_cfg.get(KEY_BAR_INDENT).and_then(toml::Value::as_bool) {
+            conf.display.bar_indent = val;
         }
 
         if let Some(val) = display_cfg.get(KEY_SHOW_CONNECTIONS).and_then(toml::Value::as_bool) {

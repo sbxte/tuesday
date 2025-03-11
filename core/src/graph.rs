@@ -802,17 +802,22 @@ impl Graph {
         f(&node);
     }
 
+    // TODO: document this better
     /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to
-    /// the current node (`&Node`), its depth (`usize`), and whether it's the last entry or not of
-    /// the parent (`bool`).
-    pub fn traverse_recurse(
+    /// the current node (`&Node`), its depth (`usize`), whether it's the last entry or not of
+    /// the parent (`bool`), whether it's the child of a previous last entry (`bool`), and if so,
+    /// the depth of the previous last entr (`u32`).
+    pub fn _traverse_recurse(
         &self,
         indices: &[usize],
         skip_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
-        f: &mut impl FnMut(&Node, u32, bool),
+        child_of_last: bool,
+        skipped_depths: &mut Vec<u32>,
+        last_depth: &mut u32,
+        f: &mut impl FnMut(&Node, u32, bool, &[u32]),
     ) -> GraphResult<()> {
         // A sentinel value of 0 means infinite depth
         if max_depth != 0 && depth > max_depth {
@@ -830,11 +835,26 @@ impl Graph {
             if skip_archived && self.nodes[*idx].as_ref().unwrap().borrow().metadata.archived {
                 continue;
             }
+            
+            let last = i == indices.len() - 1;
+
+            let child_of_last = if last {
+                true
+            } else {
+                child_of_last
+            };
+
             if let Some(node) = &self.nodes[*idx] {
-                f(&node.borrow(), depth, i == indices.len() - 1);
+                f(&node.borrow(), depth, last, &skipped_depths);
             }
 
-            self.traverse_recurse(
+            if last {
+                skipped_depths.push(depth-1);
+            }
+
+            *last_depth = depth+1;
+
+            self._traverse_recurse(
                 self.nodes[*idx]
                     .as_ref()
                     .unwrap()
@@ -846,10 +866,29 @@ impl Graph {
                 max_depth,
                 depth + 1,
                 start,
+                child_of_last,
+                skipped_depths,
+                last_depth,
                 f,
             )?;
+
         }
+
+        if depth < *last_depth {
+            skipped_depths.pop();
+        }
+
         Ok(())
+    }
+
+    pub fn traverse_recurse(
+        &self,
+        indices: &[usize],
+        skip_archived: bool,
+        max_depth: u32,
+        f: &mut impl FnMut(&Node, u32, bool, &[u32]),
+    ) -> GraphResult<()> {
+        self._traverse_recurse(indices, skip_archived, max_depth, 1, None, false, &mut Vec::new(), &mut 0, f)
     }
 
     // TODO: returning an Option may make more sense?

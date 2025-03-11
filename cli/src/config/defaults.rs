@@ -16,6 +16,7 @@ pub const DEFAULT_GRAPH_AUTO_CLEAN: bool = false;
 // Display section
 pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 pub const DEFAULT_SHOW_CONNECTIONS: bool = true;
+pub const DEFAULT_BAR_INDENT: bool = true;
 
 // Icons - arms
 pub const DEFAULT_ICON_ARM: &str = "+--";
