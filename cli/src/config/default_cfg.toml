@@ -57,7 +57,7 @@ color = "yellow"
 icon = "[#]"
 color = "purple"
 
-[[display.calendar]]
+[display.calendar]
 
 [display.calendar.heatmap]
 
