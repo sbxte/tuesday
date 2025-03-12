@@ -260,18 +260,19 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn list_archived(&self, graph: &Graph) -> AppResult<()> {
-        graph.traverse_recurse(
-            graph.get_archived_node_indices(),
-            true,
-            1,
-            &mut |node, depth, last, depth_of_last| self.display_node(node, depth-1, last, depth_of_last),
-        )?;
+        // we probably don't want to recurse.
+        // TODO: or does it make more sense to recurse?
+        let indices = graph.get_archived_node_indices();
+
+        for i in indices {
+            graph.with_node(*i, &mut |node| self.display_node(node, 0, false, &[]));
+        }
         Ok(())
     }
 
     pub fn list_dates(&self, graph: &Graph, skip_archived: bool) -> AppResult<()> {
         let dates: Vec<usize> = graph.get_date_nodes_indices().iter()
-            .filter(|idx| !graph.get_node(**idx).metadata.archived || skip_archived)
+            .filter(|idx| !graph.get_node(**idx).metadata.archived || !skip_archived)
             .map(|x| *x).collect();
         graph.traverse_recurse(dates.as_slice(), false, 1, &mut |node, depth, last, depth_of_last| { self.display_node(node, depth-1, last,  depth_of_last) })?;
         Ok(())
