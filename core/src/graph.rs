@@ -802,11 +802,6 @@ impl Graph {
         f(&node);
     }
 
-    // TODO: document this better
-    /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to
-    /// the current node (`&Node`), its depth (`usize`), whether it's the last entry or not of
-    /// the parent (`bool`), whether it's the child of a previous last entry (`bool`), and if so,
-    /// the depth of the previous last entr (`u32`).
     pub fn _traverse_recurse(
         &self,
         indices: &[usize],
@@ -880,9 +875,14 @@ impl Graph {
             skipped_depths.pop();
         }
 
+
         Ok(())
     }
 
+    // TODO: document this better
+    /// Traverse nodes recusively. Calls a closure on each node traversal that takes a reference to
+    /// the current node (`&Node`), its depth (`usize`), whether it's the last entry or not of
+    /// the parent (`bool`), and arms of which depths to ignore when rendering (`&[u32]).
     pub fn traverse_recurse(
         &self,
         indices: &[usize],
