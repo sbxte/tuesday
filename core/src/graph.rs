@@ -824,16 +824,18 @@ impl Graph {
             return Ok(());
         }
 
+        // if we do not filter early, some arm renderings might look off.
+        // for example, an entry is not actually the last entry, but it is rendered as last because
+        // the actual last entry is archived. this will make the arm look wrong (not using the last
+        // arm icon).
+        let indices: Vec<usize> = indices
+            .iter().filter(|i| !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived).map(|x| *x).collect();
+
         for (i, idx) in indices.iter().enumerate() {
             if let Some(start) = start {
                 if *idx == start {
                     return Err(ErrorType::GraphLooped(start, *idx));
                 }
-            }
-
-            // If theres no need to show archived nodes then ignore it and its children
-            if skip_archived && self.nodes[*idx].as_ref().unwrap().borrow().metadata.archived {
-                continue;
             }
             
             let last = i == indices.len() - 1;
