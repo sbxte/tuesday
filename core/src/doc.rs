@@ -67,7 +67,7 @@ pub fn load(file: &mut File) -> DocResult<Graph> {
         Graph::new()
     } else {
         serde_yaml_ng::from_slice::<Doc>(bytes.as_slice())
-            .or(compat::compat_parse(bytes.as_slice()))?
+            .or_else(|_| compat::compat_parse(bytes.as_slice()))?
             .graph
     };
     Ok(graph)
