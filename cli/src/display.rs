@@ -253,7 +253,7 @@ impl<'a> Displayer<'a> {
             }
         } else {
             for i in indices {
-                self.list_children(graph, *i, max_depth - 1, show_archived)?
+                self.list_children(graph, *i, max_depth.checked_sub(1).unwrap_or(0), show_archived)?
             }
         }
         Ok(())
