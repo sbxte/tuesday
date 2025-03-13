@@ -1,15 +1,17 @@
+mod blueprints;
+mod config;
+mod dates;
 mod display;
 mod errors;
-mod dates;
 mod graph;
-mod config;
+mod paths;
 
 use std::path::PathBuf;
 
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use config::{get_config, CliConfig};
+use config::{get_config, CliConfig, DEFAULT_CFG_NAME};
 use display::Displayer;
 use errors::AppError;
 use graph::CLIGraphOps;
@@ -350,7 +352,7 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             for id in from_ids {
                 let from = graph.get_index_cli(id, assume_date_1)?;
 
-                // we make special treatment for date -> date copying, where the target date used
+                // we make special treatment for date -> date copying, when the target date used
                 // to not exist. because the graph.copy method doesn't really care about the type
                 // of the node it's copying (everything will turn into normal nodes), we make the
                 // target manually then copy the children from the date node.
@@ -454,6 +456,9 @@ fn cli() -> AppResult<Command> {
             .value_parser(value_parser!(String))
             .required(false))
         .arg(arg!(-g --global).required(false))
+        .arg(arg!(config: -c --config <path>)
+            .value_parser(value_parser!(PathBuf))
+            .required(false))
         .subcommand(Command::new("add")
             .about("Adds a node to the graph")
             .arg(Arg::new("message").help("This node's message").required_unless_present_any(vec!["date", "root"]))
@@ -611,7 +616,7 @@ fn main() -> AppResult<()> {
         return Ok(());
     }
     
-    let config = get_config()?;
+    let config = get_config(matches.get_one::<PathBuf>("config"))?;
 
     let (mut graph, local) = match (
         matches.get_one::<String>("local").is_some(),

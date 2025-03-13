@@ -10,12 +10,13 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::display::Color;
+use crate::paths::get_default_path;
 use crate::AppResult;
 
 pub type ConfigParseResult<T> = Result<T, ConfigReadError>;
 
 /// The default config file name
-pub const DEFAULT_FILENAME: &str = ".tueconf.toml";
+pub const DEFAULT_CFG_NAME: &str = ".tueconf.toml";
 
 /// Represents an error during reading a config file
 #[derive(Debug, Error)]
@@ -149,34 +150,6 @@ impl CliConfig {
             ..Default::default()
         }
     }
-}
-
-/// Returns the default config file located at the user's home directory
-/// If the file does not exist then it returns `None`
-pub fn get_home_default() -> Option<PathBuf> {
-    home::home_dir()
-        .map(|mut pathbuf| {
-            pathbuf.push(DEFAULT_FILENAME);
-            pathbuf
-        })
-        .filter(|pb| pb.exists() && pb.is_file())
-}
-
-/// Returns the default config file at a given directory path
-///
-/// - If a/b/c is a directory, a/b/c/[`DEFAULT_FILENAME`]
-/// - If none found so far, returns [`get_home_default`]
-pub fn get_default_at(mut pathbuf: PathBuf) -> Option<PathBuf> {
-    if pathbuf.exists() && pathbuf.is_dir() {
-        pathbuf.push(DEFAULT_FILENAME);
-        if pathbuf.exists() && pathbuf.is_file() {
-            return Some(pathbuf);
-        } else {
-            return None;
-        }
-    }
-
-    get_home_default()
 }
 
 /// Parses a file at path into a toml table
@@ -410,15 +383,17 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
 }
 
 
-pub fn get_config() -> AppResult<CliConfig> {
+pub fn get_config(config_path: Option<&PathBuf>) -> AppResult<CliConfig> {
     let conf;
-    if let Some(path) = get_home_default() {
-        if let Some(path) = get_default_at(path) {
-            let toml = read_file(&path)?;
-            conf = parse_config(&toml)?;
-        } else {
-        conf = CliConfig::default();
+
+    if let Some(path) = config_path {
+        if let Ok(res) = read_file(&path) {
+            return Ok(parse_config(&res)?);
         }
+    };
+    if let Some(path) = get_default_path(DEFAULT_CFG_NAME.into()) {
+        let toml = read_file(&path)?;
+        conf = parse_config(&toml)?;
     } else {
         conf = CliConfig::default();
     };
