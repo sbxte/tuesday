@@ -48,10 +48,6 @@ pub(crate) enum AppError {
 
     #[error("Blueprint error: {0}")]
     BlueprintError(#[from] BlueprintError),
-
-    #[error("Cannot remove parent from blueprint!")]
-    BlueprintParentRemovalError,
-
 }
 
 // The default Debug implementation displays the enum like so:

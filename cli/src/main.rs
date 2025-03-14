@@ -191,11 +191,18 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             let root = sub_matches.get_flag("root");
             let date = sub_matches.get_one::<String>("date");
             let pseudo = sub_matches.get_flag("pseudo");
+
+            if (root || date.is_some()) && is_bp_graph {
+                return Err(AppError::InvalidArg(
+                    "Cannot add a root or date node to a blueprint".to_string(),
+                ));
+            }
             if date.is_some() && root {
                 return Err(AppError::ConflictingArgs(
                     "Node cannot be both date node and root node!".to_string(),
                 ));
-            }
+            };
+
             if root {
                 let message = sub_matches
                     .get_one::<String>("message")
@@ -245,7 +252,9 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
 
                 // do not remove the root of a blueprint
                 if node_id == 0 && is_bp_graph {
-                    return Err(AppError::BlueprintParentRemovalError);
+                    return Err(AppError::InvalidArg(
+                        "Cannot remove parent from blueprint!".to_string(),
+                    ));
                 }
 
                 if recursive {
