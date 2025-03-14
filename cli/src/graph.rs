@@ -35,7 +35,7 @@ pub trait CLIGraphOps {
 
     fn _insert_blueprint_recurse(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc, blueprint_from: usize, node_parent: usize) -> AppResult<()>;
 
-    fn update_node_metadata_on_blueprint(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc);
+    fn update_node_metadata_on_blueprint(&mut self, parent: usize, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc);
 }
 
 
@@ -132,8 +132,8 @@ impl CLIGraphOps for Graph {
         Ok(new_id)
     }
 
-    fn update_node_metadata_on_blueprint(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc) {
-        for node in &blueprint.graph.nodes {
+    fn update_node_metadata_on_blueprint(&mut self, parent: usize, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc) {
+        for node in blueprint.graph.nodes.iter().filter(|n| n.metadata.index != parent) { // except the parent
             let mut mut_node = self.get_node_mut(map[&node.metadata.index]);
             mut_node.metadata.parents = node.metadata.parents.iter().map(|i| map[i]).collect();
             mut_node.metadata.children = node.metadata.children.iter().map(|i| map[i]).collect();
@@ -175,6 +175,6 @@ pub fn graph_from_blueprint(blueprint: &BlueprintDoc) -> AppResult<Graph> {
     for child in &new_parent.metadata.children {
         graph.insert_blueprint_recurse(&map, &blueprint, *child, parent_idx)?;
     }
-    graph.update_node_metadata_on_blueprint(&map, &blueprint);
+    graph.update_node_metadata_on_blueprint(blueprint.parent, &map, &blueprint);
     Ok(graph)
 }

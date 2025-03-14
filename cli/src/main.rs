@@ -133,7 +133,7 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 graph.insert_blueprint_recurse(&map, &bp, *child, parent_id)?;
             }
 
-            graph.update_node_metadata_on_blueprint(&map, &bp);
+            graph.update_node_metadata_on_blueprint(bp.parent, &map, &bp);
 
 
             if config.display.show_connections {
