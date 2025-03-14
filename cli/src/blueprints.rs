@@ -96,8 +96,8 @@ fn write_node_recurse(graph: &Graph, source_idx: usize, nodes_store: &mut Vec<No
     _write_node_recurse(graph, &map, source_idx, nodes_store);
 
     for node in nodes_store {
-        node.metadata.parents = node.metadata.parents.iter().map(|i| map[i]).collect();
-        node.metadata.children = node.metadata.children.iter().map(|i| map[i]).collect();
+        node.metadata.parents = node.metadata.parents.iter().filter_map(|i| map.get(i)).map(|i| *i).collect();
+        node.metadata.children = node.metadata.children.iter().filter_map(|i| map.get(i)).map(|i| *i).collect();
     }
 
 }
