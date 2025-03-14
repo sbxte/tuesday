@@ -51,3 +51,6 @@ pub const DEFAULT_ICON_NODE_DATE: &str = "[#]";
 pub const DEFAULT_COLOR_NODE_DATE: ColorEnum = ColorEnum::Purple;
 
 pub const DEFAULT_CONFIG: &str = include_str!("default_cfg.toml");
+
+// Blueprint section
+pub const DEFAULT_BLUEPRINTS_STORE_PATH: &str = "$HOME/.tuesday_blueprints";

@@ -14,6 +14,10 @@ use errors::ErrorType;
 /// Update this whenever the structure of Config or Graph changes
 const VERSION: u32 = 6;
 
+pub const fn get_doc_ver() -> u32 {
+    VERSION
+}
+
 const FILENAME: &str = ".tuesday";
 
 /// Result of save file operation.

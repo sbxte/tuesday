@@ -1,6 +1,7 @@
 mod defaults;
 
 pub use defaults::*;
+use home::home_dir;
 
 use std::fmt::Display;
 use std::fs::OpenOptions;
@@ -21,6 +22,9 @@ pub const DEFAULT_CFG_NAME: &str = ".tueconf.toml";
 /// Represents an error during reading a config file
 #[derive(Debug, Error)]
 pub enum ConfigReadError {
+    #[error("Failed to get home directory!")]
+    NoHome,
+
     #[error("File does not exist: {0}")]
     NonexistantFile(PathBuf),
 
@@ -32,6 +36,19 @@ pub enum ConfigReadError {
 
     #[error("Color parse error: {0}")]
     ColorParseErr(String),
+}
+
+pub struct BlueprintsConfig {
+    pub(crate) store_path: PathBuf
+}
+
+impl Default for BlueprintsConfig {
+    fn default() -> Self {
+        Self {
+            store_path: DEFAULT_BLUEPRINTS_STORE_PATH.replace("$HOME", &home_dir().expect("failed to get home directory").to_string_lossy()).into()
+        }
+        
+    }
 }
 
 pub struct GraphConfig {
@@ -142,6 +159,7 @@ impl Default for DisplayConfig {
 pub struct CliConfig {
     pub(crate) graph: GraphConfig,
     pub(crate) display: DisplayConfig,
+    pub(crate) blueprints: BlueprintsConfig,
 }
 
 impl CliConfig {
@@ -188,6 +206,8 @@ const KEY_DISPLAY_ICONS_NODE_DATE: &str = "node_date";
 const KEY_DISPLAY_CALENDAR: &str = "calendar";
 const KEY_DISPLAY_CALENDAR_HEATMAP: &str = "heatmap";
 const KEY_DISPLAY_CALENDAR_HEATMAP_PALETTE: &str = "palette";
+const KEY_BLUEPRINTS: &str = "blueprints";
+const KEY_BLUEPRINTS_STORE_PATH: &str = "store_path";
 
 /// Parses core configurations from a toml table
 /// Any missing or malformed values will be replaced with defaults.
@@ -378,7 +398,16 @@ pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
                 }
             }
         }
+
     }
+
+    // Blueprints configuration
+    if let Some(blueprints_cfg) = toml.get(KEY_BLUEPRINTS) {
+        if let Some(path) = blueprints_cfg.get(KEY_BLUEPRINTS_STORE_PATH).and_then(toml::Value::as_str) {
+            conf.blueprints.store_path = path.replace("$HOME", &home_dir().ok_or(ConfigReadError::NoHome)?.to_string_lossy()).into();
+        };
+    };
+
     Ok(conf)
 }
 

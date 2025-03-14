@@ -139,6 +139,37 @@ impl<'a> Displayer<'a> {
         }
     }
 
+    pub fn display_bp_title(&self, author: Option<&str>, filename: &str) -> String {
+        format!("{}: {}\n{}: {}\n", "File".bold(), filename.green(), "Author".bold(), author.unwrap_or("(unknown)").cyan())
+    }
+
+    pub fn display_bp_written(&self, path: &str) -> String {
+        format!("Written file to {}.", path.bold().bright_blue())
+    }
+
+    pub fn display_bp_deleted(&self, path: &str) -> String {
+        format!("Blueprint file {} deleted.", path.bold().bright_blue())
+    }
+
+    pub fn display_bp_inserted(&self, name: &str, id: usize) {
+        let from = format!("({})", name).bright_blue();
+        let to = format!("({})", id).bright_blue();
+        println!("{} -> {}", from.bright_blue(), to.to_string().bright_blue());
+    }
+
+    pub fn list_blueprints(&self, files: &[String]) {
+        println!("{}", "Blueprints:".bold());
+
+        if files.len() == 0 {
+            println!("No added blueprint.");
+        }
+
+        for file in files {
+            println!(" * {}", file.green());
+        }
+
+    }
+
     fn display_task_data(&self, task_data: &TaskData) -> String {
         match task_data.state {
             TaskState::None => return self.config.display.icons.node_none.to_string()

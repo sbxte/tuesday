@@ -1,7 +1,7 @@
 pub mod errors;
 pub mod node;
 
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use anyhow::Result;
@@ -987,6 +987,9 @@ impl Graph {
 /// Getters for external crates to obtain indices from private fields under `Graph`.
 pub trait GraphGetters {
     fn get_node(&self, index: usize) -> Node;
+    fn get_node_checked(&self, index: usize) -> Option<Node>;
+    fn node_at_exists(&self, index: usize) -> bool;
+    fn get_node_mut(&self, index: usize) -> RefMut<'_, Node>;
     fn get_root_nodes_indices(&self) -> &[usize];
     fn get_archived_node_indices(&self) -> &[usize];
 
@@ -996,6 +999,7 @@ pub trait GraphGetters {
 }
 
 impl GraphGetters for Graph {
+    // TODO: is panicking too much? 
     /// Get a node of an index from graph. Note that the returned node is cloned from the original.
     /// *Warning: panics if index is invalid.*
     ///
@@ -1006,6 +1010,32 @@ impl GraphGetters for Graph {
     /// A `Node`.
     fn get_node(&self, index: usize) -> Node {
         self.nodes[index].as_ref().unwrap().borrow().clone()
+    }
+
+    /// Get a node of an index from graph. Note that the returned node is cloned from the original.
+    ///
+    /// # Arguments
+    /// - `index`: index of node
+    ///
+    /// # Returns
+    /// An `Option` containing `Node` when node is found.
+    fn get_node_checked(&self, index: usize) -> Option<Node> {
+        if let Some(node) = self.nodes.get(index) {
+            if let Some(node) = node {
+                return Some(node.borrow().clone())
+            }
+        }
+        None
+    }
+
+    fn node_at_exists(&self, index: usize) -> bool {
+        self.nodes.get(index).is_some()
+        
+    }
+
+    /// Get a node of an index from graph.
+    fn get_node_mut(&self, index: usize) -> RefMut<'_, Node> {
+        self.nodes[index].as_ref().unwrap().borrow_mut()
     }
 
     fn get_root_nodes_indices(&self) -> &[usize] {

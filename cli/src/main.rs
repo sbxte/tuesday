@@ -6,26 +6,184 @@ mod errors;
 mod graph;
 mod paths;
 
+use std::ffi::{OsStr, OsString};
+use std::fs::{create_dir, remove_file, File};
 use std::path::PathBuf;
 
+use blueprints::{try_get_blueprint_from_save_dir, BlueprintDoc, BlueprintError, get_blueprints_listing};
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
-use config::{get_config, CliConfig, DEFAULT_CFG_NAME};
+use config::{get_config, CliConfig};
 use display::Displayer;
 use errors::AppError;
-use graph::CLIGraphOps;
+use graph::{graph_from_blueprint, new_graph_indices_map, CLIGraphOps};
 use rand::rng;
-use rand::seq::IndexedRandom as _;
-use tuecore::doc::{self, Doc};
+use rand::seq::IndexedRandom;
+use tuecore::doc::{self, get_doc_ver, Doc};
 use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
 use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
-fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
-    match matches.subcommand() {
+fn get_bp_path(save_dir: PathBuf, name: &str) -> PathBuf {
+    let mut path = save_dir.to_path_buf();
+    path.push(format!("{}.yaml", name));
+    path
+}
+
+fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
+    match subcommand {
+        Some(("edit", sub_matches)) => {
+            if let Some(args) = sub_matches.get_raw("args") {
+                let mut args: Vec<&OsStr> = args.collect();
+                let edit_cmd = OsString::from("edit");
+                args.insert(0, &edit_cmd);
+
+                let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+
+                // prioritize editing the file from current directory, if the file exists
+                let path = if PathBuf::from(name).exists() {
+                    PathBuf::from(name)
+                } else {
+                    get_bp_path(config.blueprints.store_path.clone(), name)
+                };
+
+                // TODO: dont let infinite recursion possible lol (tuecli bp edit path bp edit
+                // path bp edit path ...)
+                // while it won't actually work, the command would still get validated by clap (not
+                // validated by us tho!)
+                let matches = cli()?.get_matches_from(args);
+
+                let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| BlueprintError::FailedToAccess("Failed to match to any existing blueprint!".to_string()))?;
+
+                let mut graph = graph_from_blueprint(&bp)?;
+                handle_graph_command(matches.subcommand(), &mut graph, config, displayer, true)?;
+
+                let new_bp = BlueprintDoc::from_idx(&graph, get_doc_ver(), 0, bp.author);
+                let mut new_file = File::create(&path)?;
+                new_bp.save_to_file(&mut new_file)?;
+            } else {
+                return Err(AppError::InvalidSubcommand)
+            }
+        }
+        Some(("show", sub_matches)) => {
+            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            
+            let bp = if let Ok(bp) = try_get_blueprint_from_save_dir(&config.blueprints.store_path, name) {
+                bp
+            } else if let Ok(bp) = blueprints::get_doc(&mut File::open(name)?) {
+                    bp
+            } else {
+                return Err(BlueprintError::FailedToAccess("failed to match to any existing blueprint!".to_string()).into());
+            };
+
+            let graph = graph_from_blueprint(&bp)?;
+
+            println!("{}", displayer.display_bp_title(bp.author.as_deref(), &name));
+            displayer.list_roots(&graph, 0, false)?;
+        }
+        Some(("ls", _)) => {
+            let bps = get_blueprints_listing(&config.blueprints.store_path)?;
+            displayer.list_blueprints(&bps);
+        }
+        Some(("rm", sub_matches)) => {
+            let path = get_bp_path(config.blueprints.store_path.clone(), sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?);
+            remove_file(&path)?;
+            println!("{}", displayer.display_bp_deleted(&path.to_string_lossy()));
+        }
+        Some(("export", sub_matches)) => {
+            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let bp = try_get_blueprint_from_save_dir(&config.blueprints.store_path, name)?;
+            println!("{}", bp.to_string());
+
+        }
+        Some(("ins", sub_matches)) => {
+            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let title = sub_matches.get_one::<String>("title");
+            let id = sub_matches.get_one::<String>("ID");
+            let root = sub_matches.get_flag("root");
+            let assumedate = sub_matches.get_flag("assumedate");
+
+
+            let path = if PathBuf::from(name).exists() {
+                PathBuf::from(name)
+            } else {
+                get_bp_path(config.blueprints.store_path.clone(), name)
+            };
+
+            let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| BlueprintError::FailedToAccess("Failed to match to any existing blueprint!".to_string()))?;
+
+            let map = new_graph_indices_map(&bp, &graph, graph.get_nodes().len());
+
+            // TODO: send help
+            let new_parent = &bp.graph.nodes[bp.parent];
+            let parent_id = if root {
+                graph.insert_root(title.unwrap_or(&new_parent.title).to_string(), new_parent.data.is_pseudo())
+            } else {
+                // id shouldn't be None here since !root implies id being Some(..)
+                let id = graph.get_index_cli(id.unwrap(), assumedate)?;
+                graph.insert_child(title.unwrap_or(&new_parent.title).to_string(), id, new_parent.data.is_pseudo())?
+
+            };
+
+
+            for child in &new_parent.metadata.children {
+                graph.insert_blueprint_recurse(&map, &bp, *child, parent_id)?;
+            }
+
+            graph.update_node_metadata_on_blueprint(&map, &bp);
+
+
+            if config.display.show_connections {
+                displayer.display_bp_inserted(name, parent_id);
+            }
+
+        }
+        Some(("save", sub_matches)) => {
+            let id = sub_matches.get_one::<String>("ID").ok_or(AppError::InvalidSubcommand)?;
+            let mut author = sub_matches.get_one::<String>("author");
+            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let to_file = sub_matches.get_flag("to_file");
+            let preserve = sub_matches.get_flag("preserve");
+            let overwrite = sub_matches.get_flag("overwrite");
+            let assumedate = sub_matches.get_flag("assumedate");
+
+            let node_id = graph.get_index_cli(id, assumedate)?;
+            let bp = BlueprintDoc::from_idx(graph, get_doc_ver(), node_id, author.take().cloned());
+
+            let path = if to_file {
+                format!("{}.yaml", name).into()
+            } else {
+                if !&config.blueprints.store_path.exists() {
+                    create_dir(&config.blueprints.store_path).map_err(|e| BlueprintError::SaveDirError(e.to_string()))?;
+                }
+                let mut path = config.blueprints.store_path.clone();
+                path.push(format!("{}.yaml", name));
+                path
+            };
+
+            if path.exists() && !overwrite {
+                return Err(BlueprintError::FileExists(path.to_string_lossy().into()).into());
+            }
+
+            let mut file = File::create(&path)?;
+            bp.save_to_file(&mut file)?;
+
+            println!("{}", displayer.display_bp_written(&path.to_string_lossy()));
+
+            if !preserve {
+                graph.remove_children_recursive(node_id)?;
+            }
+        }
+        _ => return Err(AppError::InvalidSubcommand)
+    };
+    Ok(())
+}
+
+fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer, is_bp_graph: bool) -> AppResult<()> {
+    match subcommand {
         Some(("add", sub_matches)) => {
             let root = sub_matches.get_flag("root");
             let date = sub_matches.get_one::<String>("date");
@@ -81,6 +239,12 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
             for id in ids {
                 let recursive = sub_matches.get_flag("recursive");
                 let node_id = graph.get_index_cli(id, assume_date)?;
+
+                // do not remove the root of a blueprint
+                if node_id == 0 && is_bp_graph {
+                    return Err(AppError::BlueprintParentRemovalError);
+                }
+
                 if recursive {
                     graph.remove_children_recursive(node_id)?;
                 } else {
@@ -428,7 +592,7 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
 
         }
         _ => return Err(AppError::InvalidSubcommand),
-    };
+    }
 
     // TODO: maybe dont run this every time?
     if config.graph.auto_clean {
@@ -436,6 +600,14 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
     }
 
     Ok(())
+}
+
+fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
+    match matches.subcommand() {
+        Some(("bp", sub_matches)) => handle_blueprints_command(sub_matches.subcommand(), graph, config, displayer),
+        Some((_, _)) => handle_graph_command(matches.subcommand(), graph, config, displayer, false),
+        _ => Err(AppError::InvalidSubcommand),
+    }
 }
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, clap::ValueEnum)]
@@ -600,6 +772,52 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(date: [date] "Date to use (only the month will be considered)")
                 .value_parser(value_parser!(String))
                 .default_value("today"))
+        )
+        .subcommand(Command::new("bp")
+        .subcommand_required(true)
+            .about("Blueprints-related operations")
+            .subcommand(Command::new("ls")
+                .about("List blueprints from the save directory")
+            )
+            .subcommand(Command::new("save")
+                .about("Save node to blueprint")
+                .arg(arg!(<ID> "Which node to turn to a blueprint"))
+                .arg(arg!(<name> "Blueprint name")
+                    .value_parser(value_parser!(String)))
+                .arg(arg!(author: -a --author <name> "Author name of the blueprint")
+                    .value_parser(value_parser!(String)))
+                .arg(arg!(to_file: -f --file "Write to file with name <name> instead of to your save directory"))
+                .arg(arg!(preserve: -p --preserve "Preserve node after the conversion"))
+                .arg(arg!(overwrite: -o --overwrite "Overwrite existing blueprint"))
+                .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
+            )
+            .subcommand(Command::new("rm")
+                .about("Remove a blueprint")
+                .arg(arg!(<name> "Blueprint name to remove"))
+            )
+            .subcommand(Command::new("ins")
+                .about("Insert the blueprint to graph")
+                .arg(arg!(<name> "Name or path of blueprint file"))
+                .arg(Arg::new("ID").help("Parent of blueprint tree").required_unless_present("root"))
+                .arg(arg!([message] "Title of the new blueprint node"))
+                .arg(arg!(root: -r --root "Insert the blueprint to root"))
+                .arg(arg!(-D --assumedate "Force the ID to be interpreted as a date"))
+            )
+            .subcommand(Command::new("show")
+                .about("Show a blueprint file in tree/graph form")
+                .arg(arg!(<name> "Blueprint name or file"))
+            )
+            .subcommand(Command::new("export")
+                .about("Dump existing blueprint")
+                .arg(arg!(<name> "Blueprint name to export"))
+            )
+            .subcommand(Command::new("edit")
+                .about("Edits a blueprint file in-place")
+                .arg(arg!(<name> "Name or path of blueprint")
+                    .value_parser(value_parser!(String))
+                )
+                .arg(arg!(args: <args>... "Edit arguments"))
+            )
         )
         .subcommand(Command::new("new-cfg")
             .about("Dump a default configuration file. Recommended: run then redirect and save to ~/.tueconf.toml")
