@@ -175,6 +175,9 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
 
             if !preserve {
                 graph.remove_children_recursive(node_id)?;
+                if config.graph.auto_clean {
+                    graph.clean();
+                }
             }
         }
         _ => return Err(AppError::InvalidSubcommand)
