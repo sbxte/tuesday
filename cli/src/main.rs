@@ -339,6 +339,11 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             graph.set_task_state(id, *state, true)?;
         }
         Some(("check", sub_matches)) => {
+            if is_bp_graph {
+                return Err(AppError::InvalidArg(
+                    "Cannot check a blueprint node!".to_string(),
+                ));
+            }
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
@@ -347,6 +352,11 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             }
         }
         Some(("uncheck", sub_matches)) => {
+            if is_bp_graph {
+                return Err(AppError::InvalidArg(
+                    "Cannot uncheck a blueprint node!".to_string(),
+                ));
+            }
             let assume_date = sub_matches.get_flag("assumedate");
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
             for id in ids {
@@ -371,6 +381,11 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             }
         }
         Some(("alias", sub_matches)) => {
+            if is_bp_graph {
+                return Err(AppError::InvalidArg(
+                    "Aliases are not supported in blueprints!".to_string(),
+                ));
+            }
             let assume_date = sub_matches.get_flag("assumedate");
             let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
             let alias = sub_matches
