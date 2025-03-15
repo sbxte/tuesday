@@ -133,9 +133,12 @@ impl CLIGraphOps for Graph {
     }
 
     fn update_node_metadata_on_blueprint(&mut self, parent: usize, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc) {
-        for node in blueprint.graph.nodes.iter().filter(|n| n.metadata.index != parent) { // except the parent
+        // TODO: inconsistent with main's behavior
+        for node in &blueprint.graph.nodes { // except the parent
             let mut mut_node = self.get_node_mut(map[&node.metadata.index]);
-            mut_node.metadata.parents = node.metadata.parents.iter().map(|i| map[i]).collect();
+            if node.metadata.index != parent {
+                mut_node.metadata.parents = node.metadata.parents.iter().map(|i| map[i]).collect();
+            }
             mut_node.metadata.children = node.metadata.children.iter().map(|i| map[i]).collect();
         };
     }
