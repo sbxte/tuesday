@@ -5,7 +5,7 @@ use task::TaskData;
 pub mod date;
 pub mod task;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Node {
     pub title: String,
     pub data: NodeType,
@@ -98,7 +98,7 @@ impl Default for NodeType {
     }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NodeMetadata {
     pub archived: bool,
     pub index: usize,

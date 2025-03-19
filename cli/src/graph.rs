@@ -1,5 +1,8 @@
 //! This module contains graph operations that are only used by the CLI front-end.
 
+use std::collections::HashMap;
+
+use crate::blueprints::{BlueprintDoc, BlueprintGraph};
 use tuecore::graph::{node::NodeType, Graph, GraphGetters};
 use crate::{dates::parse_datetime_extended, AppError, AppResult};
 
@@ -27,7 +30,14 @@ pub trait CLIGraphOps {
     fn copy_recurse(&mut self, from: usize, to: usize) -> AppResult<()>;
 
     fn mv(&mut self, from: usize, to: usize) -> AppResult<()>;
+
+    fn insert_blueprint_recurse(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc, blueprint_from: usize, node_parent: usize) -> AppResult<usize>;
+
+    fn _insert_blueprint_recurse(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc, blueprint_from: usize, node_parent: usize) -> AppResult<()>;
+
+    fn update_node_metadata_on_blueprint(&mut self, parent: usize, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc);
 }
+
 
 impl CLIGraphOps for Graph {
     fn get_index_cli(&self, id: &str, assume_date: bool) -> AppResult<usize> {
@@ -93,4 +103,81 @@ impl CLIGraphOps for Graph {
         self.link(to, from)?;
         Ok(())
     }
+
+    fn _insert_blueprint_recurse(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc, blueprint_from: usize, node_parent: usize) -> AppResult<()> {
+        let node = &blueprint.graph.nodes[blueprint_from];
+
+        let children = node.metadata.children.clone();
+
+        if self.get_node_checked(map[&blueprint_from]).is_none() {
+            let new_id = self.insert_child(node.title.clone(), node_parent, node.data.is_pseudo())?;
+
+            for child in children {
+                self._insert_blueprint_recurse(map, blueprint, child, new_id)?;
+            }
+
+        };
+        Ok(())
+
+    }
+
+    /// Note: Also call `self.update_node_metadata` at the end to properly update the indices
+    /// inside the newly created nodes' metadata.
+    fn insert_blueprint_recurse(&mut self, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc, blueprint_from: usize, node_parent: usize) -> AppResult<usize> {
+
+        let new_id = self.get_nodes().len();
+
+        self._insert_blueprint_recurse(&map, blueprint, blueprint_from, node_parent)?;
+
+        Ok(new_id)
+    }
+
+    fn update_node_metadata_on_blueprint(&mut self, parent: usize, map: &HashMap<usize, usize>, blueprint: &BlueprintDoc) {
+        // TODO: inconsistent with main's behavior
+        for node in &blueprint.graph.nodes { // except the parent
+            let mut mut_node = self.get_node_mut(map[&node.metadata.index]);
+            if node.metadata.index != parent {
+                mut_node.metadata.parents = node.metadata.parents.iter().map(|i| map[i]).collect();
+            }
+            mut_node.metadata.children = node.metadata.children.iter().map(|i| map[i]).collect();
+        };
+    }
+
+
+}
+
+// same algo as core/graph.rs for remapping indices except we use hashmaps here since the remapped
+// indices count is almost definitely gonna be smaller
+fn _insert_idx_recurse(blueprint_graph: &BlueprintGraph, graph: &Graph, map: &mut HashMap<usize, usize>, node: usize, current_idx: &mut usize) {
+    if map.get(&node).is_none() {
+        map.insert(node, *current_idx);
+        *current_idx += 1;
+        true
+    } else {
+        false
+    };
+
+    let node_children = &blueprint_graph.nodes[node].metadata.children;
+    for child in node_children {
+        _insert_idx_recurse(blueprint_graph, graph, map, *child, current_idx);
+    }
+
+}
+
+pub fn new_graph_indices_map(blueprint: &BlueprintDoc, graph: &Graph, new_index: usize) -> HashMap<usize, usize> {
+    let mut map = HashMap::new();
+    _insert_idx_recurse(&blueprint.graph, graph, &mut map, blueprint.parent, &mut new_index.clone());
+    map
+}
+
+pub fn graph_from_blueprint(blueprint: &BlueprintDoc) -> AppResult<Graph> {
+    let mut graph = Graph::new();
+    let map = new_graph_indices_map(&blueprint, &graph, 0);
+    let new_parent = &blueprint.graph.nodes[blueprint.parent];
+    let parent_idx = graph.insert_root(new_parent.title.clone(), new_parent.data.is_pseudo());
+    for child in &new_parent.metadata.children {
+        graph.insert_blueprint_recurse(&map, &blueprint, *child, parent_idx)?;
+    }
+    graph.update_node_metadata_on_blueprint(blueprint.parent, &map, &blueprint);
+    Ok(graph)
 }

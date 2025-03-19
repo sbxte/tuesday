@@ -69,3 +69,8 @@ palette = [
   "FE6100",
   "E0A729" # Most amount of finished tasks
 ]
+
+[blueprints]
+
+# Where to store blueprints. $HOME is replaced with your home directory.
+store_path = "$HOME/.tuesday_blueprints"

@@ -41,8 +41,8 @@ So now we have something like:
 $> tuecli ls -r
 [ ] college (0)
  +--[ ] big research project (1)
- |   +--[ ] gather sample data (2)
- |   +--[ ] write report (3)
+     +--[ ] gather sample data (2)
+     +--[ ] write report (3)
 ```
 
 And we can alias the project too for quicker access:
@@ -314,6 +314,162 @@ Because of how Tuesday save files work, unused indices will not be reclaimed unl
 ```
 tuecli clean
 ```
+
+Or, you can set `graph.auto_clean` to true in your configuration file.
+
+
+## Blueprints
+
+Blueprints are template mini-graphs you can store, share, and reuse. They are made from existing node(s).
+
+Commands related to blueprints can be found by running:
+```
+tuecli bp
+```
+
+### Creating Blueprints
+
+Let's say you have a node tree like this:
+
+```
+[ ] study plan (86)
+ +--[ ] gather resources (87)
+ |   +--[ ] practice papers (88)
+ |   +--[ ] flashcards (89)
+ +--[ ] list of topics (90)
+ +--[ ] practice from papers (91)
+ +--[ ] final flashcards review (92)
+```
+
+You can turn it into a template by running:
+```
+tuecli bp save <ID> <name>
+```
+
+Based on our graph above, that'd be something like:
+```
+$> tuecli bp save 86 study
+Written file to /home/user/.tuesday_blueprints/study.yaml.
+```
+
+_Note: you can configure the save path from your Tuesday configuration file._
+
+After you ran the command, your node will **vanish**. If you'd like to keep your node around, pass the `-p` option:
+
+```
+$> tuecli bp save 86 study -p
+Written file to /home/user/.tuesday_blueprints/study.yaml.
+```
+
+You can also author your blueprint:
+```
+$> tuecli bp save 86 study -a "my name"
+```
+
+And to change the author later, simply edit the author field of the yaml from your blueprints save directory.
+
+### Listing Blueprints
+
+You can now see your blueprint:
+
+```
+$> tuecli bp ls
+Blueprints:
+ * study
+```
+
+To export one, run:
+
+```
+tuecli export <name>
+```
+
+which will dump the yaml content of the blueprint that you can now redirect or save somewhere. Or you can simply dig through your save directory and copy the file from there.
+
+
+### Showing Blueprints
+
+To view an existing blueprint, run:
+```
+tuecli bp show <name|path>
+```
+
+For example, for the previous blueprint:
+```
+$> tuecli bp show study
+File: study
+Author: my name
+
+[ ] study plan (0)
+ +--[ ] gather resources (1)
+ |   +--[ ] practice papers (2)
+ |   +--[ ] flashcards (3)
+ +--[ ] list of topics (4)
+ +--[ ] practice from papers (5)
+ +--[ ] final flashcards review (6)
+```
+
+
+### Inserting Blueprint
+Insert a blueprint by running:
+
+```
+tuecli bp ins <name> <parent ID>
+```
+
+For example, to put the `study` blueprint to `today`:
+```
+$> tuecli ins study today
+(study) -> (86)
+```
+
+Note that the node must already exist (in this case `today` must exist).
+
+Now we have:
+```
+[#] [2025-03-14] (83)
+ +--[ ] study plan (86)
+     +--[ ] gather resources (87)
+     |   +--[ ] practice papers (88)
+     |   +--[ ] flashcards (89)
+     +--[ ] list of topics (90)
+     +--[ ] practice from papers (91)
+     +--[ ] final flashcards review (92)
+```
+
+To insert a blueprint to root, you can run:
+```
+tuecli bp ins <name> -r
+```
+
+
+### Removing Blueprints
+
+Simply run:
+```
+tuecli bp rm <name>
+```
+
+Or, delete the yaml file from your save directory.
+
+### Editing Blueprints
+
+You can edit blueprints as if they're normal graphs. To edit a blueprint:
+
+```
+tuecli bp edit <name|path> -- [args]
+```
+
+*Note: the two slashes are used to pass flags/options as literal arguments which will be re-parsed internally. When you don't have any extra flags, it's ok to omit the slashes.*
+
+*Note: [args] must be a valid tuesday command, like `rm`, `add`, etc.*
+
+For example, to add a new node to the blueprint:
+```
+$> tuecli bp edit study -- add "write review notes" 0
+(7) -> (0)
+```
+
 
 # More Usage Help
 

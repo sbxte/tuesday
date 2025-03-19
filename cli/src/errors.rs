@@ -1,5 +1,6 @@
-use std::fmt;
+use crate::blueprints::BlueprintError;
 
+use std::fmt;
 use parse_datetime::ParseDateTimeError;
 use thiserror::Error;
 use tuecore::graph;
@@ -44,6 +45,9 @@ pub(crate) enum AppError {
 
     #[error("Configuration error: {0}")]
     ConfigError(#[from] ConfigReadError),
+
+    #[error("Blueprint error: {0}")]
+    BlueprintError(#[from] BlueprintError),
 }
 
 // The default Debug implementation displays the enum like so:
