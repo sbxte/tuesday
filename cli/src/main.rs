@@ -10,11 +10,14 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{create_dir, remove_file, File};
 use std::path::PathBuf;
 
-use blueprints::{try_get_blueprint_from_save_dir, BlueprintDoc, BlueprintError, get_blueprints_listing};
+use blueprints::{
+    get_blueprints_listing, try_get_blueprint_from_save_dir, BlueprintDoc, BlueprintError,
+};
 use chrono::Local;
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 
 use config::{get_config, CliConfig};
+use dates::parse_datetime_extended;
 use display::Displayer;
 use errors::AppError;
 use graph::{graph_from_blueprint, new_graph_indices_map, CLIGraphOps};
@@ -23,7 +26,6 @@ use rand::seq::IndexedRandom;
 use tuecore::doc::{self, get_doc_ver, Doc};
 use tuecore::graph::node::task::TaskState;
 use tuecore::graph::{Graph, GraphGetters};
-use dates::parse_datetime_extended;
 
 type AppResult<T> = Result<T, AppError>;
 
@@ -33,7 +35,12 @@ fn get_bp_path(save_dir: PathBuf, name: &str) -> PathBuf {
     path
 }
 
-fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
+fn handle_blueprints_command<'a>(
+    subcommand: Option<(&str, &ArgMatches)>,
+    graph: &mut Graph,
+    config: &CliConfig,
+    displayer: &'a Displayer,
+) -> AppResult<()> {
     match subcommand {
         Some(("edit", sub_matches)) => {
             if let Some(args) = sub_matches.get_raw("args") {
@@ -41,7 +48,9 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 let edit_cmd = OsString::from("edit");
                 args.insert(0, &edit_cmd);
 
-                let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+                let name = sub_matches
+                    .get_one::<String>("name")
+                    .ok_or(AppError::InvalidSubcommand)?;
 
                 // prioritize editing the file from current directory, if the file exists
                 let path = if PathBuf::from(name).exists() {
@@ -56,7 +65,11 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 // validated by us tho!)
                 let matches = cli()?.get_matches_from(args);
 
-                let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| BlueprintError::FailedToAccess("Failed to match to any existing blueprint!".to_string()))?;
+                let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| {
+                    BlueprintError::FailedToAccess(
+                        "Failed to match to any existing blueprint!".to_string(),
+                    )
+                })?;
 
                 let mut graph = graph_from_blueprint(&bp)?;
                 handle_graph_command(matches.subcommand(), &mut graph, config, displayer, true)?;
@@ -65,23 +78,33 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 let mut new_file = File::create(&path)?;
                 new_bp.save_to_file(&mut new_file)?;
             } else {
-                return Err(AppError::InvalidSubcommand)
+                return Err(AppError::InvalidSubcommand);
             }
         }
         Some(("show", sub_matches)) => {
-            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
-            
-            let bp = if let Ok(bp) = try_get_blueprint_from_save_dir(&config.blueprints.store_path, name) {
+            let name = sub_matches
+                .get_one::<String>("name")
+                .ok_or(AppError::InvalidSubcommand)?;
+
+            let bp = if let Ok(bp) =
+                try_get_blueprint_from_save_dir(&config.blueprints.store_path, name)
+            {
                 bp
             } else if let Ok(bp) = blueprints::get_doc(&mut File::open(name)?) {
-                    bp
+                bp
             } else {
-                return Err(BlueprintError::FailedToAccess("failed to match to any existing blueprint!".to_string()).into());
+                return Err(BlueprintError::FailedToAccess(
+                    "failed to match to any existing blueprint!".to_string(),
+                )
+                .into());
             };
 
             let graph = graph_from_blueprint(&bp)?;
 
-            println!("{}", displayer.display_bp_title(bp.author.as_deref(), &name));
+            println!(
+                "{}",
+                displayer.display_bp_title(bp.author.as_deref(), &name)
+            );
             displayer.list_roots(&graph, 0, false)?;
         }
         Some(("ls", _)) => {
@@ -89,23 +112,30 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
             displayer.list_blueprints(&bps);
         }
         Some(("rm", sub_matches)) => {
-            let path = get_bp_path(config.blueprints.store_path.clone(), sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?);
+            let path = get_bp_path(
+                config.blueprints.store_path.clone(),
+                sub_matches
+                    .get_one::<String>("name")
+                    .ok_or(AppError::InvalidSubcommand)?,
+            );
             remove_file(&path)?;
             println!("{}", displayer.display_bp_deleted(&path.to_string_lossy()));
         }
         Some(("export", sub_matches)) => {
-            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let name = sub_matches
+                .get_one::<String>("name")
+                .ok_or(AppError::InvalidSubcommand)?;
             let bp = try_get_blueprint_from_save_dir(&config.blueprints.store_path, name)?;
             println!("{}", bp.to_string());
-
         }
         Some(("ins", sub_matches)) => {
-            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let name = sub_matches
+                .get_one::<String>("name")
+                .ok_or(AppError::InvalidSubcommand)?;
             let title = sub_matches.get_one::<String>("title");
             let id = sub_matches.get_one::<String>("ID");
             let root = sub_matches.get_flag("root");
             let assumedate = sub_matches.get_flag("assumedate");
-
 
             let path = if PathBuf::from(name).exists() {
                 PathBuf::from(name)
@@ -113,21 +143,30 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 get_bp_path(config.blueprints.store_path.clone(), name)
             };
 
-            let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| BlueprintError::FailedToAccess("Failed to match to any existing blueprint!".to_string()))?;
+            let bp = blueprints::get_doc(&mut File::open(&path)?).map_err(|_| {
+                BlueprintError::FailedToAccess(
+                    "Failed to match to any existing blueprint!".to_string(),
+                )
+            })?;
 
             let map = new_graph_indices_map(&bp, &graph, graph.get_nodes().len());
 
             // TODO: send help
             let new_parent = &bp.graph.nodes[bp.parent];
             let parent_id = if root {
-                graph.insert_root(title.unwrap_or(&new_parent.title).to_string(), new_parent.data.is_pseudo())
+                graph.insert_root(
+                    title.unwrap_or(&new_parent.title).to_string(),
+                    new_parent.data.is_pseudo(),
+                )
             } else {
                 // id shouldn't be None here since !root implies id being Some(..)
                 let id = graph.get_index_cli(id.unwrap(), assumedate)?;
-                graph.insert_child(title.unwrap_or(&new_parent.title).to_string(), id, new_parent.data.is_pseudo())?
-
+                graph.insert_child(
+                    title.unwrap_or(&new_parent.title).to_string(),
+                    id,
+                    new_parent.data.is_pseudo(),
+                )?
             };
-
 
             for child in &new_parent.metadata.children {
                 graph.insert_blueprint_recurse(&map, &bp, *child, parent_id)?;
@@ -135,16 +174,18 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
 
             graph.update_node_metadata_on_blueprint(bp.parent, &map, &bp);
 
-
             if config.display.show_connections {
                 displayer.display_bp_inserted(name, parent_id);
             }
-
         }
         Some(("save", sub_matches)) => {
-            let id = sub_matches.get_one::<String>("ID").ok_or(AppError::InvalidSubcommand)?;
+            let id = sub_matches
+                .get_one::<String>("ID")
+                .ok_or(AppError::InvalidSubcommand)?;
             let mut author = sub_matches.get_one::<String>("author");
-            let name = sub_matches.get_one::<String>("name").ok_or(AppError::InvalidSubcommand)?;
+            let name = sub_matches
+                .get_one::<String>("name")
+                .ok_or(AppError::InvalidSubcommand)?;
             let to_file = sub_matches.get_flag("to_file");
             let preserve = sub_matches.get_flag("preserve");
             let overwrite = sub_matches.get_flag("overwrite");
@@ -157,7 +198,8 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 format!("{}.yaml", name).into()
             } else {
                 if !&config.blueprints.store_path.exists() {
-                    create_dir(&config.blueprints.store_path).map_err(|e| BlueprintError::SaveDirError(e.to_string()))?;
+                    create_dir(&config.blueprints.store_path)
+                        .map_err(|e| BlueprintError::SaveDirError(e.to_string()))?;
                 }
                 let mut path = config.blueprints.store_path.clone();
                 path.push(format!("{}.yaml", name));
@@ -180,12 +222,18 @@ fn handle_blueprints_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph:
                 }
             }
         }
-        _ => return Err(AppError::InvalidSubcommand)
+        _ => return Err(AppError::InvalidSubcommand),
     };
     Ok(())
 }
 
-fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer, is_bp_graph: bool) -> AppResult<()> {
+fn handle_graph_command<'a>(
+    subcommand: Option<(&str, &ArgMatches)>,
+    graph: &mut Graph,
+    config: &CliConfig,
+    displayer: &'a Displayer,
+    is_bp_graph: bool,
+) -> AppResult<()> {
     match subcommand {
         Some(("add", sub_matches)) => {
             let root = sub_matches.get_flag("root");
@@ -204,31 +252,34 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             };
 
             if root {
-                let message = sub_matches
-                    .get_one::<String>("message")
-                    .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
+                let message =
+                    sub_matches
+                        .get_one::<String>("message")
+                        .ok_or(AppError::MissingArgument(
+                            "adding root node requires message to be given".to_string(),
+                        ))?;
                 let idx = graph.insert_root(message.to_string(), pseudo);
 
                 if config.display.show_connections {
                     displayer.print_link_root(idx, true);
                 }
-                
             } else if let Some(when) = date {
                 let date = parse_datetime_extended(when)?;
 
                 let empty = String::new();
-                let message = sub_matches
-                    .get_one::<String>("message")
-                    .unwrap_or(&empty);
+                let message = sub_matches.get_one::<String>("message").unwrap_or(&empty);
 
                 let idx = graph.insert_date(message.clone(), date.date_naive());
                 if config.display.show_connections {
                     displayer.print_link_dates(idx, true);
                 }
-            }  else {
-                let message = sub_matches
-                    .get_one::<String>("message")
-                    .ok_or(AppError::MissingArgument("adding root node requires message to be given".to_string()))?;
+            } else {
+                let message =
+                    sub_matches
+                        .get_one::<String>("message")
+                        .ok_or(AppError::MissingArgument(
+                            "adding root node requires message to be given".to_string(),
+                        ))?;
                 let idx = if let Some(i) = sub_matches.get_one::<String>("parent") {
                     i
                 } else {
@@ -241,7 +292,6 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                     displayer.print_link(to, parent, true);
                 }
             }
-
         }
         Some(("rm", sub_matches)) => {
             let ids = sub_matches.get_many::<String>("ID").expect("ID required");
@@ -274,13 +324,13 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date_1
+                assume_date_1,
             )?;
             let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                assume_date_2
+                assume_date_2,
             )?;
             graph.link(parent, child)?;
 
@@ -295,13 +345,13 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date_1
+                assume_date_1,
             )?;
             let child = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("child")
                     .expect("child ID required"),
-                assume_date_2
+                assume_date_2,
             )?;
             graph.unlink(parent, child)?;
 
@@ -316,10 +366,10 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 .get_many::<String>("node")
                 .expect("node ID required");
             let parent = graph.get_index_cli(
-            sub_matches
+                sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date_2
+                assume_date_2,
             )?;
 
             for node in nodes {
@@ -332,7 +382,10 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
         }
         Some(("set", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(
+                sub_matches.get_one::<String>("ID").expect("ID required"),
+                assume_date,
+            )?;
             let state = sub_matches
                 .get_one::<TaskState>("state")
                 .expect("node state required");
@@ -387,7 +440,10 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 ));
             }
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(
+                sub_matches.get_one::<String>("ID").expect("ID required"),
+                assume_date,
+            )?;
             let alias = sub_matches
                 .get_one::<String>("alias")
                 .expect("alias required");
@@ -414,7 +470,10 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
         }
         Some(("rename", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
-            let id = graph.get_index_cli(sub_matches.get_one::<String>("ID").expect("ID required"), assume_date)?;
+            let id = graph.get_index_cli(
+                sub_matches.get_one::<String>("ID").expect("ID required"),
+                assume_date,
+            )?;
             let message = sub_matches
                 .get_one::<String>("message")
                 .expect("ID required");
@@ -434,7 +493,12 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             let show_archived = sub_matches.get_flag("archived");
             match sub_matches.get_one::<String>("ID") {
                 None => displayer.list_roots(graph, depth, !show_archived)?,
-                Some(id) => displayer.list_children(graph, graph.get_index_cli(&id, assume_date)?, depth, !show_archived)?,
+                Some(id) => displayer.list_children(
+                    graph,
+                    graph.get_index_cli(&id, assume_date)?,
+                    depth,
+                    !show_archived,
+                )?,
             }
         }
         Some(("lsd", sub_matches)) => {
@@ -457,7 +521,9 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 ));
             }
 
-            let mut nodes = graph.get_node_children(graph.get_index_cli(id, assume_date)?).clone();
+            let mut nodes = graph
+                .get_node_children(graph.get_index_cli(id, assume_date)?)
+                .clone();
             let item;
             if unchecked {
                 nodes.retain(|x| {
@@ -493,7 +559,7 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
         Some(("stats", sub_matches)) => {
             let assume_date = sub_matches.get_flag("assumedate");
             if let Some(id) = sub_matches.get_one::<String>("ID") {
-                displayer.print_stats(graph, Some(graph.get_index_cli( id, assume_date)?))?;
+                displayer.print_stats(graph, Some(graph.get_index_cli(id, assume_date)?))?;
             } else {
                 displayer.print_stats(graph, None)?;
             };
@@ -519,7 +585,9 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
 
             let parent_id = sub_matches
                 .get_one::<String>("parent")
-                .ok_or(AppError::InvalidArg("parent node ID is required!".to_string()))?;
+                .ok_or(AppError::InvalidArg(
+                    "parent node ID is required!".to_string(),
+                ))?;
 
             let target_exists;
 
@@ -529,16 +597,24 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                 idx
             } else if let Ok(date) = parse_datetime_extended(parent_id) {
                 if !recursive {
-                    return Err(AppError::InvalidArg("Copying a date node to a nonexistent date requires --recursive".to_string()))
+                    return Err(AppError::InvalidArg(
+                        "Copying a date node to a nonexistent date requires --recursive"
+                            .to_string(),
+                    ));
                 }
                 target_exists = false;
                 graph.insert_date("".to_string(), date.date_naive())
             } else {
-                return Err(AppError::IndexRetrievalError("Target node not found!".to_string()));
+                return Err(AppError::IndexRetrievalError(
+                    "Target node not found!".to_string(),
+                ));
             };
 
-            let from_ids = sub_matches.get_many::<String>("source")
-                .ok_or(AppError::InvalidArg("source node ID(s) is required!".to_string()))?;
+            let from_ids = sub_matches
+                .get_many::<String>("source")
+                .ok_or(AppError::InvalidArg(
+                    "source node ID(s) is required!".to_string(),
+                ))?;
 
             for id in from_ids {
                 let from = graph.get_index_cli(id, assume_date_1)?;
@@ -561,25 +637,25 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                     }
                 }
             }
-
         }
         Some(("ord", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
             let assume_date_2 = sub_matches.get_flag("assumedate2");
 
-            let direction = sub_matches
-                .get_one::<OrderingDirection>("order")
-                .ok_or(AppError::InvalidArg("Reordering direction required!".to_string()))?;
+            let direction =
+                sub_matches
+                    .get_one::<OrderingDirection>("order")
+                    .ok_or(AppError::InvalidArg(
+                        "Reordering direction required!".to_string(),
+                    ))?;
 
-            let count = sub_matches
-                .get_one::<u32>("count")
-                .unwrap_or(&1);
+            let count = sub_matches.get_one::<u32>("count").unwrap_or(&1);
 
-            let node = sub_matches.get_one::<String>("node")
+            let node = sub_matches
+                .get_one::<String>("node")
                 .ok_or(AppError::InvalidArg("Node ID required!".to_string()))?;
 
             let parent = sub_matches.get_one::<String>("parent");
-                
 
             let node_idx = graph.get_index_cli(node, assume_date_1)?;
             let parents = graph.get_node(node_idx).metadata.parents;
@@ -588,9 +664,11 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             if let Some(id) = parent {
                 parent_idx = graph.get_index_cli(id, assume_date_2)?;
                 if !parents.contains(&parent_idx) {
-                    return Err(AppError::InvalidArg(format!("Index {} is not parent of {}!", parent_idx, node_idx)));
+                    return Err(AppError::InvalidArg(format!(
+                        "Index {} is not parent of {}!",
+                        parent_idx, node_idx
+                    )));
                 }
-
             } else {
                 if parents.len() > 1 {
                     println!("{}", displayer.parents_title());
@@ -598,10 +676,13 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
                     for id in &parents {
                         let node = graph.get_node(*id);
                         if let Some(alias) = node.metadata.alias {
-                            println!("* {} ({})", displayer.display_id(*id, Some(&alias)), node.title);
+                            println!(
+                                "* {} ({})",
+                                displayer.display_id(*id, Some(&alias)),
+                                node.title
+                            );
                         } else {
                             println!("* {} ({})", displayer.display_id(*id, None), node.title);
-
                         }
                     }
                 }
@@ -609,14 +690,16 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
             }
 
             match *direction {
-                OrderingDirection::Up => graph.reorder_node_delta(node_idx, parent_idx, -(*count as i32))?,
-                OrderingDirection::Down => graph.reorder_node_delta(node_idx, parent_idx, *count as i32)?,
+                OrderingDirection::Up => {
+                    graph.reorder_node_delta(node_idx, parent_idx, -(*count as i32))?
+                }
+                OrderingDirection::Down => {
+                    graph.reorder_node_delta(node_idx, parent_idx, *count as i32)?
+                }
             };
-
         }
         Some(("new-cfg", _)) => {
             println!("{}", displayer.template_cfg());
-
         }
         _ => return Err(AppError::InvalidSubcommand),
     }
@@ -629,9 +712,16 @@ fn handle_graph_command<'a>(subcommand: Option<(&str, &ArgMatches)>, graph: &mut
     Ok(())
 }
 
-fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfig, displayer: &'a Displayer) -> AppResult<()> {
+fn handle_command<'a>(
+    matches: &ArgMatches,
+    graph: &mut Graph,
+    config: &CliConfig,
+    displayer: &'a Displayer,
+) -> AppResult<()> {
     match matches.subcommand() {
-        Some(("bp", sub_matches)) => handle_blueprints_command(sub_matches.subcommand(), graph, config, displayer),
+        Some(("bp", sub_matches)) => {
+            handle_blueprints_command(sub_matches.subcommand(), graph, config, displayer)
+        }
         Some((_, _)) => handle_graph_command(matches.subcommand(), graph, config, displayer, false),
         _ => Err(AppError::InvalidSubcommand),
     }
@@ -641,7 +731,7 @@ fn handle_command<'a>(matches: &ArgMatches, graph: &mut Graph, config: &CliConfi
 enum OrderingDirection {
     #[default]
     Down,
-    Up
+    Up,
 }
 
 fn cli() -> AppResult<Command> {
@@ -860,7 +950,7 @@ fn main() -> AppResult<()> {
         println!("Version {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
-    
+
     let config = get_config(matches.get_one::<PathBuf>("config"))?;
 
     let (mut graph, local) = match (
