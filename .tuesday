@@ -1,4 +1,4 @@
-version: 5
+version: 6
 graph:
   nodes:
   - title: Due dates
