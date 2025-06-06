@@ -36,10 +36,12 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
         if version != VERSION as u64 {
             doc_use = match parse_old_yaml(&doc_use) {
                 Ok(result) => result,
-                Err(err) => return Err(ErrorType::ParseError(format!(
-                    "Compatibility parsers failed parsing old version: {}",
-                    err
-                ))),
+                Err(err) => {
+                    return Err(ErrorType::ParseError(format!(
+                        "Compatibility parsers failed parsing old version: {}",
+                        err
+                    )))
+                }
             };
         }
     }
@@ -144,7 +146,9 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
 
     // Unify everything
     let result_doc = Doc {
-        version: doc_use["version"].as_i64().expect("Version should be integer") as u32,
+        version: doc_use["version"]
+            .as_i64()
+            .expect("Version should be integer") as u32,
         graph: Graph {
             nodes,
             roots,
@@ -159,19 +163,24 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
 fn parse_old_yaml(doc: &Value) -> DocResult<Value> {
     let mut doc_modified: Value = doc.clone();
     loop {
-        let current_ver = doc_modified["version"].as_u64().ok_or(ErrorType::ParseError("Failed to parse version field from save file".into()))?;
+        let current_ver = doc_modified["version"]
+            .as_u64()
+            .ok_or(ErrorType::ParseError(
+                "Failed to parse version field from save file".into(),
+            ))?;
         if current_ver < VERSION as u64 {
             match current_ver {
                 4 => doc_modified = old_yaml::v4_to_v5(&doc)?,
                 5 => doc_modified = old_yaml::v5_to_v6(&doc)?,
-                _ => return Err(ErrorType::ParseError(format!(
-                    "Oops, no available parsers to parse this document version: {}",
-                    current_ver
-                ))),
-
+                _ => {
+                    return Err(ErrorType::ParseError(format!(
+                        "Oops, no available parsers to parse this document version: {}",
+                        current_ver
+                    )))
+                }
             }
         } else {
-            break
+            break;
         }
     }
     Ok(doc_modified)
@@ -187,7 +196,7 @@ mod old_yaml {
     enum V5nodeType {
         Date(Empty),
         Task(TaskData),
-        Pseudo
+        Pseudo,
     }
 
     use chrono::NaiveDate;
@@ -241,35 +250,33 @@ mod old_yaml {
                 node.remove("children");
                 node.remove("parents");
 
-
                 let data = match node["type"].as_str() {
                     Some("Normal") => {
                         let mut map = Mapping::new();
                         map.insert("state".into(), node["state"].clone());
                         TaggedValue {
                             value: Value::Mapping(map),
-                            tag: Tag::new("Task")
+                            tag: Tag::new("Task"),
                         }
+                    }
+                    Some("Date") => TaggedValue {
+                        value: Value::Mapping(Mapping::new()),
+                        tag: Tag::new("Date"),
                     },
-                    Some("Date") => {
-                        TaggedValue {
-                            value: Value::Mapping(Mapping::new()),
-                            tag: Tag::new("Date")
-                        }
+                    Some("Pseudo") => TaggedValue {
+                        value: Value::Null,
+                        tag: Tag::new("Pseudo"),
+                    },
+                    _ => {
+                        return Err(ErrorType::ParseError(
+                            "Failed to determine node's type".to_string(),
+                        ))
                     }
-                    Some("Pseudo") => {
-                        TaggedValue {
-                            value: Value::Null,
-                            tag: Tag::new("Pseudo")
-                        }
-                    }
-                    _ => return Err(ErrorType::ParseError("Failed to determine node's type".to_string()))
                 };
 
                 node.insert("data".into(), Value::Tagged(data.into()));
                 node.remove("type");
                 node.remove("state");
-
             }
         }
 
@@ -295,11 +302,24 @@ mod old_yaml {
                 if let Value::Tagged(val) = &node["data"].clone() {
                     if val.tag == "!Date" {
                         let mut new_map = Mapping::new();
-                        new_map.insert("date".into(), Value::String(
-                            format!("{}", NaiveDate::parse_from_str(node["title"].as_str().unwrap(), "%Y-%m-%d")?
-                            )));
+                        new_map.insert(
+                            "date".into(),
+                            Value::String(format!(
+                                "{}",
+                                NaiveDate::parse_from_str(
+                                    node["title"].as_str().unwrap(),
+                                    "%Y-%m-%d"
+                                )?
+                            )),
+                        );
                         node.remove("data");
-                        node.insert("data".into(), Value::Tagged(Box::new(TaggedValue { tag: Tag::new("Date"), value: Value::Mapping(new_map)})));
+                        node.insert(
+                            "data".into(),
+                            Value::Tagged(Box::new(TaggedValue {
+                                tag: Tag::new("Date"),
+                                value: Value::Mapping(new_map),
+                            })),
+                        );
                     }
                 }
             }
@@ -316,7 +336,8 @@ mod tests {
 
     #[test]
     fn test_v4_v5() {
-        let old = serde_yaml_ng::from_str::<Value>("
+        let old = serde_yaml_ng::from_str::<Value>(
+            "
 version: 4
 graph:
   nodes:
@@ -350,9 +371,11 @@ graph:
   archived: []
   dates:
     2025-01-01: 1
-  aliases: {}");
+  aliases: {}",
+        );
 
-        let new_should_be = serde_yaml_ng::from_str::<Value>("
+        let new_should_be = serde_yaml_ng::from_str::<Value>(
+            "
 version: 5
 graph:
   nodes:
@@ -388,15 +411,19 @@ graph:
   dates:
     2025-01-01: 1
   aliases: {}
-");
+",
+        );
         let new = old_yaml::v4_to_v5(&old.unwrap()).unwrap();
-        assert_eq!(serde_yaml_ng::to_string(&new).unwrap(), serde_yaml_ng::to_string(&new_should_be.unwrap()).unwrap());
+        assert_eq!(
+            serde_yaml_ng::to_string(&new).unwrap(),
+            serde_yaml_ng::to_string(&new_should_be.unwrap()).unwrap()
+        );
     }
 
     #[test]
     fn test_v5_v6() {
-
-        let old = serde_yaml_ng::from_str::<Value>("
+        let old = serde_yaml_ng::from_str::<Value>(
+            "
 version: 5
 graph:
   nodes:
@@ -432,10 +459,12 @@ graph:
   dates:
     2025-01-01: 1
   aliases: {}
-");
+",
+        );
 
         let new = old_yaml::v5_to_v6(&old.unwrap()).unwrap();
-        let new_should_be = serde_yaml_ng::from_str::<Value>("
+        let new_should_be = serde_yaml_ng::from_str::<Value>(
+            "
 version: 6
 graph:
   nodes:
@@ -472,8 +501,13 @@ graph:
   dates:
     2025-01-01: 1
   aliases: {}
-").unwrap();
+",
+        )
+        .unwrap();
 
-        assert_eq!(serde_yaml_ng::to_string(&new).unwrap(), serde_yaml_ng::to_string(&new_should_be).unwrap());
+        assert_eq!(
+            serde_yaml_ng::to_string(&new).unwrap(),
+            serde_yaml_ng::to_string(&new_should_be).unwrap()
+        );
     }
 }

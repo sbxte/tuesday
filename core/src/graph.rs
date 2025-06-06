@@ -713,7 +713,8 @@ impl Graph {
                 );
             }
             if let NodeType::Date(data) = &rnode.data {
-                self.dates.insert(data.format_for_hashmap(), rnode.metadata.index);
+                self.dates
+                    .insert(data.format_for_hashmap(), rnode.metadata.index);
             }
 
             if rnode.metadata.archived {
@@ -824,7 +825,12 @@ impl Graph {
         // the actual last entry is archived. this will make the arm look wrong (not using the last
         // arm icon).
         let indices: Vec<usize> = indices
-            .iter().filter(|i| !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived).map(|x| *x).collect();
+            .iter()
+            .filter(|i| {
+                !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived
+            })
+            .map(|x| *x)
+            .collect();
 
         for (i, idx) in indices.iter().enumerate() {
             if let Some(start) = start {
@@ -832,24 +838,20 @@ impl Graph {
                     return Err(ErrorType::GraphLooped(start, *idx));
                 }
             }
-            
+
             let last = i == indices.len() - 1;
 
-            let child_of_last = if last {
-                true
-            } else {
-                child_of_last
-            };
+            let child_of_last = if last { true } else { child_of_last };
 
             if let Some(node) = &self.nodes[*idx] {
                 f(&node.borrow(), depth, last, &skipped_depths);
             }
 
             if last {
-                skipped_depths.push(depth-1);
+                skipped_depths.push(depth - 1);
             }
 
-            *last_depth = depth+1;
+            *last_depth = depth + 1;
 
             self._traverse_recurse(
                 self.nodes[*idx]
@@ -868,13 +870,11 @@ impl Graph {
                 last_depth,
                 f,
             )?;
-
         }
 
         if depth < *last_depth {
             skipped_depths.pop();
         }
-
 
         Ok(())
     }
@@ -890,7 +890,17 @@ impl Graph {
         max_depth: u32,
         f: &mut impl FnMut(&Node, u32, bool, &[u32]),
     ) -> GraphResult<()> {
-        self._traverse_recurse(indices, skip_archived, max_depth, 1, None, false, &mut Vec::new(), &mut 0, f)
+        self._traverse_recurse(
+            indices,
+            skip_archived,
+            max_depth,
+            1,
+            None,
+            false,
+            &mut Vec::new(),
+            &mut 0,
+            f,
+        )
     }
 
     // TODO: returning an Option may make more sense?
@@ -913,9 +923,13 @@ impl Graph {
         Ok(index)
     }
 
+    /// Retrieves date in [Utc](chrono::Utc) timezone
     pub fn get_date_index(&self, date: &NaiveDate) -> GraphResult<usize> {
         let key = date.hashmap_format();
-        self.dates.get(&key).ok_or(ErrorType::DateNodeIndexRetrievalError(key)).copied()
+        self.dates
+            .get(&key)
+            .ok_or(ErrorType::DateNodeIndexRetrievalError(key))
+            .copied()
     }
 
     /// Sets an alias for node at `index`
@@ -949,7 +963,12 @@ impl Graph {
     /// # Arguments:
     /// - `node_idx`: node to rearrange
     /// - `parent_idx`: which node's parent to rearrange
-    pub fn reorder_node_delta(&mut self, node_idx: usize, parent_idx: usize, delta_target_location: i32) -> GraphResult<()> {
+    pub fn reorder_node_delta(
+        &mut self,
+        node_idx: usize,
+        parent_idx: usize,
+        delta_target_location: i32,
+    ) -> GraphResult<()> {
         if delta_target_location == 0 {
             return Ok(());
         }
@@ -965,20 +984,28 @@ impl Graph {
 
             if delta_target_location < 0 && pos as i32 >= delta_target_location {
                 if pos as i32 + delta_target_location < 0 {
-                    return Err(ErrorType::IndexOutOfRange(format!("Index is out of range from parents when reordering. Max move count: {}", pos)));
+                    return Err(ErrorType::IndexOutOfRange(format!(
+                        "Index is out of range from parents when reordering. Max move count: {}",
+                        pos
+                    )));
                 }
                 pos_fix = pos - delta_target_location.abs() as usize;
             } else {
                 if pos + delta_target_location as usize > parents_vec.len() - 1 {
-                    return Err(ErrorType::IndexOutOfRange(format!("Index is out of range from parents when reordering. Max move count: {}", parents_vec.len() - 1 - pos)));
-
+                    return Err(ErrorType::IndexOutOfRange(format!(
+                        "Index is out of range from parents when reordering. Max move count: {}",
+                        parents_vec.len() - 1 - pos
+                    )));
                 }
                 pos_fix = pos + delta_target_location as usize;
             }
             parents_vec.remove(pos);
             parents_vec.insert(pos_fix, node_idx);
         } else {
-            return Err(ErrorType::MalformedIndex(format!("Index {} not found in {} when reordering", node_idx, parent_idx)))
+            return Err(ErrorType::MalformedIndex(format!(
+                "Index {} not found in {} when reordering",
+                node_idx, parent_idx
+            )));
         }
         Ok(())
     }
@@ -999,7 +1026,7 @@ pub trait GraphGetters {
 }
 
 impl GraphGetters for Graph {
-    // TODO: is panicking too much? 
+    // TODO: is panicking too much?
     /// Get a node of an index from graph. Note that the returned node is cloned from the original.
     /// *Warning: panics if index is invalid.*
     ///
@@ -1022,7 +1049,7 @@ impl GraphGetters for Graph {
     fn get_node_checked(&self, index: usize) -> Option<Node> {
         if let Some(node) = self.nodes.get(index) {
             if let Some(node) = node {
-                return Some(node.borrow().clone())
+                return Some(node.borrow().clone());
             }
         }
         None
@@ -1030,7 +1057,6 @@ impl GraphGetters for Graph {
 
     fn node_at_exists(&self, index: usize) -> bool {
         self.nodes.get(index).is_some()
-        
     }
 
     /// Get a node of an index from graph.
