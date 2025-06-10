@@ -5,11 +5,10 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use anyhow::Result;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
-use node::{date::DateData, date::HashMapFormatter, task, Node, NodeType};
+use node::{task, Node, NodeType};
 
 /// Result of graph operation.
 type GraphResult<T> = Result<T, ErrorType>;
@@ -19,7 +18,6 @@ pub struct Graph {
     pub(crate) nodes: Vec<Option<RefCell<Node>>>,
     pub(crate) roots: Vec<usize>,
     pub(crate) archived: Vec<usize>,
-    pub(crate) dates: HashMap<String, usize>,
     pub(crate) aliases: HashMap<String, usize>,
 }
 
@@ -30,7 +28,6 @@ impl Graph {
             nodes: vec![],
             roots: vec![],
             archived: vec![],
-            dates: HashMap::new(),
             aliases: HashMap::new(),
         }
     }
@@ -68,11 +65,6 @@ impl Graph {
         &self.aliases
     }
 
-    /// Returns an immutable reference to the underlying dates `HashMap`
-    pub fn get_dates(&self) -> &HashMap<String, usize> {
-        &self.dates
-    }
-
     /// Returns an immutable reference to the underlying archived nodes `Vec`
     pub fn get_archived(&self) -> &Vec<usize> {
         &self.archived
@@ -94,23 +86,6 @@ impl Graph {
         }
         self.nodes.push(Some(RefCell::new(node)));
         self.roots.push(idx);
-        idx
-    }
-
-    /// Inserts a date node into the graph.
-    ///
-    /// # Arguments
-    /// - message: string containing the node message.
-    /// - date: the date data of the node.
-    ///
-    /// # Returns
-    /// A usize containing the index of the newly added node.
-    pub fn insert_date(&mut self, message: String, date: NaiveDate) -> usize {
-        let idx = self.nodes.len();
-        let date_data = DateData { date };
-        let node = Node::new(message, idx, NodeType::Date(date_data.clone()));
-        self.nodes.push(Some(RefCell::new(node)));
-        self.dates.insert(date_data.format_for_hashmap(), idx);
         idx
     }
 
@@ -180,11 +155,6 @@ impl Graph {
             self.unset_alias(index)?;
         }
 
-        // Delete from date hashmap first if node is a date root node
-        if let NodeType::Date(data) = &self.nodes[index].as_ref().unwrap().borrow().data {
-            self.dates.remove(&data.date.hashmap_format());
-        }
-
         // Unlink node from parents and children
         let parents_ptr = self.nodes[index]
             .as_ref()
@@ -243,12 +213,7 @@ impl Graph {
                 .parents
                 .is_empty()
             {
-                // Since they're now parentless, make them root.
-                // This is only applicable to non-date nodes.
-                // Delete from date hashmap first if node is a date root node
-                if !&self.nodes[child].as_ref().unwrap().borrow().data.is_date() {
-                    self.roots.push(child);
-                }
+                self.roots.push(child);
             }
         }
 
@@ -324,11 +289,6 @@ impl Graph {
             .is_some();
         if alias {
             self.unset_alias(index)?;
-        }
-
-        // Delete from date hashmap first if node is a date root node
-        if let NodeType::Date(data) = &self.nodes[index].as_ref().unwrap().borrow().data {
-            self.dates.remove(&data.date.hashmap_format());
         }
 
         self.nodes[index] = None;
@@ -624,7 +584,6 @@ impl Graph {
                             count += 1;
                         }
                     },
-                    _ => {} // Other node types should not count towards completion
                 }
             }
 
@@ -694,7 +653,6 @@ impl Graph {
     /// ~ The fixer-upper method
     pub fn clean(&mut self) {
         // Clears root tracked properties and resynchronizes them based on local node states
-        self.dates.clear();
         self.aliases.clear();
         self.archived.clear();
 
@@ -712,10 +670,6 @@ impl Graph {
                     rnode.metadata.index,
                 );
             }
-            if let NodeType::Date(data) = &rnode.data {
-                self.dates
-                    .insert(data.format_for_hashmap(), rnode.metadata.index);
-            }
 
             if rnode.metadata.archived {
                 self.archived.push(rnode.metadata.index);
@@ -731,7 +685,6 @@ impl Graph {
         // Add unreachable nodes into roots
         // Nodes without parents, are not root, and not date
         self.roots.clear();
-        let date_values: Vec<_> = self.dates.values().collect();
         for (i, node) in self.nodes.iter().enumerate() {
             if node.is_none() {
                 continue;
@@ -744,7 +697,7 @@ impl Graph {
                 continue;
             }
             let index = rnode.metadata.index;
-            if !self.roots.contains(&index) && !date_values.contains(&&index) {
+            if !self.roots.contains(&index) {
                 self.roots.push(i);
             }
         }
@@ -785,9 +738,6 @@ impl Graph {
         }
         for r in self.roots.iter() {
             new_graph.roots.push(map[*r].unwrap());
-        }
-        for (d, i) in self.dates.iter() {
-            new_graph.dates.insert(d.clone(), map[*i].unwrap());
         }
         for a in self.archived.iter() {
             new_graph.archived.push(map[*a].unwrap());
@@ -923,15 +873,6 @@ impl Graph {
         Ok(index)
     }
 
-    /// Retrieves date in [Utc](chrono::Utc) timezone
-    pub fn get_date_index(&self, date: &NaiveDate) -> GraphResult<usize> {
-        let key = date.hashmap_format();
-        self.dates
-            .get(&key)
-            .ok_or(ErrorType::DateNodeIndexRetrievalError(key))
-            .copied()
-    }
-
     /// Sets an alias for node at `index`
     pub fn set_alias(&mut self, index: usize, alias: String) -> GraphResult<()> {
         self.aliases.insert(alias.clone(), index);
@@ -1021,7 +962,6 @@ pub trait GraphGetters {
     fn get_archived_node_indices(&self) -> &[usize];
 
     // TODO: both these uses vectors, is it worth the performance cost?
-    fn get_date_nodes_indices(&self) -> Vec<usize>;
     fn get_node_children(&self, index: usize) -> Vec<usize>;
 }
 
@@ -1066,10 +1006,6 @@ impl GraphGetters for Graph {
 
     fn get_root_nodes_indices(&self) -> &[usize] {
         &self.roots
-    }
-    fn get_date_nodes_indices(&self) -> Vec<usize> {
-        let x: Vec<_> = self.dates.values().copied().collect();
-        x
     }
     fn get_archived_node_indices(&self) -> &[usize] {
         &self.archived

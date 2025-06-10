@@ -6,13 +6,14 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use crate::graph::Graph;
+use crate::time::timeline::Timeline;
 
 use serde::{Deserialize, Serialize};
 
 use errors::ErrorType;
 
 /// Update this whenever the structure of Config or Graph changes
-const VERSION: u32 = 6;
+const VERSION: u32 = 7;
 
 pub const fn get_doc_ver() -> u32 {
     VERSION
@@ -27,13 +28,15 @@ type DocResult<T> = Result<T, ErrorType>;
 pub struct Doc {
     pub version: u32,
     pub graph: Graph,
+    pub timeline: Timeline,
 }
 
 impl Doc {
-    pub fn new(graph: &Graph) -> Self {
+    pub fn new(graph: Graph, timeline: Timeline) -> Self {
         Self {
             version: VERSION,
-            graph: graph.clone(),
+            graph,
+            timeline,
         }
     }
 }

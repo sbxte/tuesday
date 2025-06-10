@@ -2,10 +2,12 @@ use core::str;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use chrono::Utc;
 use serde_yaml_ng::{Mapping, Value};
 
 use crate::graph::node::{Node, NodeMetadata};
 use crate::graph::Graph;
+use crate::time::timeline::Timeline;
 
 use super::{errors::ErrorType, Doc, DocResult, VERSION};
 
@@ -48,6 +50,9 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
 
     let graph_doc = &doc_use["graph"];
 
+    // For use in missing DateTimes
+    let now = Utc::now();
+
     // Roots, archived, and dates
     let roots = graph_doc["roots"]
         .as_sequence()
@@ -61,17 +66,6 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
         .iter()
         .map(|i| i.as_i64().expect("Archived index must be an integer") as usize)
         .collect::<Vec<_>>();
-    let dates = graph_doc["dates"]
-        .as_mapping()
-        .unwrap_or(&Mapping::new())
-        .iter()
-        .map(|(k, v)| {
-            (
-                k.as_str().expect("Date key must be a string").to_string(),
-                v.as_i64().expect("Date node index must be an integer") as usize,
-            )
-        })
-        .collect::<HashMap<_, _>>();
     let mut aliases = graph_doc["aliases"]
         .as_mapping()
         .unwrap_or(&Mapping::new())
@@ -132,6 +126,9 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
                 alias: alias.map(|s| s.to_string()),
                 parents,
                 children,
+                created_at: serde_yaml_ng::from_value(metadata["created_at"].to_owned())
+                    .unwrap_or(now),
+                events: vec![], // PRECOMMIT: Properly implement events parsing
             },
         })));
     }
@@ -153,9 +150,10 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
             nodes,
             roots,
             archived,
-            dates,
             aliases,
         },
+        // TODO: Properly implement this
+        timeline: Timeline::new(),
     };
     Ok(result_doc)
 }
@@ -172,6 +170,7 @@ fn parse_old_yaml(doc: &Value) -> DocResult<Value> {
             match current_ver {
                 4 => doc_modified = old_yaml::v4_to_v5(&doc)?,
                 5 => doc_modified = old_yaml::v5_to_v6(&doc)?,
+                6 => doc_modified = old_yaml::v6_to_v7(&doc)?,
                 _ => {
                     return Err(ErrorType::ParseError(format!(
                         "Oops, no available parsers to parse this document version: {}",
@@ -199,7 +198,7 @@ mod old_yaml {
         Pseudo,
     }
 
-    use chrono::NaiveDate;
+    use chrono::{NaiveDate, NaiveTime, TimeDelta};
     use serde::Deserialize;
     use serde_yaml_ng::value::{Tag, TaggedValue};
     use serde_yaml_ng::Mapping;
@@ -324,6 +323,81 @@ mod old_yaml {
                 }
             }
         }
+        Ok(cloned_doc)
+    }
+
+    /// In v7 date nodes cease to exist, being replaced instead with the
+    /// [Timeline](crate::time::timeline::Timeline)'s [Events][crate::time::event::Event] stored in [Doc]
+    pub fn v6_to_v7(doc: &Value) -> DocResult<Value> {
+        let mut cloned_doc = doc.clone();
+        let version = &mut cloned_doc["version"];
+        *version = Value::Number(6.into());
+
+        let graph_doc = &mut cloned_doc["graph"];
+        let nodes = graph_doc["nodes"].as_sequence_mut().unwrap();
+
+        let mut timeline = Timeline::new();
+        let mut event_map = vec![];
+
+        for node_doc in nodes.iter() {
+            if node_doc.is_null() {
+                continue;
+            }
+            if let Value::Mapping(node) = node_doc {
+                if let Value::Tagged(val) = &node["data"].clone() {
+                    if val.tag != "Date" {
+                        continue;
+                    }
+                    let date = NaiveDate::parse_from_str(
+                        val.value.as_mapping().unwrap()["date"].as_str().unwrap(),
+                        "%Y-%m-%d",
+                    )
+                    .unwrap();
+
+                    if let Value::Mapping(metadata) = &node["metadata"] {
+                        if let Value::Sequence(seq) = &metadata["children"] {
+                            for child_id in seq.iter().map(|e| e.as_u64().unwrap() as usize) {
+                                let start = date.and_time(NaiveTime::MIN).and_utc();
+                                let end = start + TimeDelta::days(1);
+                                let event_id = timeline.create_event(
+                                    start..end,
+                                    format!(
+                                        "{} event",
+                                        nodes[child_id]["title"].as_str().unwrap_or("")
+                                    ),
+                                    metadata["index"].as_u64().unwrap() as usize,
+                                );
+                                event_map.push((child_id, event_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        use serde_yaml_ng::mapping::Entry;
+        for (child_id, event_id) in event_map {
+            match nodes[child_id]
+                .as_mapping_mut()
+                .unwrap()
+                .entry("events".into())
+            {
+                Entry::Occupied(mut occupied_entry) => {
+                    occupied_entry
+                        .get_mut()
+                        .as_sequence_mut()
+                        .unwrap()
+                        .push(event_id.into());
+                }
+                Entry::Vacant(vacant_entry) => {
+                    vacant_entry.insert(vec![event_id].into());
+                }
+            }
+        }
+        cloned_doc.as_mapping_mut().unwrap().insert(
+            "timeline".into(),
+            serde_yaml_ng::to_string(&timeline).unwrap().into(),
+        );
+
         Ok(cloned_doc)
     }
 }

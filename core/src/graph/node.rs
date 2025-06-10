@@ -1,6 +1,8 @@
-use date::DateData;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use task::TaskData;
+
+use crate::time::DTU;
 
 pub mod date;
 pub mod task;
@@ -38,7 +40,6 @@ impl Node {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeType {
     Task(task::TaskData),
-    Date(date::DateData),
     /// Does not count to completion
     Pseudo,
 }
@@ -65,27 +66,6 @@ impl NodeType {
         }
     }
 
-    /// Returns whether this is a date node
-    pub fn is_date(&self) -> bool {
-        matches!(self, NodeType::Date(_))
-    }
-
-    /// Returns this type as a date node. Returns [`None`] if type is not [`NodeType::Date`]
-    pub fn as_date(&self) -> Option<&DateData> {
-        match self {
-            NodeType::Date(data) => Some(data),
-            _ => None,
-        }
-    }
-
-    /// Returns this type as a mutable date node. Returns [`None`] if type is not [`NodeType::Date`]
-    pub fn as_date_mut(&mut self) -> Option<&mut DateData> {
-        match self {
-            NodeType::Date(data) => Some(data),
-            _ => None,
-        }
-    }
-
     /// Returns whether this is a pseudo node
     pub fn is_pseudo(&self) -> bool {
         matches!(self, NodeType::Pseudo)
@@ -98,6 +78,7 @@ impl Default for NodeType {
     }
 }
 
+/// Data that should exist for every variant of [NodeType]
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NodeMetadata {
     pub archived: bool,
@@ -105,6 +86,10 @@ pub struct NodeMetadata {
     pub alias: Option<String>,
     pub parents: Vec<usize>,
     pub children: Vec<usize>,
+
+    pub created_at: DTU,
+
+    pub events: Vec<usize>,
 }
 
 impl NodeMetadata {
@@ -116,6 +101,8 @@ impl NodeMetadata {
             alias: None,
             parents: vec![],
             children: vec![],
+            created_at: Utc::now(),
+            events: vec![],
         }
     }
 }
