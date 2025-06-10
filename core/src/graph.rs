@@ -779,7 +779,7 @@ impl Graph {
             .filter(|i| {
                 !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived
             })
-            .map(|x| *x)
+            .copied()
             .collect();
 
         for (i, idx) in indices.iter().enumerate() {
@@ -794,7 +794,7 @@ impl Graph {
             let child_of_last = if last { true } else { child_of_last };
 
             if let Some(node) = &self.nodes[*idx] {
-                f(&node.borrow(), depth, last, &skipped_depths);
+                f(&node.borrow(), depth, last, skipped_depths);
             }
 
             if last {
@@ -920,17 +920,15 @@ impl Graph {
             .metadata
             .children;
         if let Some(pos) = parents_vec.iter().position(|&x| x == node_idx) {
-            let pos_fix;
             // FIXME: uhm..
 
-            if delta_target_location < 0 && pos as i32 >= delta_target_location {
+            let pos_fix = if delta_target_location < 0 && pos as i32 >= delta_target_location {
                 if pos as i32 + delta_target_location < 0 {
                     return Err(ErrorType::IndexOutOfRange(format!(
-                        "Index is out of range from parents when reordering. Max move count: {}",
-                        pos
+                        "Index is out of range from parents when reordering. Max move count: {pos}"
                     )));
                 }
-                pos_fix = pos - delta_target_location.abs() as usize;
+                pos - delta_target_location.unsigned_abs() as usize
             } else {
                 if pos + delta_target_location as usize > parents_vec.len() - 1 {
                     return Err(ErrorType::IndexOutOfRange(format!(
@@ -938,14 +936,13 @@ impl Graph {
                         parents_vec.len() - 1 - pos
                     )));
                 }
-                pos_fix = pos + delta_target_location as usize;
-            }
+                pos + delta_target_location as usize
+            };
             parents_vec.remove(pos);
             parents_vec.insert(pos_fix, node_idx);
         } else {
             return Err(ErrorType::MalformedIndex(format!(
-                "Index {} not found in {} when reordering",
-                node_idx, parent_idx
+                "Index {node_idx} not found in {parent_idx} when reordering"
             )));
         }
         Ok(())
@@ -987,10 +984,8 @@ impl GraphGetters for Graph {
     /// # Returns
     /// An `Option` containing `Node` when node is found.
     fn get_node_checked(&self, index: usize) -> Option<Node> {
-        if let Some(node) = self.nodes.get(index) {
-            if let Some(node) = node {
-                return Some(node.borrow().clone());
-            }
+        if let Some(Some(node)) = self.nodes.get(index) {
+            return Some(node.borrow().clone());
         }
         None
     }

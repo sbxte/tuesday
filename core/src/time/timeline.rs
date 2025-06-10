@@ -77,7 +77,7 @@ impl Timeline {
         for old_id in 0..self.events.len() {
             if self.events[old_id].is_some() {
                 update(self.events[old_id].as_ref().unwrap().node, (old_id, new_id));
-                self.events[new_id] = std::mem::replace(&mut self.events[old_id], None);
+                self.events[new_id] = self.events[old_id].take();
                 new_id += 1;
             }
         }
