@@ -59,7 +59,7 @@ impl Graph {
     }
 
     /// Returns an immutable reference to the underlying roots `Vec`
-    pub fn get_roots(&self) -> &Vec<usize> {
+    pub fn get_roots(&self) -> &[usize] {
         &self.roots
     }
 
@@ -74,7 +74,7 @@ impl Graph {
     }
 
     /// Returns an immutable reference to the underlying archived nodes `Vec`
-    pub fn get_archived(&self) -> &Vec<usize> {
+    pub fn get_archived(&self) -> &[usize] {
         &self.archived
     }
 
