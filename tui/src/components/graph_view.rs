@@ -1,3 +1,4 @@
+use parse_datetime::parse_datetime;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -162,7 +163,7 @@ fn list_item_from_node(
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
-    let mut spans;
+    let spans;
 
     // TODO: Are there Ratatui features that allow this?
     // let space = Span::raw(" ".to_string().repeat();
@@ -611,11 +612,11 @@ impl GraphViewComponent {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
                         // TODO: warn when date is invalid
-                        if Graph::is_date(&message) {
-                            graph.insert_date(message.to_string());
+                        if let Ok(datetime) = parse_datetime(message) {
+                            graph.insert_date(message.to_string(), datetime.date_naive());
                         }
                     } else {
-                        graph.insert_root(message.to_string(), false)
+                        graph.insert_root(message.to_string(), false);
                     }
                 }
                 NodeLoc::Idx(idx) => {
