@@ -54,7 +54,7 @@ impl Graph {
     }
 
     /// Returns an immutable reference to the underlying nodes `Vec`
-    pub fn get_nodes(&self) -> &Vec<Option<RefCell<Node>>> {
+    pub fn get_nodes(&self) -> &[Option<RefCell<Node>>] {
         &self.nodes
     }
 

@@ -12,6 +12,7 @@ pub const DEFAULT_HEATMAP_PALETTE: [Color; 5] = [
 
 // Graph section
 pub const DEFAULT_GRAPH_AUTO_CLEAN: bool = false;
+pub const DEFAULT_GRAPH_AUTO_CLEAN_THRESHOLD: u8 = 50;
 
 // Display section
 pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";

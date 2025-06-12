@@ -59,12 +59,15 @@ impl Default for BlueprintsConfig {
 
 pub struct GraphConfig {
     pub(crate) auto_clean: bool,
+    /// In percentage, how much of the total graph node count should the [None] nodes composite before auto clean is activated
+    pub(crate) auto_clean_threshold: u8,
 }
 
 impl Default for GraphConfig {
     fn default() -> Self {
         Self {
             auto_clean: DEFAULT_GRAPH_AUTO_CLEAN,
+            auto_clean_threshold: DEFAULT_GRAPH_AUTO_CLEAN_THRESHOLD,
         }
     }
 }
@@ -196,6 +199,7 @@ pub fn read_file(path: &Path) -> ConfigParseResult<toml::Table> {
 const KEY_GRAPH: &str = "graph";
 const KEY_DISPLAY: &str = "display";
 const KEY_AUTO_CLEAN: &str = "auto_clean";
+const KEY_AUTO_CLEAN_THRESHOLD: &str = "auto_clean_threshold";
 const KEY_BAR_INDENT: &str = "bar_indent";
 const KEY_DATE_FMT: &str = "date_fmt";
 const KEY_SHOW_CONNECTIONS: &str = "show_connections";
@@ -223,12 +227,16 @@ const KEY_BLUEPRINTS_STORE_PATH: &str = "store_path";
 pub fn parse_config(toml: &toml::Table) -> ConfigParseResult<CliConfig> {
     let mut conf = CliConfig::new();
 
-    // TODO: um wtf
-
     // Graph configuration
     if let Some(graph_cfg) = toml.get(KEY_GRAPH) {
         if let Some(val) = graph_cfg.get(KEY_AUTO_CLEAN).and_then(toml::Value::as_bool) {
             conf.graph.auto_clean = val;
+        }
+        if let Some(val) = graph_cfg
+            .get(KEY_AUTO_CLEAN_THRESHOLD)
+            .and_then(toml::Value::as_integer)
+        {
+            conf.graph.auto_clean_threshold = val as u8;
         }
     }
 

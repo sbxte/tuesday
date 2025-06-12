@@ -214,7 +214,14 @@ fn handle_blueprints_command(
 
             if !preserve {
                 graph.remove_children_recursive(node_id)?;
-                if config.graph.auto_clean {
+
+                // Avoid having to cast to floats
+                // None count >= Total * threshold/100
+                // None count * 100 >= Total * threshold
+                if config.graph.auto_clean
+                    && graph.get_nodes().iter().filter(|e| e.is_none()).count() * 100
+                        >= graph.get_nodes().len() * config.graph.auto_clean_threshold as usize
+                {
                     graph.clean();
                 }
             }
@@ -698,8 +705,13 @@ fn handle_graph_command(
         _ => return Err(AppError::InvalidSubcommand),
     }
 
-    // TODO: maybe dont run this every time?
-    if config.graph.auto_clean {
+    // Avoid having to cast to floats
+    // None count >= Total * threshold/100
+    // None count * 100 >= Total * threshold
+    if config.graph.auto_clean
+        && graph.get_nodes().iter().filter(|e| e.is_none()).count() * 100
+            >= graph.get_nodes().len() * config.graph.auto_clean_threshold as usize
+    {
         graph.clean();
     }
 
