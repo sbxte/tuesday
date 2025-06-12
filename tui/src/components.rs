@@ -3,7 +3,6 @@ pub mod graph_view;
 pub mod statusbar;
 pub mod tabs;
 
-
 use cmdline::CmdlineComponent;
 use graph_view::GraphViewComponent;
 use ratatui::{

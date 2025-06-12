@@ -12,7 +12,7 @@ use crate::{AppError, AppResult};
 pub struct Color {
     r: u8,
     g: u8,
-    b: u8
+    b: u8,
 }
 
 impl Color {
@@ -24,15 +24,20 @@ impl Color {
     /// Convert from hex code formatted color to `Color`.
     pub(crate) fn from_str(input: &str) -> AppResult<Self> {
         if let Some(col) = str_to_color_enum(input) {
-            return Ok(col.into())
+            return Ok(col.into());
         }
         if input.len() != 6 {
-            return Err(crate::AppError::ParseError("Error parsing color: hex color must be 6 digits".into()));
+            return Err(crate::AppError::ParseError(
+                "Error parsing color: hex color must be 6 digits".into(),
+            ));
         }
 
-        let r = u8::from_str_radix(&input[0..2], 16).map_err(|_| AppError::ParseError("Invalid red component from color".to_string()))?;
-        let g = u8::from_str_radix(&input[2..4], 16).map_err(|_| AppError::ParseError("Invalid green component from color".to_string()))?;
-        let b = u8::from_str_radix(&input[4..6], 16).map_err(|_| AppError::ParseError("Invalid blue component from color".to_string()))?;
+        let r = u8::from_str_radix(&input[0..2], 16)
+            .map_err(|_| AppError::ParseError("Invalid red component from color".to_string()))?;
+        let g = u8::from_str_radix(&input[2..4], 16)
+            .map_err(|_| AppError::ParseError("Invalid green component from color".to_string()))?;
+        let b = u8::from_str_radix(&input[4..6], 16)
+            .map_err(|_| AppError::ParseError("Invalid blue component from color".to_string()))?;
 
         Ok(Color { r, g, b })
     }
@@ -47,7 +52,6 @@ impl From<Color> for (u8, u8, u8) {
     fn from(value: Color) -> Self {
         (value.r, value.g, value.b)
     }
-
 }
 
 #[derive(Copy, Clone)]
@@ -62,7 +66,7 @@ pub enum ColorEnum {
     Magenta,
     Grey,
     DarkGrey,
-    White
+    White,
 }
 
 fn str_to_color_enum(input: &str) -> Option<ColorEnum> {
@@ -78,7 +82,7 @@ fn str_to_color_enum(input: &str) -> Option<ColorEnum> {
         "grey" => Some(ColorEnum::Grey),
         "darkgrey" => Some(ColorEnum::DarkGrey),
         "white" => Some(ColorEnum::White),
-        _ => None
+        _ => None,
     }
 }
 
@@ -98,7 +102,6 @@ impl From<ColorEnum> for Color {
             ColorEnum::White => Color::new(255, 255, 255),
         }
     }
-
 }
 
 impl Default for Color {
@@ -106,7 +109,7 @@ impl Default for Color {
         Self {
             r: 255,
             g: 255,
-            b: 255
+            b: 255,
         }
     }
 }
@@ -117,18 +120,18 @@ pub struct Displayer<'a> {
 
 impl<'a> Displayer<'a> {
     pub fn new(config: &'a CliConfig) -> Self {
-        Self {
-            config,
-        }
+        Self { config }
     }
 
     pub fn aliases_title(&self) -> String {
         format!("{}", "Aliases:".bold())
     }
 
-
     pub fn parents_title(&self) -> String {
-        format!("Node has more than one parents, please specify the parent!\n{}", "List of parents:".bold())
+        format!(
+            "Node has more than one parents, please specify the parent!\n{}",
+            "List of parents:".bold()
+        )
     }
 
     pub fn display_id(&self, idx: usize, alias: Option<&str>) -> String {
@@ -140,7 +143,13 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn display_bp_title(&self, author: Option<&str>, filename: &str) -> String {
-        format!("{}: {}\n{}: {}\n", "File".bold(), filename.green(), "Author".bold(), author.unwrap_or("(unknown)").cyan())
+        format!(
+            "{}: {}\n{}: {}\n",
+            "File".bold(),
+            filename.green(),
+            "Author".bold(),
+            author.unwrap_or("(unknown)").cyan()
+        )
     }
 
     pub fn display_bp_written(&self, path: &str) -> String {
@@ -152,42 +161,71 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn display_bp_inserted(&self, name: &str, id: usize) {
-        let from = format!("({})", name).bright_blue();
-        let to = format!("({})", id).bright_blue();
+        let from = format!("({name})").bright_blue();
+        let to = format!("({id})").bright_blue();
         println!("{} -> {}", from.bright_blue(), to.to_string().bright_blue());
     }
 
     pub fn list_blueprints(&self, files: &[String]) {
         println!("{}", "Blueprints:".bold());
 
-        if files.len() == 0 {
+        if files.is_empty() {
             println!("No added blueprint.");
         }
 
         for file in files {
             println!(" * {}", file.green());
         }
-
     }
 
     fn display_task_data(&self, task_data: &TaskData) -> String {
         match task_data.state {
-            TaskState::None => return self.config.display.icons.node_none.to_string()
-                .custom_color(self.config.display.icons.node_none.color.tup()).to_string(),
-            TaskState::Partial => return self.config.display.icons.node_partial.to_string()
-                .custom_color(self.config.display.icons.node_partial.color.tup()).to_string(),
-            TaskState::Done => return self.config.display.icons.node_checked.to_string()
-                .custom_color(self.config.display.icons.node_checked.color.tup()).to_string()
+            TaskState::None => self
+                .config
+                .display
+                .icons
+                .node_none
+                .to_string()
+                .custom_color(self.config.display.icons.node_none.color.tup())
+                .to_string(),
+            TaskState::Partial => self
+                .config
+                .display
+                .icons
+                .node_partial
+                .to_string()
+                .custom_color(self.config.display.icons.node_partial.color.tup())
+                .to_string(),
+            TaskState::Done => self
+                .config
+                .display
+                .icons
+                .node_checked
+                .to_string()
+                .custom_color(self.config.display.icons.node_checked.color.tup())
+                .to_string(),
         }
     }
 
     fn display_nodetype(&self, node_type: &NodeType) -> String {
         match node_type {
             NodeType::Task(data) => self.display_task_data(data),
-            NodeType::Date(_) => return self.config.display.icons.node_date.to_string()
-            .custom_color(self.config.display.icons.node_date.color.tup()).to_string(),
-            NodeType::Pseudo => return self.config.display.icons.node_pseudo.to_string()
-            .custom_color(self.config.display.icons.node_pseudo.color.tup()).to_string(),
+            NodeType::Date(_) => self
+                .config
+                .display
+                .icons
+                .node_date
+                .to_string()
+                .custom_color(self.config.display.icons.node_date.color.tup())
+                .to_string(),
+            NodeType::Pseudo => self
+                .config
+                .display
+                .icons
+                .node_pseudo
+                .to_string()
+                .custom_color(self.config.display.icons.node_pseudo.color.tup())
+                .to_string(),
         }
     }
 
@@ -195,9 +233,9 @@ impl<'a> Displayer<'a> {
         let index = if let Some(ref alias) = node.metadata.alias {
             format!("({}:{})", node.metadata.index, alias)
         } else {
-                format!("({})", node.metadata.index)
-            }
-            .bright_blue();
+            format!("({})", node.metadata.index)
+        }
+        .bright_blue();
         let state = self.display_nodetype(&node.data);
 
         let dim = node.metadata.archived;
@@ -209,16 +247,26 @@ impl<'a> Displayer<'a> {
                 format!(" {} ", node.title.clone())
             };
             if dim {
-                format!("{} {}{}{}", state, format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(), title.dimmed(), index)
+                format!(
+                    "{} {}{}{}",
+                    state,
+                    format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(),
+                    title.dimmed(),
+                    index
+                )
             } else {
-                format!("{} {}{}{}", state, format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(), title, index)
+                format!(
+                    "{} {}{}{}",
+                    state,
+                    format!("[{}]", data.date.format(&self.config.display.date_fmt)).dimmed(),
+                    title,
+                    index
+                )
             }
+        } else if dim {
+            format!("{} {} {}", state, node.title.dimmed(), index)
         } else {
-            if dim {
-                format!("{} {} {}", state, node.title.dimmed(), index)
-            } else {
-                format!("{} {} {}", state, node.title, index)
-            }
+            format!("{} {} {}", state, node.title, index)
         }
     }
 
@@ -234,44 +282,76 @@ impl<'a> Displayer<'a> {
 
         if !self.config.display.bar_indent {
             for i in 0..depth - 1 {
-                if skipped_depths.iter().find(|j| **j == i).is_some() {
+                if skipped_depths.contains(&i) {
                     print!("    ");
                 } else {
-                    print!(" {}  ", self.config.display.icons.arm_bar.to_string()
-                        .custom_color(self.config.display.icons.arm_bar.color.tup())
+                    print!(
+                        " {}  ",
+                        self.config
+                            .display
+                            .icons
+                            .arm_bar
+                            .to_string()
+                            .custom_color(self.config.display.icons.arm_bar.color.tup())
                     );
                 }
             }
         } else {
             for _ in 0..(depth - 1) {
-                print!(" {}  ", self.config.display.icons.arm_bar.to_string()
-                    .custom_color(self.config.display.icons.arm_bar.color.tup())
+                print!(
+                    " {}  ",
+                    self.config
+                        .display
+                        .icons
+                        .arm_bar
+                        .to_string()
+                        .custom_color(self.config.display.icons.arm_bar.color.tup())
                 );
             }
-
         }
 
         if dots {
             if last {
-                print!(" {}", self.config.display.icons.arm_multiparent_last.to_string()
-                .custom_color(self.config.display.icons.arm_multiparent_last.color.tup())
+                print!(
+                    " {}",
+                    self.config
+                        .display
+                        .icons
+                        .arm_multiparent_last
+                        .to_string()
+                        .custom_color(self.config.display.icons.arm_multiparent_last.color.tup())
                 );
             } else {
-                print!(" {}", self.config.display.icons.arm_multiparent.to_string()
-                .custom_color(self.config.display.icons.arm_multiparent.color.tup())
+                print!(
+                    " {}",
+                    self.config
+                        .display
+                        .icons
+                        .arm_multiparent
+                        .to_string()
+                        .custom_color(self.config.display.icons.arm_multiparent.color.tup())
                 );
             }
+        } else if last {
+            print!(
+                " {}",
+                self.config
+                    .display
+                    .icons
+                    .arm_last
+                    .to_string()
+                    .custom_color(self.config.display.icons.arm_last.color.tup())
+            );
         } else {
-            if last {
-                print!(" {}", self.config.display.icons.arm_last.to_string()
-                .custom_color(self.config.display.icons.arm_last.color.tup())
-                );
-            } else {
-                print!(" {}", self.config.display.icons.arm.to_string()
-                .custom_color(self.config.display.icons.arm.color.tup())
-                );
-
-            }
+            print!(
+                " {}",
+                self.config
+                    .display
+                    .icons
+                    .arm
+                    .to_string()
+                    .custom_color(self.config.display.icons.arm.color.tup())
+            );
         }
     }
 
@@ -284,7 +364,7 @@ impl<'a> Displayer<'a> {
             }
         } else {
             for i in indices {
-                self.list_children(graph, *i, max_depth.checked_sub(1).unwrap_or(0), show_archived)?
+                self.list_children(graph, *i, max_depth.saturating_sub(1), show_archived)?
             }
         }
         Ok(())
@@ -302,14 +382,30 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn list_dates(&self, graph: &Graph, skip_archived: bool) -> AppResult<()> {
-        let dates: Vec<usize> = graph.get_date_nodes_indices().iter()
+        let dates: Vec<usize> = graph
+            .get_date_nodes_indices()
+            .iter()
             .filter(|idx| !graph.get_node(**idx).metadata.archived || !skip_archived)
-            .map(|x| *x).collect();
-        graph.traverse_recurse(dates.as_slice(), false, 1, &mut |node, depth, last, depth_of_last| { self.display_node(node, depth-1, last,  depth_of_last) })?;
+            .copied()
+            .collect();
+        graph.traverse_recurse(
+            dates.as_slice(),
+            false,
+            1,
+            &mut |node, depth, last, depth_of_last| {
+                self.display_node(node, depth - 1, last, depth_of_last)
+            },
+        )?;
         Ok(())
     }
 
-    pub fn list_children(&self, graph: &Graph, target: usize, max_depth: u32, show_archived: bool) -> AppResult<()> {
+    pub fn list_children(
+        &self,
+        graph: &Graph,
+        target: usize,
+        max_depth: u32,
+        show_archived: bool,
+    ) -> AppResult<()> {
         // Display self as well
         graph.with_node(target, &mut |node| self.display_node(node, 0, false, &[]));
 
@@ -317,7 +413,9 @@ impl<'a> Displayer<'a> {
             graph.get_node_children(target).as_slice(),
             show_archived,
             max_depth,
-            &mut |node, depth, last, depth_of_last| self.display_node(node, depth, last, depth_of_last),
+            &mut |node, depth, last, depth_of_last| {
+                self.display_node(node, depth, last, depth_of_last)
+            },
         )?;
         Ok(())
     }
@@ -326,14 +424,16 @@ impl<'a> Displayer<'a> {
         // If a specific node is specified
         if let Some(target) = target {
             let node = graph.get_nodes()[target].as_ref().unwrap().borrow();
-            println!("ID      : {}", target);
+            println!("ID      : {target}");
             println!("Message : {}", &node.title);
             println!("Parents :");
             for i in &node.metadata.parents {
                 let parent = graph.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    parent.metadata.index, parent.title, self.display_nodetype(&parent.data)
+                    parent.metadata.index,
+                    parent.title,
+                    self.display_nodetype(&parent.data)
                 );
             }
             println!("Children:");
@@ -341,11 +441,13 @@ impl<'a> Displayer<'a> {
                 let child = graph.get_nodes()[*i].as_ref().unwrap().borrow();
                 println!(
                     "({}) {} [{}]",
-                    child.metadata.index, child.title, self.display_nodetype(&child.data)
+                    child.metadata.index,
+                    child.title,
+                    self.display_nodetype(&child.data)
                 );
             }
             if let Some(ref alias) = node.metadata.alias {
-                println!("Alias   : {}", alias);
+                println!("Alias   : {alias}");
             }
             println!("Archived: {}", node.metadata.archived);
             println!("Status  : [{}]", self.display_nodetype(&node.data));
@@ -355,13 +457,15 @@ impl<'a> Displayer<'a> {
             println!(
                 "Nodes   : {} (Empty: {})",
                 graph.get_nodes().len(),
-                graph.get_nodes()
+                graph
+                    .get_nodes()
                     .iter()
                     .fold(0, |acc, x| if x.is_none() { acc + 1 } else { acc })
             );
             println!(
                 "Edges   : {}",
-                graph.get_nodes()
+                graph
+                    .get_nodes()
                     .iter()
                     .fold(0, |acc, x| if let Some(x) = x {
                         acc + x.borrow().metadata.parents.len()
@@ -385,17 +489,23 @@ impl<'a> Displayer<'a> {
         print!("\x1B[9D"); // left
         print!("\x1B[1B"); // down
         for i in 0..5 {
-            print!("{}", "  ".on_custom_color(self.config.display.calendar_config.heatmap_palette[i].tup()));
+            print!(
+                "{}",
+                "  ".on_custom_color(self.config.display.calendar_config.heatmap_palette[i].tup())
+            );
         }
         print!("\x1B[11D"); // left
         print!("\x1B[1B"); // down
         print!("less    more");
         print!("\x1B[4B\r"); // down
-
     }
 
     pub fn print_calendar(&self, graph: &Graph, date: &NaiveDate) -> AppResult<()> {
-        println!("Calendar: {} {}", date.format("%B").to_string().bold(), date.format("%Y").to_string().green());
+        println!(
+            "Calendar: {} {}",
+            date.format("%B").to_string().bold(),
+            date.format("%Y").to_string().green()
+        );
 
         for i in ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] {
             print!("{}", i.yellow());
@@ -408,30 +518,42 @@ impl<'a> Displayer<'a> {
         let nd = NaiveDate::from_ymd_opt(date.year(), date.month(), 1).unwrap();
         let first_day = nd.format("%u").to_string().parse::<u32>().unwrap() % 7;
 
-        print!("\n");
+        println!();
 
-        let days: Vec<u32> = (1..=days_in_month+first_day).into_iter().collect();
+        let days: Vec<u32> = (1..=days_in_month + first_day).collect();
         for i in days {
             if i > first_day {
                 let curr_date = i - first_day;
-                if let Ok(idx) = graph.get_date_index(&NaiveDate::from_ymd_opt(date.year(), date.month(), curr_date).unwrap()) {
+                if let Ok(idx) = graph.get_date_index(
+                    &NaiveDate::from_ymd_opt(date.year(), date.month(), curr_date).unwrap(),
+                ) {
                     let node = graph.get_node(idx);
-                    let finished = node.metadata.children.iter().filter(|idx| {
-                        let node = graph.get_node(**idx);
-                        if let NodeType::Task(data) = node.data {
-                            data.state == TaskState::Done
-                        } else {
-                            false
-                        }
-                    }).count();
-                    let total_nodes = node.metadata.children.iter().filter(|idx| {
-                        let node = graph.get_node(**idx);
-                        if let NodeType::Task(_) = node.data {
-                            true
-                        } else {
-                            false
-                        }
-                    }).count();
+                    let finished = node
+                        .metadata
+                        .children
+                        .iter()
+                        .filter(|idx| {
+                            let node = graph.get_node(**idx);
+                            if let NodeType::Task(data) = node.data {
+                                data.state == TaskState::Done
+                            } else {
+                                false
+                            }
+                        })
+                        .count();
+                    let total_nodes = node
+                        .metadata
+                        .children
+                        .iter()
+                        .filter(|idx| {
+                            let node = graph.get_node(**idx);
+                            if let NodeType::Task(_) = node.data {
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .count();
 
                     let range_finished = if total_nodes == 0 {
                         0
@@ -439,44 +561,50 @@ impl<'a> Displayer<'a> {
                         finished * 4 / total_nodes
                     };
 
-                    let color = self.config.display.calendar_config.heatmap_palette[range_finished].tup();
+                    let color =
+                        self.config.display.calendar_config.heatmap_palette[range_finished].tup();
 
                     if curr_date == date.day() {
-                        print!("{} ", format!("{:02}", curr_date).bold().underline().on_custom_color(color));
+                        print!(
+                            "{} ",
+                            format!("{curr_date:02}")
+                                .bold()
+                                .underline()
+                                .on_custom_color(color)
+                        );
                     } else {
-                        print!("{} ", format!("{:02}", curr_date).on_custom_color(color));
-
+                        print!("{} ", format!("{curr_date:02}").on_custom_color(color));
                     }
                 } else {
-                    print!("{} ", format!("{:02}", curr_date).dimmed());
+                    print!("{} ", format!("{curr_date:02}").dimmed());
                 }
             } else {
                 print!("   ");
             }
             if i % 7 == 0 {
-                print!("\n");
+                println!();
             }
         }
 
-        print!("\n");
+        println!();
 
         self.print_heatmap();
         Ok(())
-
     }
-
 
     pub fn print_removal(&self, idx: usize, recursive: bool) {
         if recursive {
-            println!("Removed node {} and its children.", idx.to_string().bright_blue());
-
+            println!(
+                "Removed node {} and its children.",
+                idx.to_string().bright_blue()
+            );
         } else {
             println!("Removed node {}.", idx.to_string().bright_blue());
         }
     }
 
     pub fn print_link_dates(&self, from: usize, connect: bool) {
-        let from = format!("({})", from).bright_blue();
+        let from = format!("({from})").bright_blue();
         if connect {
             println!("{} -> {}", from, "(dates)".bright_blue());
         } else {
@@ -485,7 +613,7 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn print_link_root(&self, from: usize, connect: bool) {
-        let from = format!("({})", from).bright_blue();
+        let from = format!("({from})").bright_blue();
         if connect {
             println!("{} -> {}", from, "(root)".bright_blue());
         } else {
@@ -494,12 +622,12 @@ impl<'a> Displayer<'a> {
     }
 
     pub fn print_link(&self, from: usize, to: usize, connect: bool) {
-        let from = format!("({})", from).bright_blue();
-        let to = format!("({})", to).bright_blue();
+        let from = format!("({from})").bright_blue();
+        let to = format!("({to})").bright_blue();
         if connect {
-            println!("{} -> {}", from, to);
+            println!("{from} -> {to}");
         } else {
-            println!("{} -x- {}", from, to);
+            println!("{from} -x- {to}");
         }
     }
 
@@ -507,21 +635,20 @@ impl<'a> Displayer<'a> {
         NaiveDate::from_ymd_opt(
             match month {
                 12 => year + 1,
-                _ => year
-
+                _ => year,
             },
             match month {
                 12 => 1,
                 _ => month + 1,
             },
             1,
-        ).unwrap()
-            .signed_duration_since(NaiveDate::from_ymd_opt(year, month, 1).unwrap())
-            .num_days()
+        )
+        .unwrap()
+        .signed_duration_since(NaiveDate::from_ymd_opt(year, month, 1).unwrap())
+        .num_days()
     }
 
     pub fn template_cfg(&self) -> &'static str {
         DEFAULT_CONFIG
     }
-
 }

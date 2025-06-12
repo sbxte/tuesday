@@ -829,7 +829,7 @@ impl Graph {
             .filter(|i| {
                 !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived
             })
-            .map(|x| *x)
+            .copied()
             .collect();
 
         for (i, idx) in indices.iter().enumerate() {
@@ -844,7 +844,7 @@ impl Graph {
             let child_of_last = if last { true } else { child_of_last };
 
             if let Some(node) = &self.nodes[*idx] {
-                f(&node.borrow(), depth, last, &skipped_depths);
+                f(&node.borrow(), depth, last, skipped_depths);
             }
 
             if last {
@@ -985,11 +985,10 @@ impl Graph {
             if delta_target_location < 0 && pos as i32 >= delta_target_location {
                 if pos as i32 + delta_target_location < 0 {
                     return Err(ErrorType::IndexOutOfRange(format!(
-                        "Index is out of range from parents when reordering. Max move count: {}",
-                        pos
+                        "Index is out of range from parents when reordering. Max move count: {pos}"
                     )));
                 }
-                pos_fix = pos - delta_target_location.abs() as usize;
+                pos_fix = pos - delta_target_location.unsigned_abs() as usize;
             } else {
                 if pos + delta_target_location as usize > parents_vec.len() - 1 {
                     return Err(ErrorType::IndexOutOfRange(format!(
@@ -1003,8 +1002,7 @@ impl Graph {
             parents_vec.insert(pos_fix, node_idx);
         } else {
             return Err(ErrorType::MalformedIndex(format!(
-                "Index {} not found in {} when reordering",
-                node_idx, parent_idx
+                "Index {node_idx} not found in {parent_idx} when reordering"
             )));
         }
         Ok(())

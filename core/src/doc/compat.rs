@@ -38,8 +38,7 @@ pub fn parse_yaml(doc: Value) -> DocResult<Doc> {
                 Ok(result) => result,
                 Err(err) => {
                     return Err(ErrorType::ParseError(format!(
-                        "Compatibility parsers failed parsing old version: {}",
-                        err
+                        "Compatibility parsers failed parsing old version: {err}"
                     )))
                 }
             };
@@ -170,12 +169,11 @@ fn parse_old_yaml(doc: &Value) -> DocResult<Value> {
             ))?;
         if current_ver < VERSION as u64 {
             match current_ver {
-                4 => doc_modified = old_yaml::v4_to_v5(&doc)?,
-                5 => doc_modified = old_yaml::v5_to_v6(&doc)?,
+                4 => doc_modified = old_yaml::v4_to_v5(doc)?,
+                5 => doc_modified = old_yaml::v5_to_v6(doc)?,
                 _ => {
                     return Err(ErrorType::ParseError(format!(
-                        "Oops, no available parsers to parse this document version: {}",
-                        current_ver
+                        "Oops, no available parsers to parse this document version: {current_ver}"
                     )))
                 }
             }
