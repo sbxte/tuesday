@@ -1,3 +1,4 @@
+use parse_datetime::parse_datetime;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -64,12 +65,11 @@ impl GraphTUI for Graph {
 
             let node = self.get_node(*i);
             let msg_match = node.title.to_lowercase();
-            let pattern_loc;
-            if filter.is_empty() {
-                pattern_loc = None;
+            let pattern_loc = if filter.is_empty() {
+                None
             } else {
-                pattern_loc = msg_match.find(&filter.to_lowercase());
-            }
+                msg_match.find(&filter.to_lowercase())
+            };
             let node_info = NodeInfo::new(node.metadata.index, depth, pattern_loc);
             storage.push(node_info);
 
@@ -136,16 +136,15 @@ fn highlight_node_message(
     // it would be useful to use slices but that'd mean that message has to be a reference as well
     // but then it would be reference of.. what..? nodes are dropped after they're converted to a
     // ListItem
-    let left_msg = (&message[0..pos]).to_string();
+    let left_msg = message[0..pos].to_string();
     let left = Span::raw(left_msg);
-    let mid_msg: String = (&message[pos..pos + pattern_len]).to_string();
-    let mid;
-    if is_selected {
-        mid = Span::styled(mid_msg, PATTERN_MATCH_SELECTED_STYLE);
+    let mid_msg: String = message[pos..pos + pattern_len].to_string();
+    let mid = if is_selected {
+        Span::styled(mid_msg, PATTERN_MATCH_SELECTED_STYLE)
     } else {
-        mid = Span::styled(mid_msg, PATTERN_MATCH_STYLE);
-    }
-    let right_msg: String = (&message[pos + pattern_len..message.len()]).to_string();
+        Span::styled(mid_msg, PATTERN_MATCH_STYLE)
+    };
+    let right_msg: String = message[pos + pattern_len..message.len()].to_string();
     let right = Span::raw(right_msg);
     (left, mid, right)
 }
@@ -162,7 +161,7 @@ fn list_item_from_node(
     let status = value.get_status();
     let statusbox_left = Span::styled("[", GRAPH_STATUSBOX_STYLE);
     let statusbox_right = Span::styled("] ", GRAPH_STATUSBOX_STYLE);
-    let mut spans;
+    let spans;
 
     // TODO: Are there Ratatui features that allow this?
     // let space = Span::raw(" ".to_string().repeat();
@@ -186,15 +185,13 @@ fn list_item_from_node(
             let message = Span::raw(value.title.to_owned());
             spans = vec![indent, statusbox_left, status, statusbox_right, message];
         }
+    } else if let Some(pos) = filter_pos {
+        let (left, mid, right) =
+            highlight_node_message(&value.title, pos, pattern_len, is_selected);
+        spans = vec![statusbox_left, status, statusbox_right, left, mid, right];
     } else {
-        if let Some(pos) = filter_pos {
-            let (left, mid, right) =
-                highlight_node_message(&value.title, pos, pattern_len, is_selected);
-            spans = vec![statusbox_left, status, statusbox_right, left, mid, right];
-        } else {
-            let message = Span::raw(value.title.to_owned());
-            spans = vec![statusbox_left, status, statusbox_right, message];
-        }
+        let message = Span::raw(value.title.to_owned());
+        spans = vec![statusbox_left, status, statusbox_right, message];
     }
     // Insert the index
     // FIXME: Why so unelegant
@@ -319,12 +316,11 @@ impl GraphViewComponent {
                     // TODO: move this whole pattern matching shenanigans somewhere else for less
                     // duplication
                     let message = graph.get_node(idx).title.to_lowercase();
-                    let pattern_loc;
-                    if message.is_empty() {
-                        pattern_loc = None;
+                    let pattern_loc = if message.is_empty() {
+                        None
                     } else {
-                        pattern_loc = message.find(&self.filter);
-                    }
+                        message.find(&self.filter)
+                    };
                     self.nodes.push(NodeInfo::new(idx, 0, pattern_loc)); // the parent node
                     GraphTUI::get_nodes(
                         graph,
@@ -405,7 +401,7 @@ impl GraphViewComponent {
     }
 
     pub fn nodes_count(&self) -> usize {
-        return self.nodes.len();
+        self.nodes.len()
     }
 
     pub fn graph_multiple_selected(&self) -> bool {
@@ -611,11 +607,11 @@ impl GraphViewComponent {
                 NodeLoc::Roots => {
                     if self.show_date_graphs {
                         // TODO: warn when date is invalid
-                        if Graph::is_date(&message) {
-                            graph.insert_date(message.to_string());
+                        if let Ok(datetime) = parse_datetime(message) {
+                            graph.insert_date(message.to_string(), datetime.date_naive());
                         }
                     } else {
-                        graph.insert_root(message.to_string(), false)
+                        graph.insert_root(message.to_string(), false);
                     }
                 }
                 NodeLoc::Idx(idx) => {
@@ -651,7 +647,7 @@ impl Widget for &mut GraphViewComponent {
     where
         Self: Sized,
     {
-        if self.nodes.len() == 0 {
+        if self.nodes.is_empty() {
             Line::from(" Graph is empty.").render(area, buf)
         }
         let selected_idx = self.get_current_node();

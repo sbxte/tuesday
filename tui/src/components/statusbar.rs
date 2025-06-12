@@ -71,7 +71,5 @@ impl StatusBarComponent {
         None
     }
 
-    pub fn render(&self, rect: Rect) {
-        
-    }
+    pub fn render(&self, _rect: Rect) {}
 }

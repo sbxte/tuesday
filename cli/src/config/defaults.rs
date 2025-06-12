@@ -27,7 +27,7 @@ pub const DEFAULT_COLOR_ARM_LAST: Color = Color::new(255, 255, 255); // #FFFFFF
 
 pub const DEFAULT_ICON_ARM_MULTIPARENT: &str = "+..";
 pub const DEFAULT_COLOR_ARM_MULTIPARENT: Color = Color::new(255, 255, 255); // #FFFFFF
-//
+                                                                            //
 pub const DEFAULT_ICON_ARM_MULTIPARENT_LAST: &str = "+..";
 pub const DEFAULT_COLOR_ARM_MULTIPARENT_LAST: Color = Color::new(255, 255, 255); // #FFFFFF
 

@@ -108,20 +108,16 @@ pub enum AppEvent {
 pub fn process_mouse(app: &App, mouse_event: MouseEvent) -> Option<AppEvent> {
     match app.current_view() {
         TabView::DateGraph | TabView::Tasks => match mouse_event.kind {
-            MouseEventKind::ScrollDown => {
-                return Some(AppEvent::Operational(OperationalEvent::Navigate(
-                    NavDirection::Next,
-                )))
-            }
+            MouseEventKind::ScrollDown => Some(AppEvent::Operational(OperationalEvent::Navigate(
+                NavDirection::Next,
+            ))),
 
-            MouseEventKind::ScrollUp => {
-                return Some(AppEvent::Operational(OperationalEvent::Navigate(
-                    NavDirection::Previous,
-                )))
-            }
-            _ => return None,
+            MouseEventKind::ScrollUp => Some(AppEvent::Operational(OperationalEvent::Navigate(
+                NavDirection::Previous,
+            ))),
+            _ => None,
         },
-        TabView::Calendar => return None,
+        TabView::Calendar => None,
     }
 }
 

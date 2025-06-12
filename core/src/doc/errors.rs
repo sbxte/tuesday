@@ -22,5 +22,5 @@ pub enum ErrorType {
     ParseError(String),
 
     #[error("Datetime parse error: {0}")]
-    ChronoError(#[from] chrono::ParseError)
+    ChronoError(#[from] chrono::ParseError),
 }

@@ -1,7 +1,11 @@
 use std::fmt::Display;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-use std::{collections::HashMap, fs::File, io::{Read, Write}};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Write},
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -24,7 +28,7 @@ pub enum BlueprintError {
     SaveDirError(String),
 
     #[error("Failed to access blueprint: {0}")]
-    FailedToAccess(String)
+    FailedToAccess(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -41,12 +45,17 @@ pub struct BlueprintDoc {
     /// The graph of the blueprint.
     pub(crate) graph: BlueprintGraph,
     /// The parent node index. Always set to 0.
-    pub(crate) parent: usize
+    pub(crate) parent: usize,
 }
 
 // same algo as core/graph.rs for remapping indices except we use hashmaps here since the remapped
 // indices count is almost definitely gonna be smaller
-fn _insert_idx_recurse(graph: &Graph, map: &mut HashMap<usize, usize>, node: usize, current_idx: &mut usize) {
+fn _insert_idx_recurse(
+    graph: &Graph,
+    map: &mut HashMap<usize, usize>,
+    node: usize,
+    current_idx: &mut usize,
+) {
     if map.get(&node).is_none() {
         map.insert(node, *current_idx);
         *current_idx += 1;
@@ -59,17 +68,20 @@ fn _insert_idx_recurse(graph: &Graph, map: &mut HashMap<usize, usize>, node: usi
     for child in node_children {
         _insert_idx_recurse(graph, map, *child, current_idx);
     }
-
 }
 
 fn new_bp_indices_map(graph: &Graph, node: usize) -> HashMap<usize, usize> {
     let mut map = HashMap::new();
     _insert_idx_recurse(graph, &mut map, node, &mut 0);
     map
-
 }
 
-fn _write_node_recurse(graph: &Graph, indices_map: &HashMap<usize, usize>, source_idx: usize, nodes_store: &mut Vec<Node>) {
+fn _write_node_recurse(
+    graph: &Graph,
+    indices_map: &HashMap<usize, usize>,
+    source_idx: usize,
+    nodes_store: &mut Vec<Node>,
+) {
     let node = graph.get_node(source_idx);
 
     let children = node.metadata.children.clone();
@@ -88,7 +100,6 @@ fn _write_node_recurse(graph: &Graph, indices_map: &HashMap<usize, usize>, sourc
     if indices_map[&source_idx] == 0 {
         node_ref.metadata.parents.clear();
     }
-
 }
 
 fn write_node_recurse(graph: &Graph, source_idx: usize, nodes_store: &mut Vec<Node>) {
@@ -96,10 +107,21 @@ fn write_node_recurse(graph: &Graph, source_idx: usize, nodes_store: &mut Vec<No
     _write_node_recurse(graph, &map, source_idx, nodes_store);
 
     for node in nodes_store {
-        node.metadata.parents = node.metadata.parents.iter().filter_map(|i| map.get(i)).map(|i| *i).collect();
-        node.metadata.children = node.metadata.children.iter().filter_map(|i| map.get(i)).map(|i| *i).collect();
+        node.metadata.parents = node
+            .metadata
+            .parents
+            .iter()
+            .filter_map(|i| map.get(i))
+            .copied()
+            .collect();
+        node.metadata.children = node
+            .metadata
+            .children
+            .iter()
+            .filter_map(|i| map.get(i))
+            .copied()
+            .collect();
     }
-
 }
 
 impl BlueprintGraph {
@@ -107,9 +129,7 @@ impl BlueprintGraph {
         let mut nodes = Vec::new();
         write_node_recurse(graph, idx, &mut nodes);
 
-        Self {
-            nodes
-        }
+        Self { nodes }
     }
 }
 
@@ -120,7 +140,7 @@ impl BlueprintDoc {
             // TODO: parent is literally always 0 so why even have it
             parent: 0,
             version,
-            author
+            author,
         }
     }
 
@@ -142,7 +162,6 @@ pub fn get_doc(file: &mut File) -> BlueprintResult<BlueprintDoc> {
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
     Ok(serde_yaml_ng::from_slice::<BlueprintDoc>(&bytes)?)
-
 }
 
 pub fn get_blueprints_listing(save_dir: &Path) -> BlueprintResult<Vec<String>> {
@@ -151,28 +170,45 @@ pub fn get_blueprints_listing(save_dir: &Path) -> BlueprintResult<Vec<String>> {
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|path| path.is_file())
-        .filter_map(|path| path.file_name().unwrap().to_string_lossy().strip_suffix(".yaml").map(|s| s.to_string()))
+        .filter_map(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .strip_suffix(".yaml")
+                .map(|s| s.to_string())
+        })
         .collect();
     Ok(files)
 }
 
-pub fn try_get_blueprint_from_save_dir(save_dir: &Path, name: &str) -> BlueprintResult<BlueprintDoc> {
+pub fn try_get_blueprint_from_save_dir(
+    save_dir: &Path,
+    name: &str,
+) -> BlueprintResult<BlueprintDoc> {
     let files = get_blueprints_listing(save_dir)?;
     if files.contains(&name.to_string()) {
         let mut path = PathBuf::from(save_dir);
-        path.push(format!("{}.yaml", name));
+        path.push(format!("{name}.yaml"));
         let mut file = File::open(path)?;
-        return Ok(get_doc(&mut file)?)
+        get_doc(&mut file)
     } else {
-        return Err(BlueprintError::FailedToAccess("Cannot found from save directory".to_string()))
-    };
+        Err(BlueprintError::FailedToAccess(
+            "Cannot found from save directory".to_string(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
-    use tuecore::{doc::get_doc_ver, graph::{node::{task::TaskData, Node, NodeMetadata, NodeType}, Graph}};
+    use tuecore::{
+        doc::get_doc_ver,
+        graph::{
+            node::{task::TaskData, Node, NodeMetadata, NodeType},
+            Graph,
+        },
+    };
 
     use crate::{blueprints::BlueprintGraph, config::CliConfig, display::Displayer};
 
@@ -181,12 +217,28 @@ mod tests {
     fn example_graph() -> Graph {
         let mut example_graph = Graph::new();
         let idx = example_graph.insert_root("root (1)".to_string(), false);
-        example_graph.insert_child("child (1)".to_string(), idx, false).unwrap();
-        let target = example_graph.insert_child("child (2)".to_string(), idx, false).unwrap();
-        example_graph.insert_child("child (1) of child (2)".to_string(), target, false).unwrap();
-        let idx = example_graph.insert_child("child (2) of child (2)".to_string(), target, false).unwrap();
-        example_graph.insert_child("child (1) of child (1) of child (2)".to_string(), idx, false).unwrap();
-        example_graph.insert_child("child (3) of child (2)".to_string(), target, false).unwrap();
+        example_graph
+            .insert_child("child (1)".to_string(), idx, false)
+            .unwrap();
+        let target = example_graph
+            .insert_child("child (2)".to_string(), idx, false)
+            .unwrap();
+        example_graph
+            .insert_child("child (1) of child (2)".to_string(), target, false)
+            .unwrap();
+        let idx = example_graph
+            .insert_child("child (2) of child (2)".to_string(), target, false)
+            .unwrap();
+        example_graph
+            .insert_child(
+                "child (1) of child (1) of child (2)".to_string(),
+                idx,
+                false,
+            )
+            .unwrap();
+        example_graph
+            .insert_child("child (3) of child (2)".to_string(), target, false)
+            .unwrap();
 
         let cfg = CliConfig::default();
         let displayer = Displayer::new(&cfg);
@@ -199,7 +251,7 @@ mod tests {
     #[test]
     fn test_indices_mapper() {
         let example_graph = example_graph();
-        
+
         let mut map_should_be = HashMap::new();
         map_should_be.insert(2, 0);
         map_should_be.insert(3, 1);
@@ -230,7 +282,7 @@ mod tests {
                             index: 0,
                             children: vec![1, 2, 4],
                             ..Default::default()
-                        }
+                        },
                     },
                     Node {
                         title: "child (1) of child (2)".to_string(),
@@ -239,7 +291,7 @@ mod tests {
                             index: 1,
                             parents: vec![0],
                             ..Default::default()
-                        }
+                        },
                     },
                     Node {
                         title: "child (2) of child (2)".to_string(),
@@ -249,7 +301,7 @@ mod tests {
                             children: vec![3],
                             parents: vec![0],
                             ..Default::default()
-                        }
+                        },
                     },
                     Node {
                         title: "child (1) of child (1) of child (2)".to_string(),
@@ -258,7 +310,7 @@ mod tests {
                             index: 3,
                             parents: vec![2],
                             ..Default::default()
-                        }
+                        },
                     },
                     Node {
                         title: "child (3) of child (2)".to_string(),
@@ -267,11 +319,10 @@ mod tests {
                             index: 4,
                             parents: vec![0],
                             ..Default::default()
-                        }
-                    }
-
-                ]
-            }
+                        },
+                    },
+                ],
+            },
         };
 
         assert_eq!(doc, should_be);

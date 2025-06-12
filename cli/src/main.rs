@@ -31,15 +31,15 @@ type AppResult<T> = Result<T, AppError>;
 
 fn get_bp_path(save_dir: PathBuf, name: &str) -> PathBuf {
     let mut path = save_dir.to_path_buf();
-    path.push(format!("{}.yaml", name));
+    path.push(format!("{name}.yaml"));
     path
 }
 
-fn handle_blueprints_command<'a>(
+fn handle_blueprints_command(
     subcommand: Option<(&str, &ArgMatches)>,
     graph: &mut Graph,
     config: &CliConfig,
-    displayer: &'a Displayer,
+    displayer: &Displayer,
 ) -> AppResult<()> {
     match subcommand {
         Some(("edit", sub_matches)) => {
@@ -101,10 +101,7 @@ fn handle_blueprints_command<'a>(
 
             let graph = graph_from_blueprint(&bp)?;
 
-            println!(
-                "{}",
-                displayer.display_bp_title(bp.author.as_deref(), &name)
-            );
+            println!("{}", displayer.display_bp_title(bp.author.as_deref(), name));
             displayer.list_roots(&graph, 0, false)?;
         }
         Some(("ls", _)) => {
@@ -126,7 +123,7 @@ fn handle_blueprints_command<'a>(
                 .get_one::<String>("name")
                 .ok_or(AppError::InvalidSubcommand)?;
             let bp = try_get_blueprint_from_save_dir(&config.blueprints.store_path, name)?;
-            println!("{}", bp.to_string());
+            println!("{bp}");
         }
         Some(("ins", sub_matches)) => {
             let name = sub_matches
@@ -149,7 +146,7 @@ fn handle_blueprints_command<'a>(
                 )
             })?;
 
-            let map = new_graph_indices_map(&bp, &graph, graph.get_nodes().len());
+            let map = new_graph_indices_map(&bp, graph, graph.get_nodes().len());
 
             // TODO: send help
             let new_parent = &bp.graph.nodes[bp.parent];
@@ -195,14 +192,14 @@ fn handle_blueprints_command<'a>(
             let bp = BlueprintDoc::from_idx(graph, get_doc_ver(), node_id, author.take().cloned());
 
             let path = if to_file {
-                format!("{}.yaml", name).into()
+                format!("{name}.yaml").into()
             } else {
                 if !&config.blueprints.store_path.exists() {
                     create_dir(&config.blueprints.store_path)
                         .map_err(|e| BlueprintError::SaveDirError(e.to_string()))?;
                 }
                 let mut path = config.blueprints.store_path.clone();
-                path.push(format!("{}.yaml", name));
+                path.push(format!("{name}.yaml"));
                 path
             };
 
@@ -227,11 +224,11 @@ fn handle_blueprints_command<'a>(
     Ok(())
 }
 
-fn handle_graph_command<'a>(
+fn handle_graph_command(
     subcommand: Option<(&str, &ArgMatches)>,
     graph: &mut Graph,
     config: &CliConfig,
-    displayer: &'a Displayer,
+    displayer: &Displayer,
     is_bp_graph: bool,
 ) -> AppResult<()> {
     match subcommand {
@@ -460,7 +457,7 @@ fn handle_graph_command<'a>(
         Some(("aliases", _)) => {
             let aliases = graph.get_aliases();
             println!("{}", displayer.aliases_title());
-            if aliases.len() > 0 {
+            if !aliases.is_empty() {
                 for (alias, idx) in aliases {
                     println!(" * {}", displayer.display_id(*idx, Some(alias)));
                 }
@@ -495,7 +492,7 @@ fn handle_graph_command<'a>(
                 None => displayer.list_roots(graph, depth, !show_archived)?,
                 Some(id) => displayer.list_children(
                     graph,
-                    graph.get_index_cli(&id, assume_date)?,
+                    graph.get_index_cli(id, assume_date)?,
                     depth,
                     !show_archived,
                 )?,
@@ -629,12 +626,10 @@ fn handle_graph_command<'a>(
                     for idx in node.metadata.children {
                         graph.copy_recurse(idx, parent_idx)?;
                     }
+                } else if recursive {
+                    graph.copy_recurse(from, parent_idx)?;
                 } else {
-                    if recursive {
-                        graph.copy_recurse(from, parent_idx)?;
-                    } else {
-                        graph.copy(from, parent_idx)?;
-                    }
+                    graph.copy(from, parent_idx)?;
                 }
             }
         }
@@ -665,8 +660,7 @@ fn handle_graph_command<'a>(
                 parent_idx = graph.get_index_cli(id, assume_date_2)?;
                 if !parents.contains(&parent_idx) {
                     return Err(AppError::InvalidArg(format!(
-                        "Index {} is not parent of {}!",
-                        parent_idx, node_idx
+                        "Index {parent_idx} is not parent of {node_idx}!"
                     )));
                 }
             } else {
@@ -712,11 +706,11 @@ fn handle_graph_command<'a>(
     Ok(())
 }
 
-fn handle_command<'a>(
+fn handle_command(
     matches: &ArgMatches,
     graph: &mut Graph,
     config: &CliConfig,
-    displayer: &'a Displayer,
+    displayer: &Displayer,
 ) -> AppResult<()> {
     match matches.subcommand() {
         Some(("bp", sub_matches)) => {

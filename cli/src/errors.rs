@@ -1,10 +1,10 @@
 use crate::blueprints::BlueprintError;
 
-use std::fmt;
 use parse_datetime::ParseDateTimeError;
+use std::fmt;
 use thiserror::Error;
-use tuecore::graph;
 use tuecore::doc;
+use tuecore::graph;
 
 use crate::config::ConfigReadError;
 
@@ -55,7 +55,6 @@ pub(crate) enum AppError {
 // display the item using the Termination trait at our main function.
 impl fmt::Debug for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{self}")
     }
-    
 }
