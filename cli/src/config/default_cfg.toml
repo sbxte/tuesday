@@ -4,6 +4,10 @@
 # Automatically trim unused indices after each graph-related operations.
 auto_clean = false
 
+# Only clean if the `None` count exceeds the total nodes × the threshold below
+# (in percentage).
+auto_clean_threshold = 50
+
 [display]
 # Date format used for date nodes.
 date_fmt = "%Y-%m-%d"
