@@ -321,48 +321,51 @@ fn handle_graph_command(
                 }
             }
         }
+
         Some(("link", sub_matches)) => {
-            let assume_date_1 = sub_matches.get_flag("assumedate1");
-            let assume_date_2 = sub_matches.get_flag("assumedate2");
+            let assume_date = sub_matches.get_flag("assumedate");
             let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date_1,
+                assume_date,
             )?;
-            let child = graph.get_index_cli(
-                sub_matches
-                    .get_one::<String>("child")
-                    .expect("child ID required"),
-                assume_date_2,
-            )?;
-            graph.link(parent, child)?;
+            let ids = sub_matches
+                .get_many::<String>("child")
+                .expect("Node children required");
+            for id in ids {
+                let node_id = graph.get_index_cli(id, assume_date)?;
 
-            if config.display.show_connections {
-                displayer.print_link(child, parent, true);
+                graph.link(parent, node_id)?;
+
+                if config.display.show_connections {
+                    displayer.print_link(node_id, parent, true);
+                }
             }
         }
+
         Some(("unlink", sub_matches)) => {
-            let assume_date_1 = sub_matches.get_flag("assumedate1");
-            let assume_date_2 = sub_matches.get_flag("assumedate2");
+            let assume_date = sub_matches.get_flag("assumedate");
             let parent = graph.get_index_cli(
                 sub_matches
                     .get_one::<String>("parent")
                     .expect("parent ID required"),
-                assume_date_1,
+                assume_date,
             )?;
-            let child = graph.get_index_cli(
-                sub_matches
-                    .get_one::<String>("child")
-                    .expect("child ID required"),
-                assume_date_2,
-            )?;
-            graph.unlink(parent, child)?;
+            let ids = sub_matches
+                .get_many::<String>("child")
+                .expect("Node children required");
+            for id in ids {
+                let node_id = graph.get_index_cli(id, assume_date)?;
 
-            if config.display.show_connections {
-                displayer.print_link(parent, child, false);
+                graph.unlink(parent, node_id)?;
+
+                if config.display.show_connections {
+                    displayer.print_link(node_id, parent, false);
+                }
             }
         }
+
         Some(("mv", sub_matches)) => {
             let assume_date_1 = sub_matches.get_flag("assumedate1");
             let assume_date_2 = sub_matches.get_flag("assumedate2");
@@ -775,16 +778,14 @@ fn cli() -> AppResult<Command> {
         .subcommand(Command::new("link")
             .about("Creates a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
-            .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(--assumedate1 "Force ID1 to be interpreted as a date"))
-            .arg(arg!(--assumedate2 "Force ID2 to be interpreted as a date"))
+            .arg(arg!(child: <ID2>... "Which node should be the child in this connection"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("unlink")
             .about("Removes a parent-child edge connection between 2 nodes")
             .arg(arg!(parent: <ID1> "Which node should be the parent in this connection"))
-            .arg(arg!(child: <ID2> "Which node should be the child in this connection"))
-            .arg(arg!(--assumedate1 "Force ID1 to be interpreted as a date"))
-            .arg(arg!(--assumedate2 "Force ID2 to be interpreted as a date"))
+            .arg(arg!(child: <ID2>... "Which node should be the child in this connection"))
+            .arg(arg!(-D --assumedate "Force the IDs to be interpreted as a date"))
         )
         .subcommand(Command::new("mv")
             .about("Unlink nodes from all current parents, then link to a new parent")
