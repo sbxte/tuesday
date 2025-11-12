@@ -196,6 +196,17 @@ impl Graph {
                 .remove(self.archived.iter().position(|x| *x == index).unwrap());
         }
 
+        if self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .archived
+        {
+            self.archived
+                .remove(self.archived.iter().position(|x| *x == index).unwrap());
+        }
+
         // Unlink node from parents and children
         let parents_ptr = self.nodes[index]
             .as_ref()
@@ -340,6 +351,17 @@ impl Graph {
         // Delete from date hashmap first if node is a date root node
         if let NodeType::Date(data) = &self.nodes[index].as_ref().unwrap().borrow().data {
             self.dates.remove(&data.date.hashmap_format());
+        }
+
+        if self.nodes[index]
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .metadata
+            .archived
+        {
+            self.archived
+                .remove(self.archived.iter().position(|x| *x == index).unwrap());
         }
 
         self.nodes[index] = None;
