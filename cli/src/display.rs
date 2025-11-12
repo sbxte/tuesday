@@ -357,7 +357,7 @@ impl<'a> Displayer<'a> {
 
     pub fn list_roots(&self, graph: &Graph, max_depth: u32, show_archived: bool) -> AppResult<()> {
         // TODO: wonky
-        let indices = graph.get_root_nodes_indices();
+        let indices = graph.get_root_nodes_indices().iter().filter(|idx| !graph.get_node(**idx).metadata.archived || show_archived);
         if max_depth == 1 {
             for i in indices {
                 graph.with_node(*i, &mut |node| self.display_node(node, 0, false, &[]));
