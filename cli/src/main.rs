@@ -499,18 +499,18 @@ fn handle_graph_command(
 
             let show_archived = sub_matches.get_flag("archived");
             match sub_matches.get_one::<String>("ID") {
-                None => displayer.list_roots(graph, depth, !show_archived)?,
+                None => displayer.list_roots(graph, depth, show_archived)?,
                 Some(id) => displayer.list_children(
                     graph,
                     graph.get_index_cli(id, assume_date)?,
                     depth,
-                    !show_archived,
+                    show_archived,
                 )?,
             }
         }
         Some(("lsd", sub_matches)) => {
             let show_archived = sub_matches.get_flag("archived");
-            displayer.list_dates(graph, !show_archived)?;
+            displayer.list_dates(graph, show_archived)?;
         }
         Some(("lsa", _)) => {
             displayer.list_archived(graph)?;

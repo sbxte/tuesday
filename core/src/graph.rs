@@ -806,7 +806,7 @@ impl Graph {
     pub fn _traverse_recurse(
         &self,
         indices: &[usize],
-        skip_archived: bool,
+        show_archived: bool,
         max_depth: u32,
         depth: u32,
         start: Option<usize>,
@@ -827,7 +827,7 @@ impl Graph {
         let indices: Vec<usize> = indices
             .iter()
             .filter(|i| {
-                !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || !skip_archived
+                !self.nodes[**i].as_ref().unwrap().borrow().metadata.archived || show_archived
             })
             .copied()
             .collect();
@@ -886,13 +886,13 @@ impl Graph {
     pub fn traverse_recurse(
         &self,
         indices: &[usize],
-        skip_archived: bool,
+        show_archived: bool,
         max_depth: u32,
         f: &mut impl FnMut(&Node, u32, bool, &[u32]),
     ) -> GraphResult<()> {
         self._traverse_recurse(
             indices,
-            skip_archived,
+            show_archived,
             max_depth,
             1,
             None,
