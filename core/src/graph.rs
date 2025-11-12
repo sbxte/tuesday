@@ -185,6 +185,10 @@ impl Graph {
             self.dates.remove(&data.date.hashmap_format());
         }
 
+        if self.nodes[index].as_ref().unwrap().borrow().metadata.archived {
+            self.archived.remove(self.archived.iter().position(|x| *x == index).unwrap());
+        }
+
         // Unlink node from parents and children
         let parents_ptr = self.nodes[index]
             .as_ref()
