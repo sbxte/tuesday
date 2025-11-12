@@ -381,11 +381,11 @@ impl<'a> Displayer<'a> {
         Ok(())
     }
 
-    pub fn list_dates(&self, graph: &Graph, skip_archived: bool) -> AppResult<()> {
+    pub fn list_dates(&self, graph: &Graph, show_archived: bool) -> AppResult<()> {
         let dates: Vec<usize> = graph
             .get_date_nodes_indices()
             .iter()
-            .filter(|idx| !graph.get_node(**idx).metadata.archived || !skip_archived)
+            .filter(|idx| !graph.get_node(**idx).metadata.archived || show_archived)
             .copied()
             .collect();
         graph.traverse_recurse(
