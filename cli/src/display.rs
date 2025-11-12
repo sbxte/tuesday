@@ -357,7 +357,10 @@ impl<'a> Displayer<'a> {
 
     pub fn list_roots(&self, graph: &Graph, max_depth: u32, show_archived: bool) -> AppResult<()> {
         // TODO: wonky
-        let indices = graph.get_root_nodes_indices().iter().filter(|idx| !graph.get_node(**idx).metadata.archived || show_archived);
+        let indices = graph
+            .get_root_nodes_indices()
+            .iter()
+            .filter(|idx| !graph.get_node(**idx).metadata.archived || show_archived);
         if max_depth == 1 {
             for i in indices {
                 graph.with_node(*i, &mut |node| self.display_node(node, 0, false, &[]));
@@ -414,9 +417,12 @@ impl<'a> Displayer<'a> {
         // If we ever add other requirements for filtering the node children this is gonna be
         // problematic. Refactor such that all filtering is done via the graph method without the
         // weird printing depth issues.
-        let children: Vec<usize> = graph.get_node_children(target).iter().filter(|i| {
-            !graph.get_node(**i).metadata.archived || show_archived
-        }).copied().collect();
+        let children: Vec<usize> = graph
+            .get_node_children(target)
+            .iter()
+            .filter(|i| !graph.get_node(**i).metadata.archived || show_archived)
+            .copied()
+            .collect();
 
         graph.traverse_recurse(
             &children,
