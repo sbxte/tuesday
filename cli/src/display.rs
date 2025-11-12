@@ -409,8 +409,17 @@ impl<'a> Displayer<'a> {
         // Display self as well
         graph.with_node(target, &mut |node| self.display_node(node, 0, false, &[]));
 
+        // TODO: everything about listing nodes is strange (blame Daringcuteseal); we should be
+        // able to just pass the node we want to a single graph method.
+        // If we ever add other requirements for filtering the node children this is gonna be
+        // problematic. Refactor such that all filtering is done via the graph method without the
+        // weird printing depth issues.
+        let children: Vec<usize> = graph.get_node_children(target).iter().filter(|i| {
+            !graph.get_node(**i).metadata.archived || show_archived
+        }).copied().collect();
+
         graph.traverse_recurse(
-            graph.get_node_children(target).as_slice(),
+            &children,
             show_archived,
             max_depth,
             &mut |node, depth, last, depth_of_last| {
