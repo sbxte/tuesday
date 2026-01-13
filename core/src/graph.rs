@@ -883,7 +883,7 @@ impl Graph {
                     .metadata
                     .children
                     .as_slice(),
-                false,
+                show_archived,
                 max_depth,
                 depth + 1,
                 start,
