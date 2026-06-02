@@ -589,6 +589,7 @@ fn handle_graph_command(
             let assume_date_1 = sub_matches.get_flag("assumedate1");
             let assume_date_2 = sub_matches.get_flag("assumedate2");
             let recursive = sub_matches.get_flag("recursive");
+            let create = sub_matches.get_flag("create");
 
             let parent_id = sub_matches
                 .get_one::<String>("parent")
@@ -596,20 +597,15 @@ fn handle_graph_command(
                     "parent node ID is required!".to_string(),
                 ))?;
 
-            let target_exists;
-
             // if user gives a nonexistent date as a target, make a new date node.
             let parent_idx = if let Ok(idx) = graph.get_index_cli(parent_id, assume_date_2) {
-                target_exists = true;
                 idx
             } else if let Ok(date) = parse_datetime_extended(parent_id) {
-                if !recursive {
+                if !create {
                     return Err(AppError::InvalidArg(
-                        "Copying a date node to a nonexistent date requires --recursive"
-                            .to_string(),
+                        "Copying a date node to a nonexistent date requires --create".to_string(),
                     ));
                 }
-                target_exists = false;
                 graph.insert_date("".to_string(), date.date_naive())
             } else {
                 return Err(AppError::IndexRetrievalError(
@@ -625,14 +621,11 @@ fn handle_graph_command(
 
             for id in from_ids {
                 let from = graph.get_index_cli(id, assume_date_1)?;
+                let node = graph.get_node(from);
 
-                // we make special treatment for date -> date copying, when the target date used
-                // does not exist. because the graph.copy method doesn't really care about the type
-                // of the node it's copying (everything will turn into normal nodes), we make the
-                // target manually then copy the children from the date node.
-                // also, recursion is guaranteed because of the logic above.
-                if !target_exists {
-                    let node = graph.get_node(from);
+                // when copying from a date node, user probably wants to copy the entire contents of
+                // the node and not the date node itself
+                if node.data.is_date() {
                     for idx in node.metadata.children {
                         graph.copy_recurse(idx, parent_idx)?;
                     }
@@ -799,6 +792,7 @@ fn cli() -> AppResult<Command> {
             .arg(arg!(source: <ID1>... "Which node to copy from"))
             .arg(arg!(parent: <ID2> "Which node to copy to"))
             .arg(arg!(-r --recursive "Whether to copy nodes recursively"))
+            .arg(arg!(-c --create "Create date node if it doesn't exist (does nothing if copying to a normal node)"))
             .arg(arg!(--assumedate1 "Force IDs 1 to be interpreted as dates"))
             .arg(arg!(--assumedate2 "Force ID 2 to be interpreted as a date"))
         )
