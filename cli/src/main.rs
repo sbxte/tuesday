@@ -627,7 +627,7 @@ fn handle_graph_command(
                 let from = graph.get_index_cli(id, assume_date_1)?;
 
                 // we make special treatment for date -> date copying, when the target date used
-                // to not exist. because the graph.copy method doesn't really care about the type
+                // does not exist. because the graph.copy method doesn't really care about the type
                 // of the node it's copying (everything will turn into normal nodes), we make the
                 // target manually then copy the children from the date node.
                 // also, recursion is guaranteed because of the logic above.
